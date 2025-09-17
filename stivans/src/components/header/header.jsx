@@ -1,6 +1,6 @@
 import { NavLink, Link } from "react-router-dom";
 import logo from "../../assets/stivan.png"; // adjust path if needed
-import "./Header.css";
+import "./header.css";
 
 export default function Header() {
   const isLoggedIn = false; // later replace with real auth state
