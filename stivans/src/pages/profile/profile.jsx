@@ -19,7 +19,7 @@ const Profile = () => {
   const { user } = useUser();
   const location = useLocation();
 
-  const [orders, setOrders] = useState([]);
+  //const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   // The error state is now commented out for future use.
   // const [error, setError] = useState(null); 
@@ -69,7 +69,7 @@ const Profile = () => {
                 <Route path="/" element={
                   <ProfileContent 
                     user={user} 
-                    orders={orders} 
+                    //orders={orders} 
                     loading={loading}
                     // Since 'error' is commented out, we don't pass it.
                   />} 
