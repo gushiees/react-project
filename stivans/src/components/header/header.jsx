@@ -1,9 +1,12 @@
-import { NavLink, Link } from "react-router-dom";
-import logo from "../../assets/stivan.png"; // adjust path if needed
+import { NavLink, Link, useLocation } from "react-router-dom";
+import { useAuth } from "../../AuthContext";
+import logo from "../../assets/stivan.png";
 import "./header.css";
 
 export default function Header() {
-  const isLoggedIn = false; // later replace with real auth state
+  const { user } = useAuth();       // real auth state
+  const isLoggedIn = !!user;
+  const location = useLocation();   // current page (so login can send you back)
 
   return (
     <header className="site-header">
@@ -15,19 +18,22 @@ export default function Header() {
 
         {/* CENTER: nav links */}
         <nav className="main-nav">
-          <NavLink to="/" end className="nav-link">
+          <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             Home
           </NavLink>
-          <NavLink to="/services" className="nav-link">
-            Services
+          <NavLink to="/services" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+            Bundles
           </NavLink>
-          <NavLink to="/insurance" className="nav-link">
+          <NavLink to="/insurance" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             Insurance
           </NavLink>
-          <NavLink to="/about" className="nav-link">
+          <NavLink to="/chapels" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+            Chapels
+          </NavLink>
+          <NavLink to="/about" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             About
           </NavLink>
-          <NavLink to="/contact" className="nav-link">
+          <NavLink to="/contact" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             Contact
           </NavLink>
         </nav>
@@ -40,9 +46,15 @@ export default function Header() {
           </Link>
 
           {isLoggedIn ? (
-            <Link to="/profile" className="icon-btn">👤</Link>
+            <Link to="/profile" className="icon-btn" aria-label="Profile">👤</Link>
           ) : (
-            <Link to="/login" className="signin-btn">Sign In</Link>
+            <Link
+              to="/login"
+              state={{ from: location }}   // 👈 tell Login which page we came from
+              className="signin-btn"
+            >
+              Sign In
+            </Link>
           )}
         </div>
       </div>

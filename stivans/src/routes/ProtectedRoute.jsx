@@ -5,10 +5,13 @@ export default function ProtectedRoute() {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <div>Loading…</div>;
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
-  }
+  // Show nothing (or a spinner) while auth state is loading
+  if (loading) return null;
 
-  return <Outlet />; // Render children if authenticated
+  // If not logged in, redirect to /login and remember where we were
+  return user ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/login" replace state={{ from: location }} />
+  );
 }
