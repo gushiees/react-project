@@ -15,26 +15,27 @@ import Signup from "./pages/signup/signup.jsx";
 // Auth
 import { AuthProvider } from "./AuthContext.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
+import Catalog from "./pages/catalog/catalog.jsx";
+import ProductDetail from "./pages/product/productdetail.jsx";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />, // your layout with <Outlet />
+    element: <App />,
     children: [
-      // ✅ Default route → Home
       { index: true, element: <Home /> },
 
       // Public routes
+      { path: "catalog", element: <Catalog /> },
+      { path: "catalog/:id", element: <ProductDetail /> }, // <-- Add this line
       { path: "about", element: <About /> },
       { path: "login", element: <Login /> },
       { path: "signup", element: <Signup /> },
 
-      // ✅ Protected wrapper: everything inside requires auth
       {
         element: <ProtectedRoute />,
         children: [
           { path: "profile", element: <Profile /> },
-          // add more private routes here
         ],
       },
     ],
