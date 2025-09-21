@@ -1,6 +1,7 @@
 import React from 'react';
 
-const ProfileContent = ({ user, orders, loading, error }) => {
+// The 'error' prop is commented out from the function parameters.
+const ProfileContent = ({ user, orders, loading /*, error*/ }) => { 
   const displayEmail = user?.email || 'Not provided';
   const displayPhone = user?.phone || user?.phoneNumber || 'Not provided';
   const displayDate = user?.registrationDate || user?.createdAt || 'Not available';
@@ -17,26 +18,29 @@ const ProfileContent = ({ user, orders, loading, error }) => {
         <h2>Completed Orders</h2>
         {loading ? (
           <p>Loading your orders...</p>
-        ) : error ? (
-          <p className="error-message">{error}</p>
-        ) : orders.length > 0 ? (
-          <div className="order-grid">
-            {orders.map(order => (
-              <div key={order._id} className="order-card">
-                <div className="order-header">
-                  <span>Order #{order._id.substring(0, 8)}</span>
-                  <span className="order-date">{new Date(order.createdAt).toLocaleDateString()}</span>
-                </div>
-                <div className="order-footer">
-                  <p className="order-status">Status: {order.status}</p>
-                  <p className="order-total">Total: ₱{order.totalPrice.toFixed(2)}</p>
-                </div>
+        ) : /* The error check is now commented out for future use.
+            error ? (
+              <p className="error-message">{error}</p>
+            ) : */
+            orders.length > 0 ? (
+              <div className="order-grid">
+                {orders.map(order => (
+                  <div key={order._id} className="order-card">
+                    <div className="order-header">
+                      <span>Order #{order._id.substring(0, 8)}</span>
+                      <span className="order-date">{new Date(order.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <div className="order-footer">
+                      <p className="order-status">Status: {order.status}</p>
+                      <p className="order-total">Total: ₱{order.totalPrice.toFixed(2)}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p>You don't have any completed orders yet.</p>
-        )}
+            ) : (
+              <p>You don't have any completed orders yet.</p>
+            )
+        }
       </div>
     </>
   );
