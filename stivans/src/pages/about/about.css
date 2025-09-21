@@ -1,8 +1,122 @@
-.about {
-  padding: 20px;
-  background: #f9f9f9;
+
+
+/* ================================
+   ST. IVANS – ABOUT US PAGE STYLES
+   ================================ */
+
+:root {
+  --primary: #2e4e6e;
+  --accent: #e6f0ff;
+  --text: #1f2937;
+  --bg: #f9fafc;
+  --white: #ffffff;
+  --shadow: rgba(0, 0, 0, 0.08);
+  --radius: 12px;
+  --transition: 0.3s ease;
+  --font-main: 'Poppins', sans-serif;
 }
 
-.about h1 {
-  color: darkblue;
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+}
+
+.about-wrapper {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+/* 🔷 Banner Image */
+.about-banner {
+  margin-bottom: 30px;
+}
+
+.header-banner {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+/* 🔷 Header */
+.about-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.about-header h1 {
+  font-size: 2.5rem;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+
+.about-header p {
+  font-size: 1.1rem;
+  color: #555;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* 🔷 Section Blocks */
+.about-block {
+  background-color: var(--white);
+  padding: 30px;
+  margin-bottom: 30px;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.about-block h2 {
+  font-size: 1.6rem;
+  color: var(--primary);
+  margin-bottom: 15px;
+}
+
+.about-block p,
+.about-block ul {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.about-block ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.about-block ul li {
+  margin-bottom: 10px;
+}
+
+/* 🔷 Footer */
+.about-footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 0.9rem;
+  color: #777;
+}
+
+/* 🔷 Responsive */
+@media (max-width: 768px) {
+  .about-header h1 {
+    font-size: 2rem;
+  }
+
+  .about-header p {
+    font-size: 1rem;
+  }
+
+  .about-block h2 {
+    font-size: 1.3rem;
+  }
+
+  .about-block p,
+  .about-block ul li {
+    font-size: 0.95rem;
+  }
 }
