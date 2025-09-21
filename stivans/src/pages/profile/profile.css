@@ -1,0 +1,193 @@
+:root {
+  --primary: #2e4e6e;
+  --accent: #e6f0ff;
+  --text: #1f2937;
+  --bg: #f9fafc;
+  --white: #ffffff;
+  --shadow: rgba(0, 0, 0, 0.08);
+  --radius: 12px;
+  --font-main: 'Poppins', sans-serif;
+  --transition: all 0.2s ease-in-out; /* Added this line */
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.profile-main {
+  display: flex;
+  flex-direction: row;
+  gap: 40px;
+  padding: 40px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 250px;
+  background-color: var(--white);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-self: flex-start; /* Keeps sidebar from stretching vertically */
+}
+
+.profile-info {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.avatar-placeholder {
+  font-size: 3rem;
+  background-color: var(--accent);
+  color: var(--primary);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  line-height: 80px;
+  margin: 0 auto 10px;
+}
+
+.profile-info h2 {
+  font-size: 1.3rem;
+  color: var(--primary);
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 10px;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+
+.menu-item:hover {
+  background-color: var(--accent);
+}
+
+.menu-item.active {
+  background-color: var(--accent);
+  font-weight: 600;
+}
+
+.logout-button {
+  margin-top: 30px;
+  padding: 10px;
+  background-color: var(--primary);
+  color: var(--white);
+  text-align: center;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-weight: 600;
+  transition: background var(--transition);
+}
+
+.logout-button:hover {
+  background-color: #1e3a5f;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  width: 100%; /* Added this line to fix layout collapse */
+}
+
+/* Reusable Content Card (New) */
+/* Use this class on all content containers in the main area */
+.profile-card {
+  background-color: var(--white);
+  padding: 30px;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+/* Guest Section (Simplified) */
+.guest-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.register-button,
+.continue-button {
+  display: inline-block;
+  margin: 10px 10px 0;
+  padding: 10px 20px;
+  background-color: var(--primary);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  text-decoration: none;
+  font-size: 1rem;
+  transition: background var(--transition);
+}
+
+.register-button:hover,
+.continue-button:hover {
+  background-color: #1e3a5f;
+}
+
+/* User Details (Simplified) */
+.user-details {
+  margin-bottom: 30px;
+}
+
+.user-details p {
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+/* Orders */
+.order-section h2 {
+  margin-bottom: 15px;
+  color: var(--primary);
+}
+
+.order-section p {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .profile-main {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+
+  .menu-item {
+    font-size: 0.95rem;
+  }
+  
+  /* Update the responsive padding to use the new card class */
+  .profile-card {
+    padding: 20px;
+  }
+}
+

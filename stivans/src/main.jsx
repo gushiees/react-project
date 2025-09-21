@@ -16,6 +16,9 @@ import Signup from "./pages/signup/signup.jsx";
 import { AuthProvider } from "./AuthContext.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 
+// ✅ Add this line to enable dynamic user context
+import { UserProvider } from "./contexts/UserContext.jsx";
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -33,7 +36,7 @@ const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
-          { path: "profile", element: <Profile /> },
+          { path: "profile/*", element: <Profile /> },
           // add more private routes here
         ],
       },
@@ -43,9 +46,11 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    {/* Wrap the entire router so all routes can use useAuth() */}
+    {/* ✅ Wrap with both Auth and User context */}
     <AuthProvider>
-      <RouterProvider router={router} />
+      <UserProvider>
+        <RouterProvider router={router} />
+      </UserProvider>
     </AuthProvider>
   </React.StrictMode>
 );
