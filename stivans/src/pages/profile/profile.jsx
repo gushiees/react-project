@@ -1,6 +1,3 @@
-<<<<<<< Updated upstream
-import "./profile.css";
-=======
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import {
@@ -39,15 +36,8 @@ const Profile = () => {
     if (path === '/profile' && location.pathname === '/profile') return 'menu-item active';
     return location.pathname.startsWith(path) && path !== '/profile' ? 'menu-item active' : 'menu-item';
   };
->>>>>>> Stashed changes
 
-export default function Profile() {
   return (
-<<<<<<< Updated upstream
-    <div style={{ padding: "2rem" }}>
-      <h1>Profile Page</h1>
-      <p>Welcome! This is a protected route.</p>
-=======
     <div className="app">
       <div className="profile-main">
         <aside className="sidebar">
@@ -91,7 +81,8 @@ export default function Profile() {
           )}
         </div>
       </div>
->>>>>>> Stashed changes
     </div>
   );
-}
+};
+
+export default Profile;
