@@ -42,7 +42,7 @@ export default function Header() {
           {isLoggedIn ? (
             <Link to="/profile" className="icon-btn">👤</Link>
           ) : (
-            <Link to="/signin" className="signin-btn">Sign In</Link>
+            <Link to="/login" className="signin-btn">Sign In</Link>
           )}
         </div>
       </div>
