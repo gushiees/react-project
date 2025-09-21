@@ -1,6 +1,6 @@
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
-import logo from "../../assets/stivan.png";
+import logo from "../../assets/stivanlogo.png";
 import "./header.css";
 
 export default function Header() {

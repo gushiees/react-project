@@ -1,122 +1,268 @@
-
-
 /* ================================
    ST. IVANS – ABOUT US PAGE STYLES
+   Clean & Improved Visual Balance
    ================================ */
 
 :root {
-  --primary: #2e4e6e;
-  --accent: #e6f0ff;
-  --text: #1f2937;
-  --bg: #f9fafc;
+  --primary: #2e2e2e;       
+  --accent: #f6b300;        
+  --text: #333333;
+  --bg: #f4f4f4;
   --white: #ffffff;
-  --shadow: rgba(0, 0, 0, 0.08);
+  --shadow: rgba(0,0,0,0.12);
   --radius: 12px;
   --transition: 0.3s ease;
   --font-main: 'Poppins', sans-serif;
 }
 
+/* ===========================
+   Layout
+   =========================== */
 body {
   font-family: var(--font-main);
-  background-color: var(--bg);
+  background: var(--bg);
   color: var(--text);
   margin: 0;
-  padding: 0;
-}
-
-.about-wrapper {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 40px 20px;
-}
-
-/* 🔷 Banner Image */
-.about-banner {
-  margin-bottom: 30px;
-}
-
-.header-banner {
-  width: 100%;
-  max-height: 400px;
-  object-fit: cover;
-  border-radius: var(--radius);
-  box-shadow: 0 4px 12px var(--shadow);
-}
-
-/* 🔷 Header */
-.about-header {
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-.about-header h1 {
-  font-size: 2.5rem;
-  color: var(--primary);
-  margin-bottom: 10px;
-}
-
-.about-header p {
-  font-size: 1.1rem;
-  color: #555;
-  max-width: 700px;
-  margin: 0 auto;
-}
-
-/* 🔷 Section Blocks */
-.about-block {
-  background-color: var(--white);
-  padding: 30px;
-  margin-bottom: 30px;
-  border-radius: var(--radius);
-  box-shadow: 0 4px 12px var(--shadow);
-}
-
-.about-block h2 {
-  font-size: 1.6rem;
-  color: var(--primary);
-  margin-bottom: 15px;
-}
-
-.about-block p,
-.about-block ul {
-  font-size: 1rem;
   line-height: 1.6;
-  color: var(--text);
 }
 
-.about-block ul {
-  list-style: none;
-  padding-left: 0;
+.about-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  padding: 50px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.about-block ul li {
-  margin-bottom: 10px;
+/* ===========================
+   Left Column (Image + Title)
+   =========================== */
+.about-left {
+  flex: 1;
+  min-width: 300px;
+  position: relative;
 }
 
-/* 🔷 Footer */
-.about-footer {
-  text-align: center;
-  padding: 20px;
-  font-size: 0.9rem;
-  color: #777;
+.about-image-wrapper {
+  position: relative;
+  overflow: hidden;
 }
 
-/* 🔷 Responsive */
+.about-image {
+  width: 100%;
+  height: 600px;
+  object-fit: cover;
+  transition: transform var(--transition);
+}
+
+.about-image-wrapper:hover .about-image {
+  transform: scale(1.05);
+}
+
+.about-overlay {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 14px 22px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.about-logo {
+  max-width: 180px;
+  height: auto;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+}
+
+.about-slogan {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 1px;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* ===========================
+   Right Column (Accordion Info)
+   =========================== */
+.about-right {
+  flex: 1.2;
+  min-width: 320px;
+}
+
+.about-block {
+  background: var(--white);
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px var(--shadow);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.about-block:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.accordion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 20px 24px;
+  cursor: pointer;
+  background: #fafafa;
+  border: none;
+  text-align: left;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2e2e2e !important; 
+  transition: background var(--transition);
+}
+
+.accordion-toggle:hover {
+  background: #f1f1f1;
+}
+
+/* Arrow */
+/* Accordion arrows */
+.arrow {
+  font-size: 1.3rem;
+  color: #f6b300; /* GOLD */
+  transition: transform 0.25s ease;
+}
+
+.arrow.open {
+  transform: rotate(180deg);
+  color: #f6b300; /* ensure gold on open state too */
+}
+
+
+.about-block-content {
+  padding: 18px 24px 26px;
+  border-top: 1px solid #eee;
+  animation: fadeIn 0.6s ease;
+}
+
+/* ===========================
+   Timeline
+   =========================== */
+.timeline-container {
+  border-left: 3px solid #f6b300 !important;
+  padding-left: 25px;
+  margin-top: 16px;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.timeline-dot {
+  width: 14px;
+  height: 14px;
+  background: #f6b300 !important; 
+  border-radius: 50%;
+  margin-right: 15px;
+  flex-shrink: 0;
+  margin-top: 4px;
+  box-shadow: 0 0 6px rgba(246,179,0,0.7);
+}
+
+.timeline-content {
+  flex: 1;
+}
+
+.timeline-year {
+  font-weight: 700;
+  color: #f6b300 !important;
+  font-size: 1.1rem;
+}
+
+.timeline-event {
+  font-size: 0.95rem;
+  color: #555;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+/* Values list */
+.values-list li {
+  margin-bottom: 14px;
+  font-size: 0.95rem;
+  color: #555;
+  line-height: 1.5;
+}
+
+/* ===========================
+   FAQ
+   =========================== */
+.faq-section {
+  margin-top: 16px;
+}
+
+.faq-item {
+  background: #fafafa;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  padding: 14px 18px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: transform var(--transition);
+}
+
+.faq-item:hover {
+  transform: translateY(-2px);
+}
+
+.faq-question {
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 6px;
+}
+
+.faq-answer {
+  font-size: 0.95rem;
+  color: #555;
+  line-height: 1.5;
+}
+
+/* ===========================
+   Animations
+   =========================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===========================
+   Responsive
+   =========================== */
 @media (max-width: 768px) {
-  .about-header h1 {
-    font-size: 2rem;
+  .about-container {
+    flex-direction: column;
+    padding: 20px;
   }
 
-  .about-header p {
-    font-size: 1rem;
+  .about-title {
+    font-size: 1.7rem;
   }
 
-  .about-block h2 {
-    font-size: 1.3rem;
-  }
-
-  .about-block p,
-  .about-block ul li {
-    font-size: 0.95rem;
+  .accordion-toggle {
+    font-size: 1.1rem;
   }
 }
