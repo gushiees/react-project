@@ -1,10 +1,15 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import "./login.css";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // If a ProtectedRoute or a Link passed us a "from", use it:
+  const fromState = location.state?.from?.pathname;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -12,13 +17,24 @@ export default function Login() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
+  function safeBackOrHome() {
+    const sameOriginReferrer =
+      typeof document !== "undefined" &&
+      document.referrer &&
+      document.referrer.startsWith(window.location.origin);
+
+    if (sameOriginReferrer) {
+      navigate(-1); // go back to the previous SPA page
+    } else {
+      navigate("/"); // fallback to home
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setPending(true);
 
-    // Optional: persist session toggle (remember me)
-    supabase.auth.setSession({}); // noop to ensure client is ready
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -27,9 +43,11 @@ export default function Login() {
       });
       if (error) throw error;
 
-      // If you want "remember me" to disable auto sign-out when tab closes,
-      // supabase-js already persists session in localStorage by default.
-      navigate("/profile");
+      if (fromState) {
+        navigate(fromState, { replace: true }); // back to About (or wherever)
+      } else {
+        safeBackOrHome();
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -41,7 +59,6 @@ export default function Login() {
     <div className="login__wrap">
       {/* Left image panel */}
       <div className="login__left" aria-hidden="true">
-        {/* Put an image at public/login-side.jpg or change the URL below */}
         <img src="/login-side.jpg" alt="" />
       </div>
 
