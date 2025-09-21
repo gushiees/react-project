@@ -1,70 +1,195 @@
-import Footer from "../../components/footer/footer";
+// src/pages/About.js
+import React, { useState } from "react";
 import Header from "../../components/header/header";
-import React from 'react';
-import './about.css';
-import bannerImage from '../../assets/stivan10.png'; // ✅ Import from src/assets
+import Footer from "../../components/footer/footer";
+import bannerImage from "../../assets/stivan10.png";
+import logoImage from "../../assets/stivanlogolight.png";
+import "./About.css";
+
+
 
 const About = () => {
+  const [openIndex, setOpenIndex] = useState(null);
+
+  const toggleSection = (index) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
+
   const aboutContent = {
-    bannerImage: bannerImage, // ✅ Use imported image
-    title: 'About ST. IVANS',
-    intro: 'ST. IVANS – Integrated Virtual Access to Necro Services is a digital funeral planning system built with purpose and compassion. We help Filipino families navigate loss with clarity, dignity, and ease.',
     sections: [
       {
-        heading: 'Company History',
-        content: 'Founded in 2025, ST. IVANS emerged in response to the increasing demand for accessible, customizable, and dignified funeral services in the Philippines. The platform was developed to address prevalent industry challenges, including limited service reach, inflexible package offerings, and manual coordination processes.',
+        heading: "Our Mission",
+        content:
+          "To provide compassionate, dignified, and affordable funeral services that honor the life of every individual.",
       },
       {
-        heading: 'Mission',
-        content: 'To simplify the funeral planning process by providing digital tools, real-time updates, and compassionate service ensuring that every Filipino family is able to honor their loved ones with dignity, clarity, and without unnecessary burden.',
+        heading: "Our Vision",
+        content:
+          "To be the most trusted funeral service provider in the country, embracing innovation while preserving tradition.",
       },
       {
-        heading: 'Vision',
-        content: 'We envision a future where every Filipino has access to meaningful, customizable, and dignified funeral services anytime, anywhere through technology and compassion.',
-      },
-      {
-        heading: 'Values',
+        heading: "Our Values",
         content: [
-          '🤝 Compassion: We serve with empathy, honoring every family’s story with dignity and care.',
-          '🧠 Innovation: We embrace digital tools to simplify memorial planning and elevate service quality.',
-          '🛡️ Integrity: We uphold trust through transparency, respect, and professional conduct.',
-          '📱 Accessibility: We ensure every Filipino family can access respectful memorial solutions anytime, anywhere.',
+          {
+            title: "Compassion and Respect",
+            desc: "We treat every family with empathy and honor the dignity of every life."
+          },
+          {
+            title: "Professionalism and Integrity",
+            desc: "We maintain the highest standards of service, guided by honesty and transparency."
+          },
+          {
+            title: "Affordability and Accessibility",
+            desc: "We ensure that meaningful services are within reach for all families."
+          },
+          {
+            title: "Innovation with Tradition",
+            desc: "We embrace technology to improve our services while respecting cultural practices."
+          },
+        ],
+        type: "values"
+      },
+      {
+        heading: "Company History",
+        content: [
+          {
+            year: "2020",
+            event: "ST. IVANS Funeral Services was founded to provide dignified and accessible services.",
+          },
+          {
+            year: "2022",
+            event: "Expanded nationwide with partnerships across multiple regions.",
+          },
+          {
+            year: "2023",
+            event: "Launched digital platform for memorial planning.",
+          },
+          {
+            year: "2025",
+            event: "Introduced mobile app for real-time updates and planning.",
+          },
+        ],
+        type: "timeline",
+      },
+      {
+        heading: "Meet Our Team",
+        content: [
+          "John Doe – Founder & CEO",
+          "Jane Smith – Operations Manager",
+          "Michael Lee – Head of Client Services",
+          "Sarah Johnson – Digital Platform Manager",
         ],
       },
+      {
+        heading: "Frequently Asked Questions",
+        content: [
+          {
+            q: "What services do you offer?",
+            a: "We offer funeral arrangements, cremation, memorial planning, and online tribute options."
+          },
+          {
+            q: "How do I plan a funeral with ST. IVANS?",
+            a: "You can visit our office, call our hotline, or use our digital platform to plan a service."
+          },
+          {
+            q: "Do you offer online memorial options?",
+            a: "Yes, we provide digital memorial pages and live-streaming services for loved ones afar."
+          },
+          {
+            q: "Are your services available nationwide?",
+            a: "Yes, we have expanded our reach across multiple regions in the country."
+          }
+        ],
+        type: "faq"
+      },
     ],
-    footer: '© 2025 ST. IVANS Memorial Services. All rights reserved.',
   };
 
   return (
-    <div className="about-wrapper">
-      <div className="about-banner">
-        <img src={aboutContent.bannerImage} alt="ST. IVANS Building" className="header-banner" />
+    <section className="about">
+      <Header />
+
+      <div className="about-container">
+        {/* Left Column (Image + Logo + Slogan) */}
+       <div className="about-left">
+       <div className="about-image-wrapper">
+       <img src={bannerImage} alt="About ST. IVANS" className="about-image" />
+
+         {/* Logo + Slogan Overlay */}
+        <div className="about-overlay">
+          <img src={logoImage} alt="ST. IVANS-Logo" className="about-logo" />
+          <p className="about-slogan">Your Comfort To Heaven</p>
+        </div>
       </div>
-
-      <div className="about-header">
-        <h1>{aboutContent.title}</h1>
-        <p>{aboutContent.intro}</p>
-      </div>
-
-      {aboutContent.sections.map((section, index) => (
-        <section className="about-block" key={index}>
-          <h2>{section.heading}</h2>
-          {Array.isArray(section.content) ? (
-            <ul>
-              {section.content.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>{section.content}</p>
-          )}
-        </section>
-      ))}
-
-      <footer className="about-footer">
-        <p>{aboutContent.footer}</p>
-      </footer>
     </div>
+
+
+        {/* Right Column (Accordion Info) */}
+        <div className="about-right">
+          {aboutContent.sections.map((section, index) => (
+            <div className="about-block" key={index}>
+              <button
+                className="accordion-toggle"
+                onClick={() => toggleSection(index)}
+              >
+                {section.heading}
+                <span className={`arrow ${openIndex === index ? "open" : ""}`}>
+                  &#9660;
+                </span>
+              </button>
+
+              {openIndex === index && (
+                <div className="about-block-content">
+                  {/* Timeline */}
+                  {section.type === "timeline" ? (
+                    <div className="timeline">
+                      <div className="timeline-container">
+                        {section.content.map((item, i) => (
+                          <div className="timeline-item" key={i}>
+                            <div className="timeline-dot"></div>
+                            <div className="timeline-content">
+                              <div className="timeline-year">{item.year}</div>
+                              <div className="timeline-event">{item.event}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : section.type === "values" ? (
+                    <ul className="values-list">
+                      {section.content.map((val, i) => (
+                        <li key={i}>
+                          <strong>{val.title}:</strong> {val.desc}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : section.type === "faq" ? (
+                    <div className="faq-section">
+                      {section.content.map((faq, i) => (
+                        <div className="faq-item" key={i}>
+                          <div className="faq-question">{faq.q}</div>
+                          <div className="faq-answer">{faq.a}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : Array.isArray(section.content) ? (
+                    <ul>
+                      {section.content.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>{section.content}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Footer />
+    </section>
   );
 };
 
