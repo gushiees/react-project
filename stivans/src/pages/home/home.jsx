@@ -2,8 +2,9 @@ import "./home.css";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import Button from "../../components/button/button";
-import homeCloud from "../../assets/home-cloud.jpg";
+import { Link } from "react-router-dom";
 
+import homeCloud from "../../assets/home-cloud.jpg";
 import svcFuneral from "../../assets/funeral.jpg";
 import svcInsurance from "../../assets/insurance.jpg";
 import svcChapel from "../../assets/chapel.jpg";
@@ -13,7 +14,7 @@ export default function Home() {
     <div className="home">
       <Header />
 
-      {/* HERO */}
+      {/* HERO (1920x1080 by default) */}
       <section className="hero" style={{ "--hero-h": "1080px" }}>
         <div
           className="hero__bg"
@@ -27,6 +28,7 @@ export default function Home() {
             <span>Your Comfort</span>
             <span>to Heaven</span>
           </h1>
+
           <Button
             id="hero-get-started"
             type="secondary"
@@ -37,55 +39,60 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SERVICES */}
-      <section className="slab slab--light">
+            {/* SERVICES */}
+      <section className="section services">
         <div className="container">
           <h2 className="section-title">Services</h2>
 
           <div className="card-grid">
             {/* Funeral */}
-            <article className="service-card">
-              <img src={svcFuneral} alt="Funeral service" className="service-card__img" />
+            <Link to="/services" className="service-card" aria-label="Funeral Service">
+              <img src={svcFuneral} alt="" className="service-card__img" />
               <div className="service-card__shade" aria-hidden="true" />
               <div className="service-card__content">
                 <h3 className="service-card__title">Funeral Service</h3>
                 <p className="service-card__text">
-                  Compassionate, end-to-end support so you can focus on remembrance
-                  and healing.
+                  Compassionate, end-to-end support for families during life’s most difficult moments.
+                  We take care of the details from preparation to ceremony so you can focus on
+                  remembrance and healing.
                 </p>
               </div>
-            </article>
+            </Link>
 
             {/* Insurance */}
-            <article className="service-card">
-              <img src={svcInsurance} alt="Life insurance" className="service-card__img" />
+            <Link to="/insurance" className="service-card" aria-label="Life Insurance">
+              <img src={svcInsurance} alt="" className="service-card__img" />
               <div className="service-card__shade" aria-hidden="true" />
               <div className="service-card__content">
                 <h3 className="service-card__title">Life Insurance</h3>
                 <p className="service-card__text">
-                  Affordable protection designed for students and families—small
-                  premiums, meaningful coverage.
+                  Affordable protection designed for students and families small premiums, meaningful
+                  coverage. Our micro-insurance plans bundle seamlessly with our funeral services for
+                  smoother claims and faster support.
                 </p>
               </div>
-            </article>
+            </Link>
 
             {/* Chapels */}
-            <article className="service-card">
-              <img src={svcChapel} alt="Chapel interior" className="service-card__img" />
+            <Link to="/services" className="service-card" aria-label="Chapels">
+              <img src={svcChapel} alt="" className="service-card__img" />
               <div className="service-card__shade" aria-hidden="true" />
               <div className="service-card__content">
                 <h3 className="service-card__title">Chapels</h3>
                 <p className="service-card__text">
-                  Comfortable, dignified settings for quiet reflection and togetherness.
+                  Thoughtfully arranged spaces support quiet reflection, heartfelt tributes, and
+                  togetherness. Choose a setting that feels right for your family’s moment of
+                  remembrance.
                 </p>
               </div>
-            </article>
+            </Link>
           </div>
         </div>
       </section>
 
+
       {/* ABOUT */}
-      <section className="slab slab--white">
+      <section className="section about">
         <div className="container">
           <h2 className="section-title">About us</h2>
 

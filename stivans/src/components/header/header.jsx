@@ -21,8 +21,14 @@ export default function Header() {
           <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             Home
           </NavLink>
+          <NavLink to="/services" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+            Bundles
+          </NavLink>
           <NavLink to="/insurance" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             Insurance
+          </NavLink>
+          <NavLink to="/chapels" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+            Chapels
           </NavLink>
           <NavLink to="/about" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
             About
