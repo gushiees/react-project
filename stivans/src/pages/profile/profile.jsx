@@ -21,43 +21,13 @@ const Profile = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // The error state is now commented out for future use.
+  // const [error, setError] = useState(null); 
 
   const isGuest = !user || !user.token;
 
   useEffect(() => {
-    // The API call to fetch orders has been removed for now.
-    // We just set loading to false to prevent the component from
-    // being stuck in a loading state.
     setLoading(false); 
-
-    /*
-    const fetchOrders = async () => {
-      if (isGuest) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const response = await fetch(${API_URL}/api/orders/myorders, {
-          headers: {
-            Authorization: Bearer ${user.token},
-          },
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch orders');
-        const data = await response.json();
-        setOrders(data);
-      } catch (err) {
-        setError('Failed to load orders. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
-    */
   }, [user]);
 
   const displayName = user?.firstName || user?.name || 'Guest';
@@ -100,8 +70,8 @@ const Profile = () => {
                   <ProfileContent 
                     user={user} 
                     orders={orders} 
-                    loading={loading} 
-                    error={error} 
+                    loading={loading}
+                    // Since 'error' is commented out, we don't pass it.
                   />} 
                 />
                 <Route path="settings" element={<Settings />} />
