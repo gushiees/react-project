@@ -1,7 +1,7 @@
 // src/pages/catalog/Catalog.jsx
 import React from "react";
 import "./catalog.css";
-import Header from "../../components/header/Header";
+import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { Link } from "react-router-dom";
 
@@ -14,11 +14,11 @@ import c5 from "../../assets/casket5.png";
 
 /* Bundles list — ids match the product detail page ids (casket1..casket5) */
 const BUNDLES = [
-  { id: "casket1", name: "Casket (JOHN)", short: "Lorem ipsum oh yeah", price: 20000, monthly: 1750, image: c1, insuranceIncluded: true },
-  { id: "casket2", name: "Casket (CLASSIC)", short: "Lorem ipsum oh yeah", price: 20000, monthly: 1750, image: c2, insuranceIncluded: true },
-  { id: "casket3", name: "Casket (PREMIUM)", short: "Lorem ipsum oh yeah", price: 20000, monthly: 1750, image: c3, insuranceIncluded: true },
-  { id: "casket4", name: "Casket (MODERN)", short: "Lorem ipsum oh yeah", price: 20000, monthly: 1750, image: c4, insuranceIncluded: true },
-  { id: "casket5", name: "Casket (WHITE)", short: "Lorem ipsum oh yeah", price: 20000, monthly: 1750, image: c5, insuranceIncluded: true }
+  { id: "casket1", name: "ECO (WOODEN)", short: "Affordable solid-wood casket with a natural finish — simple, durable, and respectful.", price: 40000, monthly: 3333.33, image: c1, insuranceIncluded: true },
+  { id: "casket2", name: "ABRAM (CLASSIC)", short: "Polished, traditional wooden casket with satin interior for a refined presentation.", price: 74999, monthly: 6249.91, image: c2, insuranceIncluded: true },
+  { id: "casket3", name: "BETA (CLASSIC)", short: "Sturdy oak-style casket offering balanced quality and value for traditional services.", price: 70000, monthly: 5833.33, image: c3, insuranceIncluded: true },
+  { id: "casket4", name: "SKY (MODERN)", short: "Contemporary metallic casket with sleek design and premium interior comfort.", price: 99999, monthly: 8333.25, image: c4, insuranceIncluded: true },
+  { id: "casket5", name: "CLOUD (MODERN)", short: "Elegant white casket with a serene finish, perfect for graceful memorials.", price: 99999, monthly: 8333.25, image: c5, insuranceIncluded: true }
 ];
 
 function php(amount) {

@@ -1,7 +1,7 @@
 // src/pages/product/ProductDetail.jsx
-import React from "react";
+import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import Header from "../../components/header/Header";
+import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import "./product-detail.css";
 
@@ -11,72 +11,80 @@ import casket2 from "../../assets/casket2.png";
 import casket3 from "../../assets/casket3.png";
 import casket4 from "../../assets/casket4.png";
 import casket5 from "../../assets/casket5.png";
+import casket52 from "../../assets/casket52.png";
+import casket53 from "../../assets/casket53.png";
 
 const products = [
   {
     id: "casket1",
-    name: "Casket (John)",
+    name: "ECO (WOODEN)",
     service: "Funeral Service",
     description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "The Eco Wooden casket is built from solid pine with a smooth, natural finish. Designed for families seeking a simple yet dignified farewell, it emphasizes durability and respectful presentation. The interior includes a soft cotton lining and supportive pillow, creating a warm, natural look.",
     insurance:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "Includes a Basic Funeral Assistance Plan, covering administrative and immediate arrangement costs with simplified claims processing. It provides modest financial support for short-term needs but is not a substitute for full life insurance coverage.",
     prices: {
-      oneYear: "₱1,750.00",
-      twoYear: "₱875.00",
-      fiveYear: "₱350.00",
+      oneYear: "₱3,333.33",
+      twoYear: "₱1,750.00",
+      fiveYear: "₱766.67",
     },
-    image: casket1,
+    images: [casket1, casket2, casket3], // example thumbs
   },
   {
     id: "casket2",
     name: "Casket (Classic)",
     service: "Funeral Service",
     description:
-      "Elegant and classic wooden casket with premium finishing and traditional design.",
+      "The Abram Classic casket features polished wood craftsmanship with detailed trim and a satin-lined interior. It offers a timeless, elegant look suitable for formal services, blending traditional style with dependable build quality.",
     insurance:
-      "Insurance covers accidental damage and maintenance during viewing.",
+      "Includes a Standard Funeral Priority Plan, which provides reimbursement assistance for selected funeral expenses, expedited claims, and access to support for paperwork and coordination. A small accidental death benefit is also included.",
     prices: {
-      oneYear: "₱2,200.00",
-      twoYear: "₱1,100.00",
-      fiveYear: "₱450.00",
+      oneYear: "₱6,249.91",
+      twoYear: "₱3,281.21",
+      fiveYear: "₱1,437.48",
     },
-    image: casket2,
+    images: [casket2, casket1, casket3], // example thumbs
   },
   {
     id: "casket3",
-    name: "Casket (Premium)",
+    name: "BETA (CLASSIC)",
     service: "Funeral Service",
     description:
-      "High-end premium casket for families wanting luxurious finish.",
-    insurance: "Includes plan coverage with full insurance options.",
-    prices: { oneYear: "₱3,500.00", twoYear: "₱1,750.00", fiveYear: "₱700.00" },
-    image: casket3,
+      "Comes with a Funeral Support Plan, offering guided assistance in filing insurance claims, partial reimbursement of eligible costs, and coverage for standard administrative expenses.",
+    insurance:
+      "Comes with a Funeral Support Plan, offering guided assistance in filing insurance claims, partial reimbursement of eligible costs, and coverage for standard administrative expenses.",
+    prices: { oneYear: "₱5,833.33", twoYear: "₱3,062.50", fiveYear: "₱1,341.67" },
+    images: [casket3, casket1, casket5],
   },
   {
     id: "casket4",
-    name: "Casket (Modern)",
+    name: "SKY (MODERN)",
     service: "Funeral Service",
-    description: "A modern casket design with sleek metallic finishes.",
-    insurance: "Plan insurance includes handling and storage options.",
-    prices: { oneYear: "₱2,800.00", twoYear: "₱1,400.00", fiveYear: "₱560.00" },
-    image: casket4,
+    description:
+      "The Sky Modern casket offers a sleek, contemporary design with a metallic exterior and plush interior fabric. Its clean lines and premium construction make it a standout choice for families who prefer modern elegance in memorial services.",
+    insurance:
+      "Protected under the Premium Funeral Coverage Plan, which provides higher reimbursement limits, priority claims handling, and a dedicated coordinator for smoother processing and support during difficult times.",
+    prices: { oneYear: "₱8,333.25", twoYear: "₱4,374.96", fiveYear: "₱1,916.65" },
+    images: [casket4, casket2, casket5],
   },
   {
     id: "casket5",
-    name: "Casket (White)",
+    name: "CLOUD (MODERN)",
     service: "Funeral Service",
     description:
-      "Bright white elegant casket ideal for a clean and graceful presentation.",
-    insurance: "Full coverage plan available with installment options.",
-    prices: { oneYear: "₱2,000.00", twoYear: "₱1,000.00", fiveYear: "₱400.00" },
-    image: casket5,
+      "The Cloud Modern casket is finished in elegant white, offering a serene and graceful presentation. Its high-quality build and plush interior reflect dignity and peace, making it well-suited for refined memorials.",
+    insurance:
+      "Includes a Comprehensive Funeral Plan with extensive coverage for funeral-related expenses, higher payout limits, and fast-tracked claim processing with priority customer support.",
+    prices: { oneYear: "₱8,333.25", twoYear: "₱4,374.96", fiveYear: "₱1,916.65" },
+    images: [casket5, casket52, casket53],
   },
 ];
 
 export default function ProductDetail() {
   const { id } = useParams();
   const product = products.find((p) => p.id === id);
+
+  const [mainImage, setMainImage] = useState(product ? product.images[0] : null);
 
   if (!product) return <h2 style={{ padding: "2rem" }}>Product not found.</h2>;
 
@@ -85,13 +93,26 @@ export default function ProductDetail() {
       <Header />
 
       {/* main page wrapper */}
-      <main className="product-detail container" style={{ paddingTop: "32px", paddingBottom: "48px" }}>
+      <main
+        className="product-detail container"
+        style={{ paddingTop: "32px", paddingBottom: "48px" }}
+      >
         <div className="product-detail__image">
-          <img src={product.image} alt={product.name} />
+          <img src={mainImage} alt={product.name} />
           <div className="product-detail__thumbs">
-            <div className="thumb" />
-            <div className="thumb" />
-            <div className="thumb" />
+            {product.images.map((img, i) => (
+              <div
+                key={i}
+                className="thumb"
+                onClick={() => setMainImage(img)}
+                style={{
+                  backgroundImage: `url(${img})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  cursor: "pointer",
+                }}
+              />
+            ))}
           </div>
         </div>
 
@@ -107,15 +128,15 @@ export default function ProductDetail() {
           <div className="installment-table" aria-hidden>
             <div className="row">
               <span>1 YEAR</span>
-              <span>{product.prices.oneYear}</span>
+              <span>{product.prices.oneYear} /Monthly</span>
             </div>
             <div className="row">
               <span>2 YEAR</span>
-              <span>{product.prices.twoYear}</span>
+              <span>{product.prices.twoYear} /Monthly</span>
             </div>
             <div className="row">
               <span>5 YEAR</span>
-              <span>{product.prices.fiveYear}</span>
+              <span>{product.prices.fiveYear} /Monthly</span>
             </div>
           </div>
 
@@ -126,7 +147,9 @@ export default function ProductDetail() {
 
           <p className="payment-mode">Mode of Payment: NULL</p>
 
-          <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 8 }}>
+          <div
+            style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 8 }}
+          >
             <button className="btn-cart">Add to Cart</button>
             <Link to="/catalog" className="btn-back">
               ← Back to Catalog

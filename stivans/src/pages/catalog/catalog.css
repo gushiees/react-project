@@ -23,12 +23,18 @@
   max-width: 760px;
 }
 
+.catalog-main {
+  background: #f9fafb;
+  padding: 5px 0;  
+}
+
 /* Responsive grid: auto-fill keeps card widths consistent */
 .catalog-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 32px;
   margin-top: 22px;
+  margin-bottom: 60px; 
 }
 
 /* Card: equal-height layout using flex column */
