@@ -17,6 +17,8 @@ import Insurance from "./pages/insurance/insurance.jsx";
 // Auth
 import { AuthProvider } from "./AuthContext.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
+import Catalog from "./pages/catalog/catalog.jsx";
+import ProductDetail from "./pages/product/productdetail.jsx";
 
 // ✅ Add this line to enable dynamic user context
 import { UserProvider } from "./contexts/UserContext.jsx";
@@ -24,12 +26,13 @@ import { UserProvider } from "./contexts/UserContext.jsx";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />, // your layout with <Outlet />
+    element: <App />,
     children: [
-      // ✅ Default route → Home
       { index: true, element: <Home /> },
 
       // Public routes
+      { path: "catalog", element: <Catalog /> },
+      { path: "catalog/:id", element: <ProductDetail /> }, // <-- Add this line
       { path: "about", element: <About /> },
       { path: "login", element: <Login /> },
       { path: "chapels", element: <Chapel /> },
@@ -37,10 +40,11 @@ const router = createBrowserRouter([
       { path: "profile", element: <Profile /> },
       { path: "insurance", element: <Insurance /> },
 
-      // ✅ Protected wrapper: everything inside requires auth
       {
         element: <ProtectedRoute />,
         children: [
+          { path: "profile", element: <Profile /> },
+
           { path: "profile/*", element: <Profile /> },
           // add more private routes here
         ],
