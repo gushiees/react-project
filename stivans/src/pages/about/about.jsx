@@ -4,7 +4,7 @@ import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import bannerImage from "../../assets/stivan10.png";
 import logoImage from "../../assets/stivanlogolight.png";
-import "./About.css";
+import "./about.css";
 
 
 
