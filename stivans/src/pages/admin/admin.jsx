@@ -62,6 +62,12 @@ export default function Admin() {
       let finalProductData = { ...productData };
       let savedProduct;
 
+      // Sanitize numeric inputs before sending to the database.
+      // An empty string for a number field would cause a database error.
+      if (finalProductData.stock_quantity === '') {
+        finalProductData.stock_quantity = 0;
+      }
+
       // 1. Delete images marked for deletion
       if (imagesToDelete && imagesToDelete.length > 0) {
         for (const imageId of imagesToDelete) {
@@ -102,13 +108,17 @@ export default function Admin() {
           await addProductImage(savedProduct.id, publicUrl);
         }
       }
-    } catch(err) {
-      console.error("Error submitting product form:", err);
-      setError("Failed to save product. Check the console for details.");
-    } finally {
+
+      // On success, reset the view
       setView('list');
       setSelectedProduct(null);
       await loadProducts();
+      
+    } catch(err) {
+      console.error("Error submitting product form:", err);
+      setError("Failed to save product. Check the console for details.");
+      // Keep the form open so the user can see the error and their data
+      setLoading(false);
     }
   };
   

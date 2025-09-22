@@ -41,10 +41,13 @@ export const fetchProductById = async (id) => {
 
 // Function to create a new product
 export const createProduct = async (productData) => {
+  // The product_images are handled separately, so we destructure them out
+  const { product_images, ...rest } = productData;
+
   try {
     const { data, error } = await supabase
       .from("products")
-      .insert([productData])
+      .insert([rest]) // Use the rest of the data for the insert
       .select()
       .single();
       

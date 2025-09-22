@@ -40,8 +40,11 @@ export default function ProductForm({ onSubmit, onCancel, initialData, loading }
   }, [product]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setProduct(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    // For number inputs, convert to a number, but keep empty strings as-is
+    // so that users can clear the input.
+    const processedValue = type === 'number' ? (value === '' ? '' : Number(value)) : value;
+    setProduct(prev => ({ ...prev, [name]: processedValue }));
   };
 
   const handleMainImageChange = (e) => {
@@ -62,6 +65,7 @@ export default function ProductForm({ onSubmit, onCancel, initialData, loading }
     setProduct(defaultProductState);
     setMainImageFile(null);
     setAdditionalImageFiles([]);
+    setImagesToDelete([]);
   };
 
   const handleCancelClick = () => {
@@ -69,6 +73,7 @@ export default function ProductForm({ onSubmit, onCancel, initialData, loading }
     setProduct(defaultProductState);
     setMainImageFile(null);
     setAdditionalImageFiles([]);
+    setImagesToDelete([]);
   };
 
   const handleMarkForDeletion = (imageId) => {
