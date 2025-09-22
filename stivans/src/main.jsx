@@ -11,8 +11,10 @@ import About from "./pages/about/about.jsx";
 import Login from "./pages/login/login.jsx";
 import Profile from "./pages/profile/profile.jsx";
 import Signup from "./pages/signup/signup.jsx";
-import Chapel from "./pages/chapel/chapel.jsx"
+import Chapel from "./pages/chapel/chapel.jsx";
 import Insurance from "./pages/insurance/insurance.jsx";
+import Admin from "./pages/admin/admin.jsx";
+import AdminLogin from "./pages/admin/adminlogin.jsx";
 
 // Auth
 import { AuthProvider } from "./AuthContext.jsx";
@@ -37,15 +39,15 @@ const router = createBrowserRouter([
       { path: "login", element: <Login /> },
       { path: "chapels", element: <Chapel /> },
       { path: "signup", element: <Signup /> },
-      { path: "profile", element: <Profile /> },
       { path: "insurance", element: <Insurance /> },
+      { path: "admin/login", element: <AdminLogin /> },
 
       {
         element: <ProtectedRoute />,
         children: [
-          { path: "profile", element: <Profile /> },
 
           { path: "profile/*", element: <Profile /> },
+          { path: "admin", element: <Admin />},
           // add more private routes here
         ],
       },

@@ -1,5 +1,6 @@
+// In profile.jsx
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FaUser,
   FaCog,
@@ -7,7 +8,7 @@ import {
   FaMapMarkerAlt
 } from 'react-icons/fa';
 import './profile.css';
-import { useUser } from '../../contexts/UserContext';
+import { useAuth }  from '../../AuthContext.jsx';
 
 // Imports for subpages
 import ProfileContent from './profilecontent.jsx';
@@ -16,18 +17,16 @@ import Payments from './payments.jsx';
 import Addresses from './addresses.jsx';
 
 const Profile = () => {
-  const { user } = useUser();
+  const { user, logout } = useAuth();
   const location = useLocation();
-
-  //const [orders, setOrders] = useState([]);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  // The error state is now commented out for future use.
-  // const [error, setError] = useState(null); 
 
-  const isGuest = !user || !user.token;
+  const isGuest = !user;
 
   useEffect(() => {
-    setLoading(false); 
+    // This effect runs when the component mounts or when user changes
+    setLoading(false);
   }, [user]);
 
   const displayName = user?.firstName || user?.name || 'Guest';
@@ -35,6 +34,16 @@ const Profile = () => {
   const getLinkClass = (path) => {
     if (path === '/profile' && location.pathname === '/profile') return 'menu-item active';
     return location.pathname.startsWith(path) && path !== '/profile' ? 'menu-item active' : 'menu-item';
+  };
+
+  const handleLogout = async (e) => {
+    e.preventDefault();
+    try {
+      await logout();
+      navigate('/'); // Redirect to home page after logout
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -53,14 +62,14 @@ const Profile = () => {
               <Link to="/profile/addresses" className={getLinkClass('/profile/addresses')}><FaMapMarkerAlt /> Address</Link>
             </nav>
           </div>
-          <a href="#" className="logout-button">Logout</a>
+          <a href="#" onClick={handleLogout} className="logout-button">Logout</a>
         </aside>
 
         <div className="main-content">
           {isGuest ? (
              <div className="profile-card guest-section">
-                <h3>You’re browsing as a guest</h3>
-                <p>You can add items to your cart, but you’ll need to register to save your profile and orders.</p>
+                <h3>You're browsing as a guest</h3>
+                <p>You can add items to your cart, but you'll need to register to save your profile and orders.</p>
                 <a href="/register" className="register-button">Go to Registration</a>
                 <a href="/shop" className="continue-button">Continue as Guest</a>
              </div>
@@ -69,9 +78,7 @@ const Profile = () => {
                 <Route path="/" element={
                   <ProfileContent 
                     user={user} 
-                    //orders={orders} 
                     loading={loading}
-                    // Since 'error' is commented out, we don't pass it.
                   />} 
                 />
                 <Route path="settings" element={<Settings />} />

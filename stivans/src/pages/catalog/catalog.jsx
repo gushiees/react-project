@@ -1,31 +1,65 @@
 // src/pages/catalog/Catalog.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "./catalog.css";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { Link } from "react-router-dom";
+// 1. Import the FUNCTION to fetch products, not the static data
+import { fetchProducts } from "../../data/products.jsx";
 
-/* Import the PNGs from src/assets/ (case-sensitive) */
-import c1 from "../../assets/casket1.png";
-import c2 from "../../assets/casket2.png";
-import c3 from "../../assets/casket3.png";
-import c4 from "../../assets/casket4.png";
-import c5 from "../../assets/casket5.png";
-
-/* Bundles list — ids match the product detail page ids (casket1..casket5) */
-const BUNDLES = [
-  { id: "casket1", name: "ECO (WOODEN)", short: "Affordable solid-wood casket with a natural finish — simple, durable, and respectful.", price: 40000, monthly: 3333.33, image: c1, insuranceIncluded: true },
-  { id: "casket2", name: "ABRAM (CLASSIC)", short: "Polished, traditional wooden casket with satin interior for a refined presentation.", price: 74999, monthly: 6249.91, image: c2, insuranceIncluded: true },
-  { id: "casket3", name: "BETA (CLASSIC)", short: "Sturdy oak-style casket offering balanced quality and value for traditional services.", price: 70000, monthly: 5833.33, image: c3, insuranceIncluded: true },
-  { id: "casket4", name: "SKY (MODERN)", short: "Contemporary metallic casket with sleek design and premium interior comfort.", price: 99999, monthly: 8333.25, image: c4, insuranceIncluded: true },
-  { id: "casket5", name: "CLOUD (MODERN)", short: "Elegant white casket with a serene finish, perfect for graceful memorials.", price: 99999, monthly: 8333.25, image: c5, insuranceIncluded: true }
-];
-
+// Helper function for currency formatting
 function php(amount) {
-  return "₱" + amount.toLocaleString("en-PH");
+  // Ensure amount is a number before formatting
+  const numericAmount = Number(amount) || 0;
+  return "₱" + numericAmount.toLocaleString("en-PH");
 }
 
 export default function Catalog() {
+  // 2. Add state for products, loading, and errors
+  const [bundles, setBundles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // 3. Use useEffect to fetch data from Supabase when the component loads
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setError(null);
+        setLoading(true);
+        const data = await fetchProducts(); // Call the function that gets data from Supabase
+        setBundles(data); // Store the fetched data in state
+      } catch (err) {
+        setError("Failed to load products. Please try again later.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadProducts();
+  }, []);
+
+  // 4. Handle loading and error states
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <main className="catalog-main"><div className="container"><p>Loading products...</p></div></main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Header />
+        <main className="catalog-main"><div className="container"><p className="error-message">{error}</p></div></main>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <div className="catalog-page">
       <Header />
@@ -38,18 +72,19 @@ export default function Catalog() {
           </div>
 
           <div className="catalog-grid">
-            {BUNDLES.map((b) => (
+            {bundles.map((b) => (
               <article key={b.id} className="catalog-card" role="article" aria-labelledby={`title-${b.id}`}>
                 <div className="card-media">
-                  {/* lazy loading + object-fit handled in CSS */}
-                  <img src={b.image} alt={b.name} loading="lazy" />
+                  {/* 5. Use the image_url directly from your database */}
+                  <img src={b.image_url} alt={b.name} loading="lazy" />
                 </div>
 
                 <div className="card-body">
-                  {b.insuranceIncluded && <div className="pill">Non-Life Insurance Included</div>}
+                  {/* You might need a column in your DB for this, or just show it */}
+                  <div className="pill">Non-Life Insurance Included</div>
 
                   <h3 id={`title-${b.id}`} className="card-title">{b.name}</h3>
-                  <p className="card-desc">{b.short}</p>
+                  <p className="card-desc">{b.short_description}</p>
 
                   <div className="card-footer">
                     <div className="price-group">
@@ -60,11 +95,10 @@ export default function Catalog() {
 
                       <div className="price-block">
                         <div className="price-label">Monthly 1yr/Mo</div>
-                        <div className="price-value">{php(b.monthly)}</div>
+                        <div className="price-value">{php(b.price / 12)}</div>
                       </div>
                     </div>
-
-                    {/* Learn More navigates to the product detail route /catalog/:id */}
+                    
                     <div className="action-block">
                       <Link to={`/catalog/${b.id}`} className="btn-learn">Learn More</Link>
                     </div>
