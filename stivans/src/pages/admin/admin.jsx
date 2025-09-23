@@ -18,6 +18,9 @@ export default function Admin() {
   const [view, setView] = usePersistentState('adminFormView', 'list');
   const [selectedProduct, setSelectedProduct] = usePersistentState('adminSelectedProduct', null);
 
+  const [editingStockId, setEditingStockId] = useState(null);
+  const [newStockValue, setNewStockValue] = useState(0);
+
   useEffect(() => {
     if (!loadingAuth) {
       if (!user || user.role !== 'admin') {
@@ -127,6 +130,27 @@ export default function Admin() {
       setLoading(false);
     }
   };
+
+  const handleEditStockClick = (product) => {
+    setEditingStockId(product.id);
+    setNewStockValue(product.stock_quantity);
+  };
+
+  const handleCancelStockEdit = () => {
+    setEditingStockId(null);
+    setNewStockValue(0);
+  };
+
+  const handleSaveStock = async (productId) => {
+    try {
+      await updateProduct(productId, { stock_quantity: Number(newStockValue) });
+      setEditingStockId(null);
+      await loadProducts();
+    } catch (err) {
+      console.error("Failed to update stock:", err);
+      setError("Failed to update stock.");
+    }
+  };
   
   if (loadingAuth || !user || user.role !== 'admin') {
     return (
@@ -174,28 +198,40 @@ export default function Admin() {
                         <th>Name</th>
                         <th>Price</th>
                         <th>Stock</th>
-                        {/* --- IMPLEMENTATION: Add Status column header --- */}
-                        <th>Status</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {products.map(product => (
-                        // --- IMPLEMENTATION: Add conditional class to row for styling ---
                         <tr key={product.id} className={product.stock_quantity === 0 ? 'out-of-stock-row' : ''}>
                           <td>{product.name}</td>
                           <td>₱{product.price ? product.price.toLocaleString() : '0'}</td>
-                          <td>{product.stock_quantity}</td>
-                          {/* --- IMPLEMENTATION: Add Status badge cell --- */}
+                          
                           <td>
-                            {product.stock_quantity > 0 ? (
-                              <span className="stock-status in-stock">In Stock</span>
+                            {editingStockId === product.id ? (
+                              <div className="inline-edit-stock">
+                                <input 
+                                  type="number" 
+                                  value={newStockValue}
+                                  onChange={(e) => setNewStockValue(e.target.value)}
+                                  className="inline-stock-input"
+                                  autoFocus
+                                />
+                                <button onClick={() => handleSaveStock(product.id)} className="save-stock">Save</button>
+                                <button onClick={handleCancelStockEdit} className="cancel-stock">Cancel</button>
+                              </div>
                             ) : (
-                              <span className="stock-status out-of-stock-badge">Out of Stock</span>
+                              <span 
+                                className="editable-stock-value" 
+                                onClick={() => handleEditStockClick(product)}
+                              >
+                                {product.stock_quantity}
+                              </span>
                             )}
                           </td>
+
                           <td className="actions">
-                            <button onClick={() => handleEdit(product)}>Edit</button>
+                            <button onClick={() => handleEdit(product)}>Edit Page</button>
                             <button onClick={() => handleDelete(product.id)} className="delete">Delete</button>
                           </td>
                         </tr>
