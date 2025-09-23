@@ -122,3 +122,13 @@
     grid-template-columns: 1fr;
   }
 }
+.stock-status {
+  margin-left: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #b91c1c; /* Red for Out of Stock */
+}
+
+.max-stock {
+  color: #4b5563; /* A muted gray for the 'Max' notice */
+}
