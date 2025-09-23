@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // 1. Import useCallback
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AuthContext.jsx';
-import { fetchProducts, createProduct, updateProduct, deleteProduct, addProductImage, deleteProductImage } from '../../data/products.jsx';
+import { fetchProducts, createProduct, updateProduct, deleteProduct, addProductImage, deleteProductImage, deleteImageFromStorage } from '../../data/products.jsx';
 import ProductForm from './productform.jsx';
 import { supabase } from '../../supabaseClient';
 import './admin.css';
 import { usePersistentState } from '../../hooks/usepersistentstate.js';
 
 export default function Admin() {
-  // --- IMPLEMENTATION: Get 'logout' function from the Auth context ---
   const { user, loadingAuth, logout } = useAuth(); 
   const navigate = useNavigate();
 
@@ -27,17 +26,17 @@ export default function Admin() {
     }
   }, [user, loadingAuth, navigate]);
   
-  // --- IMPLEMENTATION: Handler for the logout button ---
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login'); // Redirect to login page after logout
+      navigate('/login');
     } catch (error) {
       console.error("Failed to log out:", error);
     }
   };
 
-  const loadProducts = async () => {
+  // 2. Wrap the 'loadProducts' function in useCallback
+  const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -49,13 +48,14 @@ export default function Admin() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Empty dependency array means this function is created only once
 
   useEffect(() => {
     if (activeTab === 'products' && user?.role === 'admin') {
       loadProducts();
     }
-  }, [activeTab, user]);
+    // 3. Add 'loadProducts' to the dependency array
+  }, [activeTab, user, loadProducts]);
 
   const handleEdit = (product) => {
     setSelectedProduct(product);
@@ -79,21 +79,23 @@ export default function Admin() {
     setSelectedProduct(null);
   };
   
-  const handleFormSubmit = async (productData, files, imagesToDelete) => {
+  const handleFormSubmit = async (productData, mainImageFile, additionalImageFiles = [], imagesToDelete = []) => {
     try {
       setLoading(true);
       setError(null);
       let finalProductData = { ...productData };
       let savedProduct;
 
-      if (imagesToDelete && imagesToDelete.length > 0) {
-        for (const imageId of imagesToDelete) {
-          await deleteProductImage(imageId);
+      if (imagesToDelete.length > 0) {
+        for (const image of imagesToDelete) {
+          await deleteProductImage(image.id);
+          await deleteImageFromStorage(image.url);
         }
       }
 
-      if (files.length > 0) {
-        const mainImageFile = files[0];
+      // --- UPDATED LOGIC ---
+      // 1. Only upload and replace the main image if a new one was provided
+      if (mainImageFile) {
         const fileName = `${Date.now()}_${mainImageFile.name}`;
         const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, mainImageFile);
         if (uploadError) throw uploadError;
@@ -101,6 +103,7 @@ export default function Admin() {
         finalProductData.image_url = publicUrl;
       }
 
+      // 2. Save the product data (create or update)
       if (view === 'edit') {
         savedProduct = await updateProduct(selectedProduct.id, finalProductData);
       } else {
@@ -109,9 +112,9 @@ export default function Admin() {
       
       if (!savedProduct) throw new Error("Failed to save product.");
 
-      if (files.length > 1) {
-        const additionalImages = files.slice(1);
-        for (const file of additionalImages) {
+      // 3. Upload and link additional images if any were provided
+      if (additionalImageFiles.length > 0) {
+        for (const file of additionalImageFiles) {
           const fileName = `${Date.now()}_${file.name}`;
           const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file);
           if (uploadError) throw uploadError;
@@ -119,13 +122,15 @@ export default function Admin() {
           await addProductImage(savedProduct.id, publicUrl);
         }
       }
-    } catch(err) {
-      console.error("Error submitting product form:", err);
-      setError("Failed to save product. Check the console for details.");
-    } finally {
+      
       setView('list');
       setSelectedProduct(null);
       await loadProducts();
+
+    } catch(err) {
+      console.error("Error submitting product form:", err);
+      setError("Failed to save product. Check the console for details.");
+      setLoading(false);
     }
   };
   
@@ -139,7 +144,6 @@ export default function Admin() {
 
   return (
     <div className="admin-container">
-      {/* --- IMPLEMENTATION: Header now includes the logout button --- */}
       <div className="admin-header">
         <h1>Admin Dashboard</h1>
         <button onClick={handleLogout} className="logout-button">Logout</button>

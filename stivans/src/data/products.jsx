@@ -126,3 +126,29 @@ export const deleteProductImage = async (imageId) => {
     return false;
   }
 };
+
+export async function deleteImageFromStorage(imageUrl) {
+  if (!imageUrl) return; // Do nothing if the URL is empty
+
+  try {
+    // The file name is the last part of the URL
+    const urlParts = imageUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+
+    if (!fileName) {
+      throw new Error("Could not extract file name from URL.");
+    }
+
+    const { error } = await supabase.storage
+      .from('product-images') // Make sure this is your bucket name
+      .remove([fileName]);
+
+    if (error) throw error;
+
+    console.log(`Successfully deleted ${fileName} from storage.`);
+  } catch (error) {
+    console.error("Error deleting image from storage:", error);
+    // We don't re-throw the error so that a failed storage delete 
+    // doesn't stop the rest of the form submission process.
+  }
+}

@@ -11,18 +11,14 @@ export default function ProductForm({ onSubmit, onCancel, initialData, loading }
   const [mainImageFile, setMainImageFile] = useState(null);
   const [additionalImageFiles, setAdditionalImageFiles] = useState([]);
   const [imagesToDelete, setImagesToDelete] = useState([]);
-  const [draggingOver, setDraggingOver] = useState(''); // 'main', 'additional', or ''
+  const [draggingOver, setDraggingOver] = useState('');
 
-  // --- UPDATED useEffect ---
   useEffect(() => {
     if (initialData) {
-      // If we are editing, fill the form with the product's data.
       setProduct({ ...initialData, product_images: initialData.product_images || [] });
     } else {
-      // If we are creating a new product, clear the form to its default state.
       setProduct(defaultProductState);
     }
-    // Clear the file and deletion lists whenever the form mode changes.
     setMainImageFile(null);
     setAdditionalImageFiles([]);
     setImagesToDelete([]);
@@ -41,8 +37,6 @@ export default function ProductForm({ onSubmit, onCancel, initialData, loading }
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
-    // For number inputs, convert to a number, but keep empty strings as-is
-    // so that users can clear the input.
     const processedValue = type === 'number' ? (value === '' ? '' : Number(value)) : value;
     setProduct(prev => ({ ...prev, [name]: processedValue }));
   };
@@ -59,9 +53,13 @@ export default function ProductForm({ onSubmit, onCancel, initialData, loading }
     }
   };
 
+  // --- FIX IS IN THIS FUNCTION ---
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Pass mainImageFile and additionalImageFiles as separate arguments
     onSubmit(product, mainImageFile, additionalImageFiles, imagesToDelete);
+    
+    // Reset the form state
     setProduct(defaultProductState);
     setMainImageFile(null);
     setAdditionalImageFiles([]);
@@ -76,11 +74,12 @@ export default function ProductForm({ onSubmit, onCancel, initialData, loading }
     setImagesToDelete([]);
   };
 
-  const handleMarkForDeletion = (imageId) => {
-    setImagesToDelete(prev => [...prev, imageId]);
+  const handleMarkForDeletion = (image) => {
+    setImagesToDelete(prev => [...prev, image]); 
+    
     setProduct(prev => ({
         ...prev,
-        product_images: prev.product_images.filter(img => img.id !== imageId)
+        product_images: prev.product_images.filter(img => img.id !== image.id)
     }));
   };
 
@@ -159,7 +158,7 @@ export default function ProductForm({ onSubmit, onCancel, initialData, loading }
                 {image.isPrimary ? (
                   <span className="primary-tag">Primary</span>
                 ) : (
-                  <button type="button" onClick={() => handleMarkForDeletion(image.id)}>Remove</button>
+                  <button type="button" onClick={() => handleMarkForDeletion(image)}>Remove</button>
                 )}
               </div>
             ))}
