@@ -82,6 +82,23 @@
 .login__input--password {
   padding-right: 44px;
 }
+
+/* Hide the browser's default "eye" icon in WebKit-based browsers (Chrome, Safari) */
+.login__input::-webkit-password-reveal-button {
+  display: none;
+  -webkit-appearance: none;
+}
+
+/* Hide the browser's default "eye" icon in Microsoft Edge */
+.login__input::-ms-reveal {
+  display: none;
+}
+
+/* Hide the browser's default "eye" icon in Firefox */
+.login__input::-moz-reveal {
+  display: none;
+}
+
 .login__eye {
   position: absolute;
   right: 10px;
