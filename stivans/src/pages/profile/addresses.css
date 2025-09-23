@@ -1,0 +1,87 @@
+/* ================================
+   ST. IVANS – ADDRESSES STYLES
+   ================================ */
+
+.addresses-container {
+  padding: 20px;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 10px var(--shadow);
+  margin-bottom: 20px;
+}
+
+.addresses-title {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  color: var(--primary);
+}
+
+.address-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .address-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.address-form input,
+.address-form select {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: var(--radius);
+  font-size: 1rem;
+}
+
+.address-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.address-card {
+  padding: 15px;
+  border: 1px solid #eee;
+  border-radius: var(--radius);
+  margin-bottom: 15px;
+  position: relative;
+}
+
+.address-card.default {
+  border-color: var(--primary);
+  background-color: var(--accent);
+}
+
+.default-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--primary);
+  color: white;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.address-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.form-buttons {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+}
+
+.address-empty {
+  text-align: center;
+  padding: 30px;
+  color: #888;
+}
