@@ -120,3 +120,30 @@
   cursor: pointer;
   font-weight: bold;
 }
+
+/* ---  Styles for stock --- */
+/* Style for the highlighted row */
+.admin-table tr.out-of-stock-row {
+  background-color: #fff5f5; /* A very light red */
+  color: #a0aec0; /* Gray out the text */
+}
+
+/* Base style for the status badge */
+.stock-status {
+  padding: 4px 10px;
+  border-radius: 9999px; /* Pill shape */
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  text-transform: uppercase;
+}
+
+/* Green badge for "In Stock" */
+.in-stock {
+  background-color: #38a169;
+}
+
+/* Red badge for "Out of Stock" */
+.out-of-stock-badge {
+  background-color: #e53e3e;
+}

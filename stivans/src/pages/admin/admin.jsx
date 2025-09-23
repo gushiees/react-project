@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'; // 1. Import useCallback
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AuthContext.jsx';
 import { fetchProducts, createProduct, updateProduct, deleteProduct, addProductImage, deleteProductImage, deleteImageFromStorage } from '../../data/products.jsx';
@@ -35,7 +35,6 @@ export default function Admin() {
     }
   };
 
-  // 2. Wrap the 'loadProducts' function in useCallback
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
@@ -48,13 +47,12 @@ export default function Admin() {
     } finally {
       setLoading(false);
     }
-  }, []); // Empty dependency array means this function is created only once
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'products' && user?.role === 'admin') {
       loadProducts();
     }
-    // 3. Add 'loadProducts' to the dependency array
   }, [activeTab, user, loadProducts]);
 
   const handleEdit = (product) => {
@@ -93,8 +91,6 @@ export default function Admin() {
         }
       }
 
-      // --- UPDATED LOGIC ---
-      // 1. Only upload and replace the main image if a new one was provided
       if (mainImageFile) {
         const fileName = `${Date.now()}_${mainImageFile.name}`;
         const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, mainImageFile);
@@ -103,7 +99,6 @@ export default function Admin() {
         finalProductData.image_url = publicUrl;
       }
 
-      // 2. Save the product data (create or update)
       if (view === 'edit') {
         savedProduct = await updateProduct(selectedProduct.id, finalProductData);
       } else {
@@ -112,7 +107,6 @@ export default function Admin() {
       
       if (!savedProduct) throw new Error("Failed to save product.");
 
-      // 3. Upload and link additional images if any were provided
       if (additionalImageFiles.length > 0) {
         for (const file of additionalImageFiles) {
           const fileName = `${Date.now()}_${file.name}`;
@@ -180,15 +174,26 @@ export default function Admin() {
                         <th>Name</th>
                         <th>Price</th>
                         <th>Stock</th>
+                        {/* --- IMPLEMENTATION: Add Status column header --- */}
+                        <th>Status</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {products.map(product => (
-                        <tr key={product.id}>
+                        // --- IMPLEMENTATION: Add conditional class to row for styling ---
+                        <tr key={product.id} className={product.stock_quantity === 0 ? 'out-of-stock-row' : ''}>
                           <td>{product.name}</td>
                           <td>₱{product.price ? product.price.toLocaleString() : '0'}</td>
                           <td>{product.stock_quantity}</td>
+                          {/* --- IMPLEMENTATION: Add Status badge cell --- */}
+                          <td>
+                            {product.stock_quantity > 0 ? (
+                              <span className="stock-status in-stock">In Stock</span>
+                            ) : (
+                              <span className="stock-status out-of-stock-badge">Out of Stock</span>
+                            )}
+                          </td>
                           <td className="actions">
                             <button onClick={() => handleEdit(product)}>Edit</button>
                             <button onClick={() => handleDelete(product.id)} className="delete">Delete</button>
