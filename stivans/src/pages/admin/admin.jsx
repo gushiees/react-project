@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
+import { useAuth } from '../../AuthContext.jsx'; // Import your auth hook
 import { fetchProducts, createProduct, updateProduct, deleteProduct, addProductImage, deleteProductImage } from '../../data/products.jsx';
 import ProductForm from './productform.jsx';
 import { supabase } from '../../supabaseClient';
@@ -6,12 +8,28 @@ import './admin.css';
 import { usePersistentState } from '../../hooks/usepersistentstate.js';
 
 export default function Admin() {
+  // --- FIX: Get user and auth status from the Auth context ---
+  const { user, loadingAuth } = useAuth(); 
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState('products');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [view, setView] = usePersistentState('adminFormView', 'list');
   const [selectedProduct, setSelectedProduct] = usePersistentState('adminSelectedProduct', null);
+
+  // --- FIX: This new useEffect handles security and redirection ---
+  useEffect(() => {
+    // First, wait until the authentication status is fully loaded
+    if (!loadingAuth) {
+      // If there is no logged-in user, or the user's role is not 'admin',
+      // redirect them to the homepage.
+      if (!user || user.role !== 'admin') {
+        navigate('/'); 
+      }
+    }
+  }, [user, loadingAuth, navigate]);
 
   const loadProducts = async () => {
     try {
@@ -28,10 +46,11 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    if (activeTab === 'products') {
+    // Only load products if the user is confirmed to be an admin
+    if (activeTab === 'products' && user?.role === 'admin') {
       loadProducts();
     }
-  }, [activeTab]);
+  }, [activeTab, user]);
 
   const handleEdit = (product) => {
     setSelectedProduct(product);
@@ -55,28 +74,21 @@ export default function Admin() {
     setSelectedProduct(null);
   };
   
-  const handleFormSubmit = async (productData, mainImageFile, additionalImageFiles, imagesToDelete) => {
+  const handleFormSubmit = async (productData, files, imagesToDelete) => {
     try {
       setLoading(true);
       setError(null);
       let finalProductData = { ...productData };
       let savedProduct;
 
-      // Sanitize numeric inputs before sending to the database.
-      // An empty string for a number field would cause a database error.
-      if (finalProductData.stock_quantity === '') {
-        finalProductData.stock_quantity = 0;
-      }
-
-      // 1. Delete images marked for deletion
       if (imagesToDelete && imagesToDelete.length > 0) {
         for (const imageId of imagesToDelete) {
           await deleteProductImage(imageId);
         }
       }
 
-      // 2. Upload main image if a new one was provided
-      if (mainImageFile) {
+      if (files.length > 0) {
+        const mainImageFile = files[0];
         const fileName = `${Date.now()}_${mainImageFile.name}`;
         const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, mainImageFile);
         if (uploadError) throw uploadError;
@@ -84,44 +96,43 @@ export default function Admin() {
         finalProductData.image_url = publicUrl;
       }
 
-      // 3. Save the product data (create or update)
       if (view === 'edit') {
         savedProduct = await updateProduct(selectedProduct.id, finalProductData);
       } else {
         savedProduct = await createProduct(finalProductData);
       }
       
-      if (!savedProduct) {
-        // If the save failed, we should stop.
-        // The updateProduct/createProduct functions return null on error.
-        throw new Error("Failed to save product data.");
-      }
+      if (!savedProduct) throw new Error("Failed to save product.");
 
-      // 4. Upload and link additional images
-      if (additionalImageFiles && additionalImageFiles.length > 0) {
-        for (const file of additionalImageFiles) {
+      if (files.length > 1) {
+        const additionalImages = files.slice(1);
+        for (const file of additionalImages) {
           const fileName = `${Date.now()}_${file.name}`;
           const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file);
           if (uploadError) throw uploadError;
           const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
-          // Link the new image to the product (whether it was new or edited)
           await addProductImage(savedProduct.id, publicUrl);
         }
       }
-
-      // On success, reset the view
-      setView('list');
-      setSelectedProduct(null);
-      await loadProducts();
-      
     } catch(err) {
       console.error("Error submitting product form:", err);
       setError("Failed to save product. Check the console for details.");
-      // Keep the form open so the user can see the error and their data
-      setLoading(false);
+    } finally {
+      setView('list');
+      setSelectedProduct(null);
+      await loadProducts();
     }
   };
   
+  // --- FIX: While checking auth or if user is not an admin, show a loading/empty state ---
+  if (loadingAuth || !user || user.role !== 'admin') {
+    return (
+      <div className="admin-container">
+        <p>Loading or verifying access...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="admin-container">
       <h1>Admin Dashboard</h1>
@@ -144,8 +155,6 @@ export default function Admin() {
       {activeTab === 'products' && (
         <div className="admin-section">
           {loading && <p>Loading products...</p>}
-          
-          {/* --- FIX IS HERE: Display the error message if it exists --- */}
           {error && <p className="error-message">{error}</p>}
           
           {!loading && !error && (
