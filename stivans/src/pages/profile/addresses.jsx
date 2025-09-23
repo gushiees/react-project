@@ -70,20 +70,21 @@ export default function Addresses() {
       
       if (!user) throw new Error("No user logged in");
       
-      // Handle default address logic
       if (newAddress.is_default) {
-        // First, remove default status from all other addresses
+        // A placeholder UUID that is validly formatted but will never exist in your database
+        const placeholderId = '00000000-0000-0000-0000-000000000000';
+        
         const { error: updateError } = await supabase
           .from("user_addresses")
           .update({ is_default: false })
           .eq("user_id", user.id)
-          .neq("id", editing ? currentId : -1);  // Use -1 for new addresses
+          // --- FIX IS HERE: Use the placeholder UUID instead of -1 ---
+          .neq("id", editing ? currentId : placeholderId); 
         
         if (updateError) throw updateError;
       }
       
       if (editing && currentId) {
-        // Update existing address
         const { error } = await supabase
           .from("user_addresses")
           .update({ ...newAddress })
@@ -94,34 +95,30 @@ export default function Addresses() {
         
         setMessage("Address updated successfully!");
       } else {
-        // Insert new address
-        // If it's the first address, make it default automatically
         let isFirstAddress = false;
         if (addresses.length === 0) {
           isFirstAddress = true;
-          newAddress.is_default = true;
+          // The object passed to insert should not be mutated directly
+          const addressToInsert = { ...newAddress, is_default: true, user_id: user.id };
+          const { error } = await supabase
+            .from("user_addresses")
+            .insert([addressToInsert]);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("user_addresses")
+            .insert([{ ...newAddress, user_id: user.id }]);
+          if (error) throw error;
         }
-        
-        const { error } = await supabase
-          .from("user_addresses")
-          .insert([{ ...newAddress, user_id: user.id }]);
-        
-        if (error) throw error;
         
         setMessage(isFirstAddress 
           ? "Address added successfully and set as default!" 
           : "Address added successfully!");
       }
       
-      // Reset form and refetch addresses
       setNewAddress({
-        address_line1: "",
-        address_line2: "",
-        city: "",
-        state: "",
-        postal_code: "",
-        country: "",
-        is_default: false
+        address_line1: "", address_line2: "", city: "",
+        state: "", postal_code: "", country: "", is_default: false
       });
       setEditing(false);
       setCurrentId(null);

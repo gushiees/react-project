@@ -1,25 +1,23 @@
+// src/pages/settings/settings.jsx
 import { useState, useEffect } from "react";
-import { supabase } from "../../supabaseClient"; // Make sure this path is correct
-import "./settings.css"; // Make sure you have this CSS file
+import { supabase } from "../../supabaseClient";
+import "./settings.css";
 import { useAuth } from "../../AuthContext.jsx"; 
 
 export default function Settings() {
-  // 1. Get the user from the AuthContext
   const { user } = useAuth(); 
-
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  
+  // --- UPDATED: 'address' property removed from profile state ---
   const [profile, setProfile] = useState({
     full_name: "",
     phone_number: "",
-    address: "",
   });
 
   useEffect(() => {
-    // 2. We already have the user from context, so we can use it directly.
     const fetchProfile = async () => {
-      // Only run if the user object exists
       if (!user) return; 
 
       try {
@@ -36,7 +34,7 @@ export default function Settings() {
             setProfile({
               full_name: data.full_name || "",
               phone_number: data.phone_number || "",
-              address: data.address || "",
+              // --- 'address' logic removed ---
             });
           }
       } catch (error) {
@@ -48,7 +46,7 @@ export default function Settings() {
     };
 
     fetchProfile();
-  }, [user]); // Rerun the effect if the user object changes
+  }, [user, setProfile]); 
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,13 +55,10 @@ export default function Settings() {
 
   const updateProfile = async (e) => {
     e.preventDefault();
-    
-    // 3. Use the user from context, no need to fetch it again.
     if (!user) {
         setError("You must be logged in to update your profile.");
         return;
     }
-
     try {
       setLoading(true);
       setError(null);
@@ -75,7 +70,7 @@ export default function Settings() {
           id: user.id,
           full_name: profile.full_name,
           phone_number: profile.phone_number,
-          address: profile.address,
+          // --- 'address' logic removed ---
           updated_at: new Date(),
         });
       
@@ -94,10 +89,6 @@ export default function Settings() {
 
   const changePassword = async (e) => {
     e.preventDefault();
-    
-    // Note: The 'oldPassword' field is not used by Supabase's updateUser function.
-    // The user just needs to be authenticated.
-    // const oldPassword = e.target.elements.oldPassword.value; 
     const newPassword = e.target.elements.newPassword.value;
     const confirmPassword = e.target.elements.confirmPassword.value;
     
@@ -159,16 +150,7 @@ export default function Settings() {
             />
           </div>
           
-          <div className="form-group">
-            <label htmlFor="address">Default Address</label>
-            <textarea
-              id="address"
-              name="address"
-              value={profile.address}
-              onChange={handleChange}
-              rows={3}
-            />
-          </div>
+          {/* --- The 'Default Address' form group has been removed from here --- */}
           
           <button type="submit" disabled={loading}>
             {loading ? "Saving..." : "Save Changes"}

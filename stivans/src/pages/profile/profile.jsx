@@ -10,6 +10,10 @@ import {
 import './profile.css';
 import { useAuth }  from '../../AuthContext.jsx';
 
+// --- UPDATED: Import Header and Footer ---
+import Header from '../../components/header/header.jsx';
+import Footer from '../../components/footer/footer.jsx';
+
 // Imports for subpages
 import ProfileContent from './profilecontent.jsx';
 import Settings from './settings.jsx';
@@ -25,7 +29,6 @@ const Profile = () => {
   const isGuest = !user;
 
   useEffect(() => {
-    // This effect runs when the component mounts or when user changes
     setLoading(false);
   }, [user]);
 
@@ -40,55 +43,60 @@ const Profile = () => {
     e.preventDefault();
     try {
       await logout();
-      navigate('/'); // Redirect to home page after logout
+      navigate('/');
     } catch (error) {
       console.error("Logout error:", error);
     }
   };
 
   return (
-    <div className="app">
-      <div className="profile-main">
-        <aside className="sidebar">
-          <div>
-            <div className="profile-info">
-              <div className="avatar-placeholder"></div>
-              <h2>{displayName}</h2>
+    // --- UPDATED: Wrapped in a Fragment with Header and Footer ---
+    <>
+      <Header />
+      <div className="app">
+        <div className="profile-main">
+          <aside className="sidebar">
+            <div>
+              <div className="profile-info">
+                <div className="avatar-placeholder"></div>
+                <h2>{displayName}</h2>
+              </div>
+              <nav className="menu-list">
+                <Link to="/profile" className={getLinkClass('/profile')}><FaUser /> Profile</Link>
+                <Link to="/profile/settings" className={getLinkClass('/profile/settings')}><FaCog /> Settings</Link>
+                <Link to="/profile/payments" className={getLinkClass('/profile/payments')}><FaCreditCard /> Payments</Link>
+                <Link to="/profile/addresses" className={getLinkClass('/profile/addresses')}><FaMapMarkerAlt /> Address</Link>
+              </nav>
             </div>
-            <nav className="menu-list">
-              <Link to="/profile" className={getLinkClass('/profile')}><FaUser /> Profile</Link>
-              <Link to="/profile/settings" className={getLinkClass('/profile/settings')}><FaCog /> Settings</Link>
-              <Link to="/profile/payments" className={getLinkClass('/profile/payments')}><FaCreditCard /> Payments</Link>
-              <Link to="/profile/addresses" className={getLinkClass('/profile/addresses')}><FaMapMarkerAlt /> Address</Link>
-            </nav>
-          </div>
-          <a href="#" onClick={handleLogout} className="logout-button">Logout</a>
-        </aside>
+            <a href="#" onClick={handleLogout} className="logout-button">Logout</a>
+          </aside>
 
-        <div className="main-content">
-          {isGuest ? (
-             <div className="profile-card guest-section">
-                <h3>You're browsing as a guest</h3>
-                <p>You can add items to your cart, but you'll need to register to save your profile and orders.</p>
-                <a href="/register" className="register-button">Go to Registration</a>
-                <a href="/shop" className="continue-button">Continue as Guest</a>
-             </div>
-          ) : (
-            <Routes>
-                <Route path="/" element={
-                  <ProfileContent 
-                    user={user} 
-                    loading={loading}
-                  />} 
-                />
-                <Route path="settings" element={<Settings />} />
-                <Route path="payments" element={<Payments />} />
-                <Route path="addresses" element={<Addresses />} />
-            </Routes>
-          )}
+          <div className="main-content">
+            {isGuest ? (
+               <div className="profile-card guest-section">
+                 <h3>You're browsing as a guest</h3>
+                 <p>You can add items to your cart, but you'll need to register to save your profile and orders.</p>
+                 <a href="/register" className="register-button">Go to Registration</a>
+                 <a href="/shop" className="continue-button">Continue as Guest</a>
+               </div>
+            ) : (
+              <Routes>
+                  <Route path="/" element={
+                    <ProfileContent 
+                      user={user} 
+                      loading={loading}
+                    />} 
+                  />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="payments" element={<Payments />} />
+                  <Route path="addresses" element={<Addresses />} />
+              </Routes>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 };
 
