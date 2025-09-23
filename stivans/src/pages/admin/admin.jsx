@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
-import { useAuth } from '../../AuthContext.jsx'; // Import your auth hook
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../AuthContext.jsx';
 import { fetchProducts, createProduct, updateProduct, deleteProduct, addProductImage, deleteProductImage } from '../../data/products.jsx';
 import ProductForm from './productform.jsx';
 import { supabase } from '../../supabaseClient';
@@ -8,8 +8,8 @@ import './admin.css';
 import { usePersistentState } from '../../hooks/usepersistentstate.js';
 
 export default function Admin() {
-  // --- FIX: Get user and auth status from the Auth context ---
-  const { user, loadingAuth } = useAuth(); 
+  // --- IMPLEMENTATION: Get 'logout' function from the Auth context ---
+  const { user, loadingAuth, logout } = useAuth(); 
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('products');
@@ -19,17 +19,23 @@ export default function Admin() {
   const [view, setView] = usePersistentState('adminFormView', 'list');
   const [selectedProduct, setSelectedProduct] = usePersistentState('adminSelectedProduct', null);
 
-  // --- FIX: This new useEffect handles security and redirection ---
   useEffect(() => {
-    // First, wait until the authentication status is fully loaded
     if (!loadingAuth) {
-      // If there is no logged-in user, or the user's role is not 'admin',
-      // redirect them to the homepage.
       if (!user || user.role !== 'admin') {
         navigate('/'); 
       }
     }
   }, [user, loadingAuth, navigate]);
+  
+  // --- IMPLEMENTATION: Handler for the logout button ---
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login'); // Redirect to login page after logout
+    } catch (error) {
+      console.error("Failed to log out:", error);
+    }
+  };
 
   const loadProducts = async () => {
     try {
@@ -46,7 +52,6 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    // Only load products if the user is confirmed to be an admin
     if (activeTab === 'products' && user?.role === 'admin') {
       loadProducts();
     }
@@ -124,7 +129,6 @@ export default function Admin() {
     }
   };
   
-  // --- FIX: While checking auth or if user is not an admin, show a loading/empty state ---
   if (loadingAuth || !user || user.role !== 'admin') {
     return (
       <div className="admin-container">
@@ -135,7 +139,11 @@ export default function Admin() {
 
   return (
     <div className="admin-container">
-      <h1>Admin Dashboard</h1>
+      {/* --- IMPLEMENTATION: Header now includes the logout button --- */}
+      <div className="admin-header">
+        <h1>Admin Dashboard</h1>
+        <button onClick={handleLogout} className="logout-button">Logout</button>
+      </div>
       
       <div className="admin-tabs">
         <button 

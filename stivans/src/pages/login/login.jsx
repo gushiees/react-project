@@ -1,14 +1,11 @@
 import { useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import { supabase } from "../../supabaseClient";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../../AuthContext.jsx"; // Import useAuth
 import "./login.css";
 
 export default function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // If a ProtectedRoute or a Link passed us a "from", use it:
-  const fromState = location.state?.from?.pathname;
+  const { login } = useAuth(); // <-- Get the new login function from context
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,42 +14,27 @@ export default function Login() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
-  function safeBackOrHome() {
-    const sameOriginReferrer =
-      typeof document !== "undefined" &&
-      document.referrer &&
-      document.referrer.startsWith(window.location.origin);
-
-    if (sameOriginReferrer) {
-      navigate(-1); // go back to the previous SPA page
-    } else {
-      navigate("/"); // fallback to home
-    }
-  }
-
+  // --- UPDATED handleSubmit FUNCTION ---
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setPending(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-        options: { shouldCreateUser: false },
-      });
-      if (error) throw error;
+      // Call the login function from the context. It returns the full user object.
+      const user = await login(email, password);
 
-      if (fromState) {
-        navigate(fromState, { replace: true }); // back to About (or wherever)
+      // Redirect based on the role from the returned user object
+      if (user && user.role === 'admin') {
+        navigate('/admin');
       } else {
-        safeBackOrHome();
+        navigate('/');
       }
     } catch (err) {
       setError(err.message);
-    } finally {
-      setPending(false);
+      setPending(false); // Make sure to stop pending on error
     }
+    // No 'finally' block needed anymore
   }
 
   return (

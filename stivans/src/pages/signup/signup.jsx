@@ -25,23 +25,27 @@ export default function Signup() {
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin, // ensure this is set in Supabase Auth → URL Configuration
+          emailRedirectTo: window.location.origin,
         },
       });
       if (error) throw error;
 
-      // Optional: if you have a `profiles` table with RLS + trigger, you can update full_name here:
+      // --- UPDATED LOGIC ---
+      // If a user was created and a full name was provided, try to update the profile.
       if (data.user && fullName) {
-        try {
-          await supabase.from("profiles").upsert({ id: data.user.id, full_name: fullName });
-        } catch (_) {}
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .upsert({ id: data.user.id, full_name: fullName });
+
+        // If the profile update fails, log it for the developer but don't stop the user.
+        if (profileError) {
+          console.error("Post-signup profile update failed:", profileError);
+        }
       }
 
-      // If confirmations OFF, Supabase returns a session -> go to profile
       if (data.session) {
         navigate("/profile");
       } else {
-        // If confirmations ON, show notice and send to login
         setNotice("Check your email to confirm your account, then log in.");
       }
     } catch (err) {
