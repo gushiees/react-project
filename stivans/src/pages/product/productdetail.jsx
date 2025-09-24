@@ -4,6 +4,7 @@ import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import "./productdetail.css";
 import { fetchProductById } from "../../data/products.jsx";
+import { useCart } from "../../contexts/cartContext.jsx";
 
 function php(amount) {
   const numericAmount = Number(amount) || 0;
@@ -18,6 +19,7 @@ export default function ProductDetail() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [hoverImage, setHoverImage] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const { addToCart } = useCart();
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -166,8 +168,12 @@ export default function ProductDetail() {
           <div
             style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 8 }}
           >
-            <button className="btn-cart" disabled={isOutOfStock}>
-              {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+            <button
+              className="btn-cart"
+              disabled={isOutOfStock}
+              onClick={() => addToCart(product, quantity)}
+            >
+              {isOutOfStock ? "Out of Stock" : "Add to Cart"}
             </button>
             <Link to="/catalog" className="btn-back">
               ← Back to Catalog

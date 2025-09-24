@@ -15,6 +15,7 @@ import Chapel from "./pages/chapel/chapel.jsx";
 import Insurance from "./pages/insurance/insurance.jsx";
 import Admin from "./pages/admin/admin.jsx";
 import AdminLogin from "./pages/admin/adminlogin.jsx";
+import Cart from "./pages/cart/cart.jsx";
 
 // Auth
 import { AuthProvider } from "./AuthContext.jsx";
@@ -24,6 +25,7 @@ import ProductDetail from "./pages/product/productdetail.jsx";
 
 // ✅ Add this line to enable dynamic user context
 import { UserProvider } from "./contexts/UserContext.jsx";
+import { CartProvider } from "./contexts/cartContext.jsx";
 
 const router = createBrowserRouter([
   {
@@ -41,6 +43,7 @@ const router = createBrowserRouter([
       { path: "signup", element: <Signup /> },
       { path: "insurance", element: <Insurance /> },
       { path: "admin/login", element: <AdminLogin /> },
+      { path: "cart", element: <Cart /> },
 
       {
         element: <ProtectedRoute />,
@@ -60,7 +63,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     {/* ✅ Wrap with both Auth and User context */}
     <AuthProvider>
       <UserProvider>
-        <RouterProvider router={router} />
+        <CartProvider>
+          <RouterProvider router={router} />
+        </CartProvider>
       </UserProvider>
     </AuthProvider>
   </React.StrictMode>

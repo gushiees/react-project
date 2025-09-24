@@ -4,9 +4,10 @@ import logo from "../../assets/stivanlogo.png";
 import "./header.css";
 
 export default function Header() {
-  const { user } = useAuth();       // real auth state
+  const { user } = useAuth(); // real auth state
   const isLoggedIn = !!user;
-  const location = useLocation();   // current page (so login can send you back)
+  const location = useLocation(); // current page (so login can send you back)
+  const emailPrefix = user?.email ? user.email.split("@")[0] : "";
 
   return (
     <header className="site-header">
@@ -46,11 +47,16 @@ export default function Header() {
           </Link>
 
           {isLoggedIn ? (
-            <Link to="/profile" className="icon-btn" aria-label="Profile">👤</Link>
+            <>
+              <Link to="/profile" className="profile-link">
+                <span className="icon-btn" aria-label="Profile">👤</span>
+                <span className="user-email-prefix">{emailPrefix}</span>
+              </Link>
+            </>
           ) : (
             <Link
               to="/login"
-              state={{ from: location }}   // 👈 tell Login which page we came from
+              state={{ from: location }} // 👈 tell Login which page we came from
               className="signin-btn"
             >
               Sign In

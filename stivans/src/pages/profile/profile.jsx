@@ -8,7 +8,7 @@ import {
   FaMapMarkerAlt
 } from 'react-icons/fa';
 import './profile.css';
-import { useAuth }  from '../../AuthContext.jsx';
+import { useAuth } from '../../AuthContext.jsx';
 
 // --- UPDATED: Import Header and Footer ---
 import Header from '../../components/header/header.jsx';
@@ -32,7 +32,8 @@ const Profile = () => {
     setLoading(false);
   }, [user]);
 
-  const displayName = user?.firstName || user?.name || 'Guest';
+  // --- UPDATED LINE ---
+  const displayName = user?.email ? user.email.split("@")[0] : 'Guest';
 
   const getLinkClass = (path) => {
     if (path === '/profile' && location.pathname === '/profile') return 'menu-item active';
@@ -73,23 +74,23 @@ const Profile = () => {
 
           <div className="main-content">
             {isGuest ? (
-               <div className="profile-card guest-section">
-                 <h3>You're browsing as a guest</h3>
-                 <p>You can add items to your cart, but you'll need to register to save your profile and orders.</p>
-                 <a href="/register" className="register-button">Go to Registration</a>
-                 <a href="/shop" className="continue-button">Continue as Guest</a>
-               </div>
+              <div className="profile-card guest-section">
+                <h3>You're browsing as a guest</h3>
+                <p>You can add items to your cart, but you'll need to register to save your profile and orders.</p>
+                <a href="/register" className="register-button">Go to Registration</a>
+                <a href="/shop" className="continue-button">Continue as Guest</a>
+              </div>
             ) : (
               <Routes>
-                  <Route path="/" element={
-                    <ProfileContent 
-                      user={user} 
-                      loading={loading}
-                    />} 
-                  />
-                  <Route path="settings" element={<Settings />} />
-                  <Route path="payments" element={<Payments />} />
-                  <Route path="addresses" element={<Addresses />} />
+                <Route path="/" element={
+                  <ProfileContent 
+                    user={user} 
+                    loading={loading}
+                  />} 
+                />
+                <Route path="settings" element={<Settings />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="addresses" element={<Addresses />} />
               </Routes>
             )}
           </div>

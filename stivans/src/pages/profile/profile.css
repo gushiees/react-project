@@ -7,7 +7,7 @@
   --shadow: rgba(0, 0, 0, 0.08);
   --radius: 12px;
   --font-main: 'Poppins', sans-serif;
-  --transition: all 0.2s ease-in-out; /* Added this line */
+  --transition: all 0.3s ease-in-out;
 }
 
 body {
@@ -33,17 +33,17 @@ body {
   margin: 0 auto;
 }
 
-/* Sidebar */
+/* 🔷 Sidebar */
 .sidebar {
-  width: 250px;
+  width: 260px;
   background-color: var(--white);
   border-radius: var(--radius);
   box-shadow: 0 4px 12px var(--shadow);
-  padding: 20px;
+  padding: 30px 20px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  align-self: flex-start; /* Keeps sidebar from stretching vertically */
+  align-self: flex-start;
 }
 
 .profile-info {
@@ -52,7 +52,7 @@ body {
 }
 
 .avatar-placeholder {
-  font-size: 3rem;
+  font-size: 2.5rem;
   background-color: var(--accent);
   color: var(--primary);
   border-radius: 50%;
@@ -60,17 +60,19 @@ body {
   height: 80px;
   line-height: 80px;
   margin: 0 auto 10px;
+  font-weight: 600;
 }
 
 .profile-info h2 {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   color: var(--primary);
+  margin: 0;
 }
 
 .menu-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
 }
 
 .menu-item {
@@ -80,23 +82,25 @@ body {
   color: var(--text);
   text-decoration: none;
   font-size: 1rem;
-  padding: 10px;
+  padding: 10px 14px;
   border-radius: var(--radius);
-  transition: background var(--transition);
+  transition: background var(--transition), color var(--transition);
 }
 
 .menu-item:hover {
   background-color: var(--accent);
+  color: var(--primary);
 }
 
 .menu-item.active {
   background-color: var(--accent);
   font-weight: 600;
+  color: var(--primary);
 }
 
 .logout-button {
   margin-top: 30px;
-  padding: 10px;
+  padding: 12px;
   background-color: var(--primary);
   color: var(--white);
   text-align: center;
@@ -110,14 +114,13 @@ body {
   background-color: #1e3a5f;
 }
 
-/* Main Content */
+/* 🔷 Main Content */
 .main-content {
   flex: 1;
-  width: 100%; /* Added this line to fix layout collapse */
+  width: 100%;
 }
 
-/* Reusable Content Card (New) */
-/* Use this class on all content containers in the main area */
+/* 🔷 Content Card */
 .profile-card {
   background-color: var(--white);
   padding: 30px;
@@ -125,7 +128,7 @@ body {
   box-shadow: 0 4px 12px var(--shadow);
 }
 
-/* Guest Section (Simplified) */
+/* 🔷 Guest Section */
 .guest-section {
   text-align: center;
   margin-bottom: 30px;
@@ -150,7 +153,7 @@ body {
   background-color: #1e3a5f;
 }
 
-/* User Details (Simplified) */
+/* 🔷 User Details */
 .user-details {
   margin-bottom: 30px;
 }
@@ -160,10 +163,11 @@ body {
   font-size: 1rem;
 }
 
-/* Orders */
+/* 🔷 Orders */
 .order-section h2 {
   margin-bottom: 15px;
   color: var(--primary);
+  font-size: 1.3rem;
 }
 
 .order-section p {
@@ -171,23 +175,101 @@ body {
   color: var(--text);
 }
 
-/* Responsive */
+/* 🔷 Form Sections */
+.form-section {
+  margin-bottom: 40px;
+}
+
+.form-section h3 {
+  font-size: 1.2rem;
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #ccc;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  transition: border var(--transition);
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.btn-save,
+.btn-change,
+.btn-delete,
+.btn-add {
+  padding: 10px 20px;
+  background-color: var(--primary);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.btn-save:hover,
+.btn-change:hover,
+.btn-delete:hover,
+.btn-add:hover {
+  background-color: #1e3a5f;
+}
+
+.btn-delete {
+  background-color: #d9534f;
+}
+
+.btn-delete:hover {
+  background-color: #c9302c;
+}
+
+/* 🔷 Responsive */
 @media (max-width: 768px) {
   .profile-main {
     flex-direction: column;
+    padding: 20px;
   }
 
   .sidebar {
     width: 100%;
+    padding: 20px;
+  }
+
+  .profile-card {
+    padding: 20px;
   }
 
   .menu-item {
     font-size: 0.95rem;
   }
-  
-  /* Update the responsive padding to use the new card class */
-  .profile-card {
-    padding: 20px;
+
+  .form-group input,
+  .form-group textarea {
+    font-size: 0.95rem;
   }
 }
-

@@ -71,3 +71,9 @@
 .signin-btn:hover {
   background: #0056b3;
 }
+
+.user-email-prefix {
+  margin-left: 5px;
+    font-size: 1rem;
+    color: #333;
+}
