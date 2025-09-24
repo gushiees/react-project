@@ -1,5 +1,5 @@
 /* ================================
-   GLOBAL THEME VARIABLES
+   THEME
    ================================ */
 :root {
   --bg-dark: #1c1c1c;
@@ -10,22 +10,19 @@
   --accent-dark: #c9a300;
 }
 
-/* ================================
-   PAGE WRAPPER
-   ================================ */
-.home { 
+.home {
   background: var(--bg-dark);
   color: var(--text-light);
 }
 
 /* ================================
-   HERO SECTION
+   HERO
    ================================ */
 .hero {
   position: relative;
   width: 100%;
   max-width: 1920px;
-  height: 624px;
+  height: var(--hero-h, 1080px);
   margin: 0 auto;
   overflow: hidden;
   background: var(--bg-dark);
@@ -39,10 +36,7 @@
   background-repeat: no-repeat;
   transition: transform 6s ease-in-out;
 }
-
-.hero:hover .hero__bg {
-  transform: scale(1.05);
-}
+.hero:hover .hero__bg { transform: scale(1.05); }
 
 .hero__overlay {
   position: absolute;
@@ -66,6 +60,7 @@
   opacity: 0;
 }
 
+/* Removed glow from title */
 .hero__title {
   margin: 0;
   font-weight: 900;
@@ -74,14 +69,11 @@
   color: #ffffff;
   text-transform: uppercase;
   letter-spacing: 2px;
-  text-shadow: 0 3px 12px rgba(0,0,0,0.6),
-               0 6px 24px rgba(246,199,0,0.4);
-  animation: fadeInUp 1s ease forwards;
+  /* no text-shadow */
 }
-
 .hero__title span { display:block; }
 
-/* CTA BUTTON */
+/* CTA using your Button (style hook only) */
 .hero__cta {
   background: #ffffff;
   border: 2px solid #ffffff;
@@ -90,18 +82,16 @@
   font-weight: 700;
   padding: 14px 36px;
   color: var(--accent);
-  box-shadow: 0 6px 22px rgba(246,199,0,.35);
+  box-shadow: 0 6px 22px rgba(246,199,0,.15);
   transition: all 0.3s ease;
-  cursor: pointer;
   text-decoration: none;
 }
-
 .hero__cta:hover {
   background: var(--accent);
   border-color: var(--accent);
   color: #ffffff;
-  transform: translateY(-4px) scale(1.06);
-  box-shadow: 0 8px 28px rgba(201,163,0,.55);
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 12px 30px rgba(201,163,0,.35);
   text-decoration: none;
 }
 
@@ -110,48 +100,44 @@
    ================================ */
 .section {
   background: var(--bg-light);
-  padding: 56px 0;
+  padding: 64px 0 72px;
   color: var(--text-dark);
 }
-
 .container {
-  width: min(1700px, 92%);
+  width: min(1600px, 92%);
   margin: 0 auto;
+}
+/* narrower container for About so it aligns visually with multi-column cards */
+.container--narrow {
+  width: min(1000px, 92%);
 }
 
 .section-title {
-  margin: 0 0 22px;
+  margin: 0 0 28px;
   text-align: center;
   font-size: clamp(40px, 3vw, 56px);
   font-weight: 800;
   color: var(--text-dark);
   position: relative;
-  display: inline-block;
 }
-
 .section-title::after {
   content: "";
   display: block;
-  width: 0%;
+  width: 64px;
   height: 4px;
-  margin: 8px auto 0;
+  margin: 10px auto 0;
   background: var(--accent);
   border-radius: 2px;
-  transition: width .4s ease;
-}
-
-.section-title:hover::after {
-  width: 60%;
 }
 
 /* ================================
-   SERVICE CARDS
+   SERVICE CARDS (center-aligned)
    ================================ */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(3, 519px);
-  justify-content: space-between;
-  gap: 24px;
+  justify-content: center;      /* center the row inside container */
+  gap: 28px;                    /* balanced space between cards */
 }
 
 .service-card {
@@ -167,12 +153,11 @@
   cursor: pointer;
   transition: transform .3s ease, box-shadow .3s ease, filter .3s ease;
 }
-
 .service-card:hover,
 .service-card:focus-visible {
-  transform: translateY(-10px) scale(1.04);
-  box-shadow: 0 24px 56px rgba(0,0,0,.3);
-  filter: brightness(1.08);
+  transform: translateY(-10px) scale(1.03);
+  box-shadow: 0 24px 56px rgba(0,0,0,.28);
+  filter: brightness(1.06);
   outline: none;
 }
 
@@ -181,7 +166,6 @@
   height: 100%;
   object-fit: cover;
 }
-
 .service-card__shade {
   position: absolute;
   inset: 0;
@@ -189,11 +173,9 @@
   z-index: 1;
   transition: background .25s ease;
 }
-
 .service-card:hover .service-card__shade {
   background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.85) 100%);
 }
-
 .service-card__content {
   position: absolute;
   left: 18px;
@@ -204,11 +186,9 @@
   text-shadow: 0 1px 12px rgba(0,0,0,.35);
   transition: transform .3s ease;
 }
-
 .service-card:hover .service-card__content {
   transform: translateY(-6px);
 }
-
 .service-card__title {
   margin: 0 0 8px;
   font-size: clamp(20px, 1.8vw, 24px);
@@ -217,73 +197,98 @@
   color: var(--accent);
   line-height: 1.25;
 }
-
 .service-card__text {
   margin: 0;
   font-size: clamp(16px, 1.2vw, 18px);
   line-height: 1.6;
-  color: #ccc;
+  color: #ddd;
 }
 
 /* ================================
-   ABOUT SECTION
+   ABOUT (center, tidy)
    ================================ */
-.about .container { max-width: 900px; }
-
-.about__grid { 
-  display: grid; 
-  grid-template-columns: 1fr; 
-  gap: 18px; 
-  text-align: center; 
+.about .container { max-width: none; } /* let container--narrow handle width */
+.about__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  text-align: center;
 }
-
-.about__heading { 
-  margin: 0 0 6px; 
-  font-size: 13px; 
-  font-weight: 800; 
-  color: var(--accent-dark); 
+.about__heading {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent-dark);
 }
-
 .about__text {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color:#444;
-  animation: fadeIn 1.2s ease forwards;
+  font-size: 15px;
+  line-height: 1.75;
+  color:#333;
+  animation: fadeIn 1s ease forwards;
   opacity: 0;
 }
 
 /* ================================
-   RESPONSIVE BREAKPOINTS
+   RESPONSIVE
    ================================ */
 @media (max-width: 1500px){
-  .container{ width: min(1500px, 92%); }
+  .container { width: min(1400px, 92%); }
 }
-
 @media (max-width: 1200px){
-  .card-grid{
+  .card-grid {
     grid-template-columns: repeat(2, 1fr);
-    justify-content: center;
   }
-  .service-card{ width: 100%; height: 520px; }
+  .service-card { width: 100%; height: 540px; }
 }
-
 @media (max-width: 700px){
-  .card-grid{ grid-template-columns: 1fr; }
-  .service-card{ height: 420px; }
-  .hero__content{ right: 20px; gap: 16px; }
-  .hero__title{ font-size: 34px; }
+  .card-grid { grid-template-columns: 1fr; }
+  .service-card { height: 440px; }
+  .hero__content { right: 20px; gap: 16px; }
+  .hero__title { font-size: 34px; }
 }
 
 /* ================================
-   KEYFRAME ANIMATIONS
+   ANIMATIONS
    ================================ */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(40px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ================================
+   QUICK FIXES (override at end)
+   ================================ */
+
+/* 1) Keep the hero image at your previous size */
+.hero {
+  height: 624px !important;          /* was 1080, restoring your old value */
+  max-width: 1920px;                  /* keep your desktop width */
+}
+
+/* 2) Remove the yellow glow from the hero button */
+.hero__cta {
+  box-shadow: none !important;        /* kill glow */
+}
+.hero__cta:hover {
+  /* keep hover lift, but use a neutral shadow instead of yellow */
+  box-shadow: 0 10px 28px rgba(0,0,0,.25) !important;
+}
+
+/* 3) Make the "Services" heading larger and bolder */
+.section-title {
+  font-size: clamp(48px, 4vw, 72px) !important;  /* bigger across devices */
+  letter-spacing: 0.01em;
+  margin-bottom: 32px;
+}
+.section-title::after {
+  width: 96px !important;             /* slightly longer underline */
+  height: 5px;
+}
+
+

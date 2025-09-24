@@ -36,11 +36,11 @@ export default function Footer() {
         <div className="footer-column">
           <h4>Insurance</h4>
           <ul>
-            <li><Link to="/insurance/basic">Basic Protection</Link></li>
-            <li><Link to="/insurance/family">Family Protection</Link></li>
-            <li><Link to="/insurance/legacy">Premium Legacy</Link></li>
-            <li><Link to="/insurance/policy">Policy Management</Link></li>
-            <li><Link to="/insurance/claims">Claims Process</Link></li>
+            <li><Link to="/insurance">Basic Protection</Link></li>
+            <li><Link to="/insurance">Family Protection</Link></li>
+            <li><Link to="/insurance">Premium Legacy</Link></li>
+            <li><Link to="/insurance">Policy Management</Link></li>
+            <li><Link to="/insurance">Claims Process</Link></li>
           </ul>
         </div>
 

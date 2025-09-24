@@ -14,7 +14,7 @@ export default function Home() {
     <div className="home">
       <Header />
 
-      {/* HERO (1920x1080 by default) */}
+      {/* HERO */}
       <section className="hero" style={{ "--hero-h": "1080px" }}>
         <div
           className="hero__bg"
@@ -29,17 +29,18 @@ export default function Home() {
             <span>to Heaven</span>
           </h1>
 
+          {/* Route to login using your Button component */}
           <Button
             id="hero-get-started"
             type="secondary"
             label="Get Started"
-            to="/signup"
+            to="/login"
             externalStyles="hero__cta"
           />
         </div>
       </section>
 
-            {/* SERVICES */}
+      {/* SERVICES */}
       <section className="section services">
         <div className="container">
           <h2 className="section-title">Services</h2>
@@ -74,7 +75,7 @@ export default function Home() {
             </Link>
 
             {/* Chapels */}
-            <Link to="/services" className="service-card" aria-label="Chapels">
+            <Link to="/chapels" className="service-card" aria-label="Chapels">
               <img src={svcChapel} alt="" className="service-card__img" />
               <div className="service-card__shade" aria-hidden="true" />
               <div className="service-card__content">
@@ -90,10 +91,9 @@ export default function Home() {
         </div>
       </section>
 
-
       {/* ABOUT */}
       <section className="section about">
-        <div className="container">
+        <div className="container container--narrow">
           <h2 className="section-title">About us</h2>
 
           <div className="about__grid">
