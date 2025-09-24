@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { useCart } from "../../contexts/cartContext";
-import "./cart.css"; // Assuming your CSS file is named this
+import "./cart.css";
 
 function php(amount) {
   const numericAmount = Number(amount) || 0;
@@ -43,7 +43,7 @@ const Cart = () => {
   const shipping = subtotal > 2000 ? 0 : 150;
   const total = subtotal + tax + shipping;
   
-  // Updated function to navigate to product details using the /catalog route
+  // Function to navigate to product details using the /catalog route
   const handleGoToProductDetails = (productId) => {
     navigate(`/catalog/${productId}`);
   };
@@ -92,6 +92,7 @@ const Cart = () => {
                         onClick={() =>
                           updateQuantity(item.product.id, item.quantity - 1)
                         }
+                        disabled={item.quantity <= 1} // Disable when quantity is 1
                       >
                         -
                       </button>
@@ -111,6 +112,11 @@ const Cart = () => {
                           Only {item.product.stock_quantity} left in stock!
                         </p>
                       )}
+                    {item.product.stock_quantity === 0 && (
+                      <p className="stock-warning out-of-stock-text">
+                        Out of Stock!
+                      </p>
+                    )}
                     <button
                       className="remove-btn"
                       onClick={() => removeFromCart(item.product.id)}
