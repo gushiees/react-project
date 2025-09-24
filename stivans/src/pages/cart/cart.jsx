@@ -1,9 +1,9 @@
 import React from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { useCart } from "../../contexts/cartContext";
-import "./cart.css";
+import "./cart.css"; // Assuming your CSS file is named this
 
 function php(amount) {
   const numericAmount = Number(amount) || 0;
@@ -17,12 +17,24 @@ function php(amount) {
 }
 
 const Cart = () => {
-  const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
-  const navigate = useNavigate(); // Initialize useNavigate
+  const { cart, updateQuantity, removeFromCart, clearCart, isLoading } = useCart();
+  const navigate = useNavigate();
 
-  // Calculate the total number of items
+  // Show a loading state while the cart is being fetched
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <div className="cart-page-container">
+          <p>Loading your cart...</p>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // Calculate cart totals
   const totalProducts = cart.length;
-
   const subtotal = cart.reduce(
     (acc, item) => acc + item.product.price * item.quantity,
     0
@@ -30,10 +42,14 @@ const Cart = () => {
   const tax = subtotal * 0.12;
   const shipping = subtotal > 2000 ? 0 : 150;
   const total = subtotal + tax + shipping;
-  
+
   const handleProceedToCheckout = () => {
-    // Navigate to the checkout page
     navigate("/checkout");
+  };
+  
+  // Updated function to navigate to product details using the /catalog route
+  const handleGoToProductDetails = (productId) => {
+    navigate(`/catalog/${productId}`);
   };
 
   return (
@@ -41,7 +57,6 @@ const Cart = () => {
       <Header />
       <div className="cart-page-container">
         <h1>Your Shopping Cart</h1>
-        {/* Display the total number of items if the cart is not empty */}
         {cart.length > 0 && (
           <p className="cart-item-count">
             You have {totalProducts} items in your cart.
@@ -60,16 +75,23 @@ const Cart = () => {
             <div className="cart-items">
               {cart.map((item) => (
                 <div className="cart-item" key={item.product.id}>
-                  <img
-                    src={item.product.image_url}
-                    alt={item.product.name}
-                    className="cart-item-image"
-                  />
-                  <div className="cart-item-details">
-                    <h3>{item.product.name}</h3>
-                    <p>{php(item.product.price)}</p>
+                  {/* Make the image and details clickable */}
+                  <div
+                    className="product-link"
+                    onClick={() => handleGoToProductDetails(item.product.id)}
+                  >
+                    <img
+                      src={item.product.image_url}
+                      alt={item.product.name}
+                      className="cart-item-image"
+                    />
+                    <div className="cart-item-details">
+                      <h3>{item.product.name}</h3>
+                      <p>{php(item.product.price)}</p>
+                    </div>
+                  </div>
+                  <div className="quantity-and-actions">
                     <div className="quantity-controls">
-                      {/* Decrease button logic */}
                       <button
                         onClick={() =>
                           updateQuantity(item.product.id, item.quantity - 1)
@@ -78,7 +100,6 @@ const Cart = () => {
                         -
                       </button>
                       <span>{item.quantity}</span>
-                      {/* Increase button logic */}
                       <button
                         onClick={() =>
                           updateQuantity(item.product.id, item.quantity + 1)
@@ -88,16 +109,12 @@ const Cart = () => {
                         +
                       </button>
                     </div>
-                    {/* Display available stocks */}
                     {item.product.stock_quantity <= 5 &&
                       item.product.stock_quantity > 0 && (
                         <p className="stock-warning">
                           Only {item.product.stock_quantity} left in stock!
                         </p>
                       )}
-                    <p className="item-subtotal">
-                      Subtotal: {php(item.product.price * item.quantity)}
-                    </p>
                     <button
                       className="remove-btn"
                       onClick={() => removeFromCart(item.product.id)}

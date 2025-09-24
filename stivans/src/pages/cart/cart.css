@@ -14,6 +14,20 @@
   flex: 2;
 }
 
+/* New styles for the clickable product link container */
+.product-link {
+  display: flex; /* Aligns the image and details side-by-side */
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out;
+  flex-grow: 1; /* Allows the link to take up available space */
+}
+
+/* Hover effect for the clickable product link */
+.product-link:hover {
+  transform: scale(1.01);
+}
+
 .cart-item {
   display: flex;
   gap: 1rem;
@@ -28,10 +42,20 @@
   border-radius: 6px;
   aspect-ratio: 1 / 1;
   display: block;
+  margin-right: 1rem; /* Adds space between the image and item details */
 }
 
 .cart-item-details {
   flex: 1;
+}
+
+.quantity-and-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-left: auto; /* Pushes the quantity controls to the right */
 }
 
 .quantity-controls {
@@ -48,7 +72,6 @@
 }
 
 .remove-btn {
-  margin-top: 0.5rem;
   background: none;
   border: none;
   color: #d9534f;
