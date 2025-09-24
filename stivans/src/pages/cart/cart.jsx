@@ -42,10 +42,6 @@ const Cart = () => {
   const tax = subtotal * 0.12;
   const shipping = subtotal > 2000 ? 0 : 150;
   const total = subtotal + tax + shipping;
-
-  const handleProceedToCheckout = () => {
-    navigate("/checkout");
-  };
   
   // Updated function to navigate to product details using the /catalog route
   const handleGoToProductDetails = (productId) => {
@@ -148,7 +144,7 @@ const Cart = () => {
                 <a href="/catalog">
                   <button className="continue-btn">Continue Shopping</button>
                 </a>
-                <button className="checkout-btn" onClick={handleProceedToCheckout}>
+                <button className="checkout-btn" onClick={null}>
                   Proceed to Checkout
                 </button>
                 <button className="clear-btn" onClick={clearCart}>

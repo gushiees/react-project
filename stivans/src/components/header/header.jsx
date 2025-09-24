@@ -11,8 +11,8 @@ export default function Header() {
   const location = useLocation(); // current page (so login can send you back)
   const emailPrefix = user?.email ? user.email.split("@")[0] : "";
   
-  // Calculate the total number of items in the cart
-  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+  // Calculate the number of unique items in the cart
+  const cartItemCount = cart.length;
 
   return (
     <header className="site-header">
