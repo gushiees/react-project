@@ -27,7 +27,7 @@ export default function ProductDetail() {
         setLoading(true);
         setError(null);
         const data = await fetchProductById(id);
-        
+
         if (data) {
           setProduct(data);
           setSelectedImage(data.image_url);
@@ -50,18 +50,20 @@ export default function ProductDetail() {
     loadProduct();
   }, [id]);
 
-  const galleryImages = product ? [
-    { id: 'main', url: product.image_url }, 
-    ...(product.product_images || [])
-  ] : [];
+  const galleryImages = product
+    ? [
+        { id: "main", url: product.image_url },
+        ...(product.product_images || []),
+      ]
+    : [];
 
   const handleQuantityChange = (e) => {
     let value = parseInt(e.target.value, 10);
-    
+
     if (isNaN(value)) {
-      value = 1; 
+      value = 1;
     }
-    
+
     if (product && value > product.stock_quantity) {
       value = product.stock_quantity;
     }
@@ -77,7 +79,9 @@ export default function ProductDetail() {
     return (
       <>
         <Header />
-        <main className="product-detail container"><p>Loading product...</p></main>
+        <main className="product-detail container">
+          <p>Loading product...</p>
+        </main>
         <Footer />
       </>
     );
@@ -87,7 +91,9 @@ export default function ProductDetail() {
     return (
       <>
         <Header />
-        <main className="product-detail container"><h2 className="error-message">{error}</h2></main>
+        <main className="product-detail container">
+          <h2 className="error-message">{error}</h2>
+        </main>
         <Footer />
       </>
     );
@@ -97,7 +103,9 @@ export default function ProductDetail() {
     return (
       <>
         <Header />
-        <main className="product-detail container"><p>Product not found.</p></main>
+        <main className="product-detail container">
+          <p>Product not found.</p>
+        </main>
         <Footer />
       </>
     );
@@ -125,7 +133,7 @@ export default function ProductDetail() {
                 }}
                 onMouseEnter={() => setHoverImage(img.url)}
                 onMouseLeave={() => setHoverImage(null)}
-                style={{ backgroundImage: `url(${img.url})`}}
+                style={{ backgroundImage: `url(${img.url})` }}
               />
             ))}
           </div>
@@ -136,21 +144,26 @@ export default function ProductDetail() {
           <p className="product-service">{product.category}</p>
           <p className="product-desc">{product.description}</p>
           <h3 className="section-title">Plan Insurance</h3>
-          <p className="product-insurance">Includes a Comprehensive Funeral Plan with extensive coverage and support.</p>
+          <p className="product-insurance">
+            Includes a Comprehensive Funeral Plan with extensive coverage and
+            support.
+          </p>
           <h2 className="section-title">Pricing</h2>
           <div className="price-display">
             <span className="price-label">Total Price:</span>
             <span className="price-value">{php(product.price)}</span>
           </div>
           <div className="price-display monthly">
-            <span className="price-label">or {php(product.price / 12)} / month (1 year)</span>
+            <span className="price-label">
+              or {php(product.price / 12)} / month (1 year)
+            </span>
           </div>
-          
+
           <div className="quantity">
             <label htmlFor="qty">Quantity: </label>
-            <input 
-              id="qty" 
-              type="number" 
+            <input
+              id="qty"
+              type="number"
               value={isOutOfStock ? 0 : quantity}
               onChange={handleQuantityChange}
               min="1"
@@ -158,7 +171,14 @@ export default function ProductDetail() {
               disabled={isOutOfStock}
             />
             {isOutOfStock && <span className="stock-status">Out of Stock</span>}
-            
+
+            {/* --- NEW CODE: Show available stock below the quantity input --- */}
+            {!isOutOfStock && (
+              <p className="stock-count">
+                Available stocks: {product.stock_quantity}
+              </p>
+            )}
+
             {/* --- FIX: Show a "(Max)" warning when quantity equals stock --- */}
             {quantity === product.stock_quantity && !isOutOfStock && (
               <span className="stock-status max-stock">(Max)</span>
@@ -166,7 +186,12 @@ export default function ProductDetail() {
           </div>
 
           <div
-            style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 8 }}
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              marginTop: 8,
+            }}
           >
             <button
               className="btn-cart"

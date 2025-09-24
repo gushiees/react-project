@@ -6,7 +6,13 @@ import "./cart.css";
 
 function php(amount) {
   const numericAmount = Number(amount) || 0;
-  return "₱" + numericAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (
+    "₱" +
+    numericAmount.toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
 }
 
 const Cart = () => {
@@ -36,7 +42,7 @@ const Cart = () => {
         ) : (
           <div className="cart-content">
             <div className="cart-items">
-              {cart.map(item => (
+              {cart.map((item) => (
                 <div className="cart-item" key={item.product.id}>
                   <img
                     src={item.product.image_url}
@@ -47,30 +53,32 @@ const Cart = () => {
                     <h3>{item.product.name}</h3>
                     <p>{php(item.product.price)}</p>
                     <div className="quantity-controls">
-                      <button 
-                        onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                        disabled={item.quantity <= 1}
+                      {/* Decrease button logic */}
+                      <button
+                        onClick={() =>
+                          updateQuantity(item.product.id, item.quantity - 1)
+                        }
                       >
                         -
                       </button>
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => {
-                          const newQty = parseInt(e.target.value, 10);
-                          if (!isNaN(newQty) && newQty >= 1) {
-                            const maxQty = Math.min(newQty, item.product.stock);
-                            updateQuantity(item.product.id, maxQty);
-                          }
-                        }}
-                      />
-                      <button 
-                        onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                        disabled={item.quantity >= item.product.stock}
+                      <span>{item.quantity}</span>
+                      {/* Increase button logic */}
+                      <button
+                        onClick={() =>
+                          updateQuantity(item.product.id, item.quantity + 1)
+                        }
+                        disabled={item.quantity >= item.product.stock_quantity}
                       >
                         +
                       </button>
                     </div>
+                    {/* Display available stocks */}
+                    {item.product.stock_quantity <= 5 &&
+                      item.product.stock_quantity > 0 && (
+                        <p className="stock-warning">
+                          Only {item.product.stock_quantity} left in stock!
+                        </p>
+                      )}
                     <p className="item-subtotal">
                       Subtotal: {php(item.product.price * item.quantity)}
                     </p>
