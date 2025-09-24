@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../AuthContext.jsx"; // Import useAuth
 import "./login.css";
+import introImg from "../../assets/intro.jpg";
+
 
 export default function Login() {
   const navigate = useNavigate();
@@ -41,7 +43,7 @@ export default function Login() {
     <div className="login__wrap">
       {/* Left image panel */}
       <div className="login__left" aria-hidden="true">
-        <img src="/login-side.jpg" alt="" />
+        <img src={introImg} alt="" />
       </div>
 
       {/* Right form panel */}

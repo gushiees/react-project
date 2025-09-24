@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import "../login/login.css";
+import regImg from "../../assets/regis.jpg";
 
 
 export default function Signup() {
@@ -59,7 +60,7 @@ export default function Signup() {
     <div className="login__wrap">
       {/* Left image (reuse same layout as login) */}
       <div className="login__left" aria-hidden="true">
-        <img src="/login-side.jpg" alt="" />
+        <img src={regImg} alt="" />
       </div>
 
       <div className="login__right">
