@@ -47,7 +47,7 @@ export default function Home() {
 
           <div className="card-grid">
             {/* Funeral */}
-            <Link to="/services" className="service-card" aria-label="Funeral Service">
+            <Link to="/catalog" className="service-card" aria-label="Funeral Service">
               <img src={svcFuneral} alt="" className="service-card__img" />
               <div className="service-card__shade" aria-hidden="true" />
               <div className="service-card__content">
