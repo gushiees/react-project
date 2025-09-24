@@ -18,6 +18,9 @@ function php(amount) {
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
 
+  // Calculate the total number of items
+  const totalProducts = cart.reduce((acc, item) => acc + item.quantity, 0);
+
   const subtotal = cart.reduce(
     (acc, item) => acc + item.product.price * item.quantity,
     0
@@ -31,6 +34,12 @@ const Cart = () => {
       <Header />
       <div className="cart-page-container">
         <h1>Your Shopping Cart</h1>
+        {/* Display the total number of items if the cart is not empty */}
+        {cart.length > 0 && (
+          <p className="cart-item-count">
+            You have {totalProducts} items in your cart.
+          </p>
+        )}
 
         {cart.length === 0 ? (
           <div className="empty-cart">
