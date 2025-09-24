@@ -1,13 +1,18 @@
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
+import { useCart } from "../../contexts/cartContext"; // Import useCart
 import logo from "../../assets/stivanlogo.png";
 import "./header.css";
 
 export default function Header() {
   const { user } = useAuth(); // real auth state
+  const { cart } = useCart(); // Access cart state from context
   const isLoggedIn = !!user;
   const location = useLocation(); // current page (so login can send you back)
   const emailPrefix = user?.email ? user.email.split("@")[0] : "";
+  
+  // Calculate the total number of items in the cart
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   return (
     <header className="site-header">
@@ -19,22 +24,41 @@ export default function Header() {
 
         {/* CENTER: nav links */}
         <nav className="main-nav">
-          <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+          >
             Home
           </NavLink>
-          <NavLink to="/catalog" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+          <NavLink
+            to="/catalog"
+            className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+          >
             Catalog
           </NavLink>
-          <NavLink to="/insurance" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+          <NavLink
+            to="/insurance"
+            className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+          >
             Insurance
           </NavLink>
-          <NavLink to="/chapels" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+          <NavLink
+            to="/chapels"
+            className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+          >
             Chapels
           </NavLink>
-          <NavLink to="/about" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+          <NavLink
+            to="/about"
+            className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+          >
             About
           </NavLink>
-          <NavLink to="/contact" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+          <NavLink
+            to="/contact"
+            className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+          >
             Contact
           </NavLink>
         </nav>
@@ -43,13 +67,16 @@ export default function Header() {
         <div className="actions">
           <Link to="/cart" className="icon-btn cart">
             🛒
-            <span className="badge">0</span>
+            {/* Display the cart item count */}
+            <span className="badge">{cartItemCount}</span>
           </Link>
 
           {isLoggedIn ? (
             <>
               <Link to="/profile" className="profile-link">
-                <span className="icon-btn" aria-label="Profile">👤</span>
+                <span className="icon-btn" aria-label="Profile">
+                  👤
+                </span>
                 <span className="user-email-prefix">{emailPrefix}</span>
               </Link>
             </>
