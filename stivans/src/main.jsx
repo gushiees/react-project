@@ -16,6 +16,7 @@ import Insurance from "./pages/insurance/insurance.jsx";
 import Admin from "./pages/admin/admin.jsx";
 import AdminLogin from "./pages/admin/adminlogin.jsx";
 import Cart from "./pages/cart/cart.jsx";
+import Checkout from "./pages/checkout/checkout.jsx";
 
 // Auth
 import { AuthProvider } from "./AuthContext.jsx";
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
       { path: "insurance", element: <Insurance /> },
       { path: "admin/login", element: <AdminLogin /> },
       { path: "cart", element: <Cart /> },
+      { path: "checkout", element: <Checkout /> },
 
       {
         element: <ProtectedRoute />,

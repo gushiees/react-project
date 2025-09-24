@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { useCart } from "../../contexts/cartContext";
@@ -17,8 +18,9 @@ function php(amount) {
 
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
+  const navigate = useNavigate(); // Initialize useNavigate
 
-  // Changed: Use cart.length to count unique products
+  // Calculate the total number of items
   const totalProducts = cart.length;
 
   const subtotal = cart.reduce(
@@ -28,6 +30,11 @@ const Cart = () => {
   const tax = subtotal * 0.12;
   const shipping = subtotal > 2000 ? 0 : 150;
   const total = subtotal + tax + shipping;
+  
+  const handleProceedToCheckout = () => {
+    // Navigate to the checkout page
+    navigate("/checkout");
+  };
 
   return (
     <>
@@ -124,7 +131,9 @@ const Cart = () => {
                 <a href="/catalog">
                   <button className="continue-btn">Continue Shopping</button>
                 </a>
-                <button className="checkout-btn">Proceed to Checkout</button>
+                <button className="checkout-btn" onClick={handleProceedToCheckout}>
+                  Proceed to Checkout
+                </button>
                 <button className="clear-btn" onClick={clearCart}>
                   Clear Cart
                 </button>
