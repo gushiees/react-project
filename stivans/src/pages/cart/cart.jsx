@@ -18,8 +18,8 @@ function php(amount) {
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
 
-  // Calculate the total number of items
-  const totalProducts = cart.reduce((acc, item) => acc + item.quantity, 0);
+  // Changed: Use cart.length to count unique products
+  const totalProducts = cart.length;
 
   const subtotal = cart.reduce(
     (acc, item) => acc + item.product.price * item.quantity,
