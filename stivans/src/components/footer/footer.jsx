@@ -1,5 +1,5 @@
 import "./footer.css";
-import { Link } from "react-router-dom";
+import { Link } from "react-router-dom"; 
 
 export default function Footer() {
   return (
@@ -62,7 +62,7 @@ export default function Footer() {
         <p>
           © {new Date().getFullYear()} St. Ivans. All rights reserved. |{" "}
           <Link to="/privacy">Privacy Policy</Link> |{" "}
-          <Link to="/terms">Terms of Service</Link>
+          <Link to="/terms">Terms of Services</Link>
         </p>
       </div>
     </footer>
