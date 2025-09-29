@@ -49,6 +49,7 @@ a:hover {
 
 /* Root app container */
 #root {
+  --primary: #2563eb; /* tweak if you want */
   min-height: 100vh;
   display: flex;
   flex-direction: column;

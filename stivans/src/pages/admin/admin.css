@@ -170,3 +170,90 @@
 .editable-stock-value:hover {
   background-color: #e2e8f0; /* A light gray hover effect */
 }
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.logout-button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #1f2937;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.inline-edit-stock {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.inline-stock-input {
+  width: 90px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.save-stock,
+.cancel-stock {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.save-stock { background: #2563eb; color: #fff; }
+.cancel-stock { background: #e5e7eb; color: #111827; }
+
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.logout-button {
+  padding: 8px 16px;
+  background-color: #1f2937;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.inline-edit-stock {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.inline-stock-input {
+  width: 90px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.save-stock,
+.cancel-stock {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.save-stock { background: #2563eb; color: #fff; }
+.cancel-stock { background: #e5e7eb; color: #111827; }

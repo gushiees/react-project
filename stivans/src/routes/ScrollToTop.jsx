@@ -7,7 +7,7 @@ export default function ScrollToTop() {
   useEffect(() => {
     // If the URL has a hash (e.g., /insurance#family) let the browser handle it.
     if (hash) return;
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [pathname, hash]);
 
   return null;
