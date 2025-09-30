@@ -16,14 +16,13 @@ import Insurance from "./pages/insurance/insurance.jsx";
 import Admin from "./pages/admin/admin.jsx";
 import AdminLogin from "./pages/admin/adminlogin.jsx";
 import Cart from "./pages/cart/cart.jsx";
-
-// Auth
-import { AuthProvider } from "./AuthContext.jsx";
-import ProtectedRoute from "./routes/ProtectedRoute.jsx";
+import Checkout from "./pages/checkout/checkout.jsx";
 import Catalog from "./pages/catalog/catalog.jsx";
 import ProductDetail from "./pages/product/productdetail.jsx";
 
-// ✅ Add this line to enable dynamic user context
+// Auth / Context
+import { AuthProvider } from "./AuthContext.jsx";
+import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 import { UserProvider } from "./contexts/UserContext.jsx";
 import { CartProvider } from "./contexts/cartContext.jsx";
 
@@ -36,22 +35,24 @@ const router = createBrowserRouter([
 
       // Public routes
       { path: "catalog", element: <Catalog /> },
-      { path: "catalog/:id", element: <ProductDetail /> }, // <-- Add this line
+      { path: "catalog/:id", element: <ProductDetail /> },
       { path: "about", element: <About /> },
       { path: "login", element: <Login /> },
-      { path: "chapels", element: <Chapel /> },
       { path: "signup", element: <Signup /> },
+      { path: "chapels", element: <Chapel /> },
       { path: "insurance", element: <Insurance /> },
       { path: "admin/login", element: <AdminLogin /> },
       { path: "cart", element: <Cart /> },
+      { path: "checkout", element: <Checkout /> }, // ✅ added properly
 
+      // Protected routes
       {
         element: <ProtectedRoute />,
         children: [
-
           { path: "profile/*", element: <Profile /> },
-          { path: "admin", element: <Admin />},
-          // add more private routes here
+          { path: "admin", element: <Admin /> },
+          // If you want checkout to require login later, move it here:
+          // { path: "checkout", element: <Checkout /> },
         ],
       },
     ],
@@ -60,7 +61,6 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    {/* ✅ Wrap with both Auth and User context */}
     <AuthProvider>
       <UserProvider>
         <CartProvider>

@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { useCart } from "../../contexts/cartContext";
+import { supabase } from "../../supabaseClient";
+import "./checkout.css";
 
+// ❗ You said you already have this helper in src/data/orders.js
+import { uploadDeathCertificate } from "../../data/orders";
+
+// Peso formatter
 function php(amount) {
   const numericAmount = Number(amount) || 0;
   return (
@@ -15,416 +21,450 @@ function php(amount) {
   );
 }
 
-const Checkout = () => {
-  const { cart, clearCart } = useCart();
+export default function Checkout() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { clearCart } = useCart();
 
-  // State for form inputs
-  const [shippingInfo, setShippingInfo] = useState({
-    fullName: "",
-    address: "",
-    city: "",
-    postalCode: "",
-    country: "",
-    id: null,
-  });
+  // We expect Cart to navigate with: navigate('/checkout', { state: { selected } })
+  // where selected = [{ product, quantity }]
+  const selected = Array.isArray(location.state?.selected) ? location.state.selected : [];
 
-  const [paymentInfo, setPaymentInfo] = useState({
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    id: null,
-  });
-
-  // State for fetched user data
-  const [userAddresses, setUserAddresses] = useState([]);
-  const [userPaymentMethods, setUserPaymentMethods] = useState([]);
-  const [isLoadingUserData, setIsLoadingUserData] = useState(true);
-
-  // State for form submission status
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [checkoutMessage, setCheckoutMessage] = useState("");
-  const [isSuccess, setIsSuccess] = useState(false);
-
-  // Fetch user data on component mount
-  useEffect(() => {
-    const fetchUserData = async () => {
-      setIsLoadingUserData(true);
-      try {
-        // Simulate an API call with mock data
-        setTimeout(() => {
-          const mockAddresses = [
-            {
-              id: "addr_1",
-              address_line1: "123 Main Street",
-              city: "Quezon City",
-              postal_code: "1100",
-              country: "Philippines",
-              is_default: true,
-            },
-            {
-              id: "addr_2",
-              address_line1: "456 Side Street",
-              city: "Manila",
-              postal_code: "1000",
-              country: "Philippines",
-              is_default: false,
-            },
-          ];
-
-          const mockPaymentMethods = [
-            {
-              id: "pm_1",
-              card_type: "Visa",
-              last4: "4242",
-              exp_month: 12,
-              exp_year: 2025,
-              is_default: true,
-            },
-            {
-              id: "pm_2",
-              card_type: "Mastercard",
-              last4: "1234",
-              exp_month: 10,
-              exp_year: 2026,
-              is_default: false,
-            },
-          ];
-
-          setUserAddresses(mockAddresses);
-          setUserPaymentMethods(mockPaymentMethods);
-
-          // Pre-fill the form with the default address and payment method
-          const defaultAddress = mockAddresses.find((addr) => addr.is_default);
-          if (defaultAddress) {
-            setShippingInfo({
-              fullName: "John Doe", // You'd fetch this from the user's profile
-              address: defaultAddress.address_line1,
-              city: defaultAddress.city,
-              postalCode: defaultAddress.postal_code,
-              country: defaultAddress.country,
-              id: defaultAddress.id,
-            });
-          }
-
-          const defaultPaymentMethod = mockPaymentMethods.find((pm) => pm.is_default);
-          if (defaultPaymentMethod) {
-            setPaymentInfo({
-              cardNumber: `************${defaultPaymentMethod.last4}`,
-              expiryDate: `${defaultPaymentMethod.exp_month}/${defaultPaymentMethod.exp_year.toString().slice(-2)}`,
-              cvv: "", // CVV is never stored, so it remains empty
-              id: defaultPaymentMethod.id,
-            });
-          }
-        }, 1500);
-      } catch (error) {
-        console.error("Failed to fetch user data:", error);
-      } finally {
-        setIsLoadingUserData(false);
-      }
-    };
-
-    fetchUserData();
-  }, []);
-
-  // Calculate order details from cart
-  const subtotal = cart.reduce(
-    (acc, item) => acc + item.product.price * item.quantity,
-    0
+  // Compute totals (front-end preview). Server will also validate.
+  const subtotal = useMemo(
+    () => selected.reduce((acc, it) => acc + (it.product?.price ?? 0) * (it.quantity ?? 1), 0),
+    [selected]
   );
-  const tax = subtotal * 0.12;
-  const shipping = subtotal > 2000 ? 0 : 150;
-  const total = subtotal + tax + shipping;
+  const tax = useMemo(() => subtotal * 0.12, [subtotal]);
+  const shipping = useMemo(() => (subtotal > 2000 ? 0 : 150), [subtotal]);
+  const total = useMemo(() => subtotal + tax + shipping, [subtotal, tax, shipping]);
 
-  const handleCheckout = (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    setCheckoutMessage("");
-    setIsSuccess(false);
+  // --- Cadaver modal & form state ---
+  const [showCadaverModal, setShowCadaverModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-    // Simulate a successful API call
-    setTimeout(() => {
-      console.log("Processing order...");
-      console.log("Selected Address ID:", shippingInfo.id);
-      console.log("Selected Payment Method ID:", paymentInfo.id);
-      console.log("Order Details:", { subtotal, tax, shipping, total });
+  const [cadaver, setCadaver] = useState({
+    full_name: "",
+    dob: "",
+    age: "",
+    sex: "",
+    civil_status: "",
+    religion: "",
 
-      // After a successful "API" call:
-      setIsProcessing(false);
-      setIsSuccess(true);
-      setCheckoutMessage("Your order has been placed successfully!");
+    death_datetime: "",
+    place_of_death: "",
+    cause_of_death: "",
 
-      // Clear the cart after a successful order
+    kin_name: "",
+    kin_relation: "",
+    kin_mobile: "",
+    kin_email: "",
+    kin_address: "",
+
+    remains_location: "",
+    pickup_datetime: "",
+    special_instructions: "",
+
+    // optional extras
+    occupation: "",
+    nationality: "",
+    residence: "",
+  });
+
+  const [deathCertFile, setDeathCertFile] = useState(null);
+  const [claimantIdFile, setClaimantIdFile] = useState(null);
+  const [permitFile, setPermitFile] = useState(null);
+
+  const onChangeField = (e) => {
+    const { name, value } = e.target;
+    setCadaver((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const validateCadaver = () => {
+    const required = [
+      "full_name", "sex", "civil_status", "religion",
+      "death_datetime", "place_of_death",
+      "kin_name", "kin_relation", "kin_mobile", "kin_email", "kin_address",
+      "remains_location", "pickup_datetime",
+    ];
+    for (const k of required) {
+      if (!String(cadaver[k] || "").trim()) {
+        setErrorMsg(`Please fill in: ${k.replace(/_/g, " ")}`);
+        return false;
+      }
+    }
+    if (!deathCertFile) {
+      setErrorMsg("Death certificate is required.");
+      return false;
+    }
+    return true;
+  };
+
+  const handlePlaceOrder = async () => {
+    try {
+      setErrorMsg("");
+
+      if (selected.length === 0) {
+        setErrorMsg("No items selected for checkout.");
+        return;
+      }
+      if (!validateCadaver()) return;
+
+      setSaving(true);
+
+      // 1) Get a logged-in access token
+      const {
+        data: { session },
+        error: sessErr,
+      } = await supabase.auth.getSession();
+      if (sessErr || !session) {
+        setSaving(false);
+        setErrorMsg("You must be signed in to place an order.");
+        return;
+      }
+
+      const user = session.user;
+
+      // 2) Upload required/optional documents to Supabase Storage
+      //    Death certificate is required
+      const death_certificate_url = await uploadDeathCertificate(
+        deathCertFile,
+        user.id,
+        /* orderId */ "pending" // not used by helper for path uniqueness; include if your helper expects it
+      );
+
+      let claimant_id_url = null;
+      if (claimantIdFile) {
+        const { data, error } = await supabase.storage
+          .from("docs")
+          .upload(`claimant/${user.id}/${Date.now()}_${claimantIdFile.name}`, claimantIdFile, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+        if (error) throw error;
+        const { data: pub } = supabase.storage.from("docs").getPublicUrl(data.path);
+        claimant_id_url = pub.publicUrl;
+      }
+
+      let permit_url = null;
+      if (permitFile) {
+        const { data, error } = await supabase.storage
+          .from("docs")
+          .upload(`permits/${user.id}/${Date.now()}_${permitFile.name}`, permitFile, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+        if (error) throw error;
+        const { data: pub } = supabase.storage.from("docs").getPublicUrl(data.path);
+        permit_url = pub.publicUrl;
+      }
+
+      // 3) Prepare payload for API
+      const itemsPayload = selected.map((it) => ({
+        product_id: it.product?.id ?? null, // if your products.id is uuid, this should be uuid
+        name: it.product?.name ?? "",
+        price: Number(it.product?.price ?? 0),
+        quantity: Number(it.quantity ?? 1),
+        image_url: it.product?.image_url ?? null,
+      }));
+
+      const payload = {
+        items: itemsPayload,
+        subtotal: Number(subtotal.toFixed(2)),
+        tax: Number(tax.toFixed(2)),
+        shipping: Number(shipping.toFixed(2)),
+        total: Number(total.toFixed(2)),
+        payment_method: null, // or set a selection from your UI if you have one
+        cadaver: {
+          ...cadaver,
+          age: cadaver.age ? Number(cadaver.age) : null,
+          // normalize datetimes to ISO if needed
+          death_datetime: cadaver.death_datetime,
+          pickup_datetime: cadaver.pickup_datetime,
+
+          death_certificate_url,
+          claimant_id_url,
+          permit_url,
+        },
+      };
+
+      // 4) Call your serverless function to create order + invoice
+      const res = await fetch("/api/xendit/create-invoice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to create Xendit invoice");
+      }
+
+      const data = await res.json();
+
+      // 5) Clear cart (optional: you can also wait for webhook to mark paid)
+      // We'll clear after a successful redirect to the invoice page
       clearCart();
 
-      // Navigate to a confirmation page or home page after a delay
-      setTimeout(() => {
-        navigate("/");
-      }, 3000);
-    }, 2000); // Simulate network delay
+      // 6) Redirect to Xendit hosted invoice
+      window.location.href = data.invoice_url;
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.message || "Something went wrong while placing your order.");
+      setSaving(false);
+    }
   };
 
   return (
     <>
       <Header />
-      <div className="checkout-page-container flex flex-col items-center p-6 bg-gray-100 min-h-screen">
-        <div className="w-full max-w-5xl">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Checkout</h1>
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left Column: Forms */}
-            <div className="flex-1 bg-white p-8 rounded-lg shadow-lg">
-              <form onSubmit={handleCheckout}>
-                <h2 className="text-2xl font-semibold mb-4 text-gray-700">Shipping Information</h2>
-                <div className="mb-6">
-                  <label className="block text-gray-600 mb-1">Select Saved Address</label>
-                  {isLoadingUserData ? (
-                    <div className="p-2 text-gray-500">Loading addresses...</div>
-                  ) : userAddresses.length > 0 ? (
-                    <select
-                      name="address"
-                      onChange={(e) => {
-                        const selectedAddress = userAddresses.find(
-                          (addr) => addr.id === e.target.value
-                        );
-                        if (selectedAddress) {
-                          setShippingInfo({
-                            ...shippingInfo,
-                            address: selectedAddress.address_line1,
-                            city: selectedAddress.city,
-                            postalCode: selectedAddress.postal_code,
-                            country: selectedAddress.country,
-                            id: selectedAddress.id,
-                          });
-                        } else {
-                          // Handle manual entry if "New Address" is selected
-                          setShippingInfo({
-                            fullName: "", address: "", city: "", postalCode: "", country: "", id: null,
-                          });
-                        }
-                      }}
-                      required
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      value={shippingInfo.id || ""}
-                    >
-                      <option value="">Select an address or fill out a new one</option>
-                      {userAddresses.map((addr) => (
-                        <option key={addr.id} value={addr.id}>
-                          {addr.address_line1}, {addr.city}
-                        </option>
-                      ))}
-                      <option value="new">Add a New Address</option>
-                    </select>
-                  ) : (
-                    <div className="p-2 text-gray-500">No saved addresses found. Please enter a new address below.</div>
-                  )}
-                </div>
+      <div className="checkout-page">
+        <h1>Checkout</h1>
 
-                {/* Manual Address Inputs */}
-                {(shippingInfo.id === null || shippingInfo.id === "new") && (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
-                    <div>
-                      <label className="block text-gray-600 mb-1">Full Name</label>
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={shippingInfo.fullName}
-                        onChange={(e) => setShippingInfo({ ...shippingInfo, fullName: e.target.value })}
-                        required
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-gray-600 mb-1">Address</label>
-                      <input
-                        type="text"
-                        name="address"
-                        value={shippingInfo.address}
-                        onChange={(e) => setShippingInfo({ ...shippingInfo, address: e.target.value })}
-                        required
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-600 mb-1">City</label>
-                      <input
-                        type="text"
-                        name="city"
-                        value={shippingInfo.city}
-                        onChange={(e) => setShippingInfo({ ...shippingInfo, city: e.target.value })}
-                        required
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-600 mb-1">Postal Code</label>
-                      <input
-                        type="text"
-                        name="postalCode"
-                        value={shippingInfo.postalCode}
-                        onChange={(e) => setShippingInfo({ ...shippingInfo, postalCode: e.target.value })}
-                        required
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-gray-600 mb-1">Country</label>
-                      <input
-                        type="text"
-                        name="country"
-                        value={shippingInfo.country}
-                        onChange={(e) => setShippingInfo({ ...shippingInfo, country: e.target.value })}
-                        required
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      />
-                    </div>
+        {selected.length === 0 ? (
+          <div className="empty-checkout">
+            <p>No items selected for checkout.</p>
+            <a href="/cart"><button>Back to Cart</button></a>
+          </div>
+        ) : (
+          <div className="checkout-grid">
+            {/* Left: Items */}
+            <div className="co-items">
+              {selected.map((it) => (
+                <div className="co-item" key={it.product.id}>
+                  <img src={it.product.image_url} alt={it.product.name} />
+                  <div className="co-item-info">
+                    <h3>{it.product.name}</h3>
+                    <p className="price">{php(it.product.price)}</p>
+                    <p className="qty">Qty: {it.quantity}</p>
                   </div>
-                )}
-                
-                <h2 className="text-2xl font-semibold mb-4 text-gray-700">Payment Information</h2>
-                <div className="mb-6">
-                  <label className="block text-gray-600 mb-1">Select Saved Card</label>
-                  {isLoadingUserData ? (
-                    <div className="p-2 text-gray-500">Loading payment methods...</div>
-                  ) : userPaymentMethods.length > 0 ? (
-                    <select
-                      name="paymentMethod"
-                      onChange={(e) => {
-                        const selectedMethod = userPaymentMethods.find(
-                          (pm) => pm.id === e.target.value
-                        );
-                        if (selectedMethod) {
-                          setPaymentInfo({
-                            ...paymentInfo,
-                            cardNumber: `************${selectedMethod.last4}`,
-                            expiryDate: `${selectedMethod.exp_month}/${selectedMethod.exp_year.toString().slice(-2)}`,
-                            cvv: "",
-                            id: selectedMethod.id,
-                          });
-                        } else {
-                          setPaymentInfo({ cardNumber: "", expiryDate: "", cvv: "", id: null });
-                        }
-                      }}
-                      required
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      value={paymentInfo.id || ""}
-                    >
-                      <option value="">Select a card or enter a new one</option>
-                      {userPaymentMethods.map((pm) => (
-                        <option key={pm.id} value={pm.id}>
-                          {pm.card_type} ending in {pm.last4}
-                        </option>
-                      ))}
-                      <option value="new">Add a New Card</option>
-                    </select>
-                  ) : (
-                    <div className="p-2 text-gray-500">No saved cards found. Please enter a new card below.</div>
-                  )}
                 </div>
+              ))}
 
-                {/* Manual Payment Inputs */}
-                {(paymentInfo.id === null || paymentInfo.id === "new") && (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="sm:col-span-2">
-                      <label className="block text-gray-600 mb-1">Card Number</label>
-                      <input
-                        type="text"
-                        name="cardNumber"
-                        value={paymentInfo.cardNumber}
-                        onChange={(e) => setPaymentInfo({ ...paymentInfo, cardNumber: e.target.value })}
-                        required
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-600 mb-1">Expiry Date (MM/YY)</label>
-                      <input
-                        type="text"
-                        name="expiryDate"
-                        value={paymentInfo.expiryDate}
-                        onChange={(e) => setPaymentInfo({ ...paymentInfo, expiryDate: e.target.value })}
-                        placeholder="MM/YY"
-                        required
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-600 mb-1">CVV</label>
-                      <input
-                        type="text"
-                        name="cvv"
-                        value={paymentInfo.cvv}
-                        onChange={(e) => setPaymentInfo({ ...paymentInfo, cvv: e.target.value })}
-                        required
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                {checkoutMessage && (
-                  <div className={`mt-4 p-4 rounded-md text-center ${isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {checkoutMessage}
-                  </div>
-                )}
-                
-                <button
-                  type="submit"
-                  className="w-full mt-6 py-3 px-6 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition duration-300"
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? "Processing..." : `Place Order - ${php(total)}`}
-                </button>
-              </form>
+              <button
+                type="button"
+                className="cadaver-btn"
+                onClick={() => setShowCadaverModal(true)}
+              >
+                Add Cadaver Details
+              </button>
+              <p className="cadaver-note">
+                * Cadaver details and Death Certificate are required before payment.
+              </p>
             </div>
 
-            {/* Right Column: Order Summary */}
-            <div className="w-full lg:w-1/3 bg-white p-8 rounded-lg shadow-lg">
-              <h2 className="text-2xl font-semibold text-gray-700 mb-4">Order Summary</h2>
-              <ul className="divide-y divide-gray-200">
-                {cart.map((item) => (
-                  <li key={item.product.id} className="py-4 flex items-center justify-between">
-                    <div className="flex items-center">
-                      <img
-                        src={item.product.image_url}
-                        alt={item.product.name}
-                        className="w-16 h-16 object-cover rounded-lg mr-4"
-                      />
-                      <div>
-                        <h3 className="text-gray-800 font-semibold">{item.product.name}</h3>
-                        <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
-                      </div>
-                    </div>
-                    <span className="text-gray-800 font-semibold">
-                      {php(item.product.price * item.quantity)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-6 space-y-2">
-                <div className="flex justify-between text-gray-600">
-                  <span>Subtotal</span>
-                  <span>{php(subtotal)}</span>
+            {/* Right: Summary */}
+            <div className="co-summary">
+              <h2>Order Summary</h2>
+              <div className="row">
+                <span>Subtotal</span>
+                <span>{php(subtotal)}</span>
+              </div>
+              <div className="row">
+                <span>Tax (12%)</span>
+                <span>{php(tax)}</span>
+              </div>
+              <div className="row">
+                <span>Shipping</span>
+                <span>{shipping === 0 ? "Free" : php(shipping)}</span>
+              </div>
+              <div className="total">
+                <strong>Total</strong>
+                <strong>{php(total)}</strong>
+              </div>
+
+              {errorMsg && <p className="error">{errorMsg}</p>}
+
+              <button
+                className="place-order"
+                onClick={handlePlaceOrder}
+                disabled={saving}
+              >
+                {saving ? "Creating Invoice..." : "Proceed to Payment"}
+              </button>
+              <a href="/cart" className="back-cart">Back to Cart</a>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* --- Cadaver Modal --- */}
+      {showCadaverModal && (
+        <div className="modal-overlay" onClick={() => setShowCadaverModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Cadaver Details</h3>
+              <button className="close" onClick={() => setShowCadaverModal(false)}>×</button>
+            </div>
+
+            <div className="modal-body">
+              {/* Identity */}
+              <div className="row-grid">
+                <div className="field">
+                  <label>Full Legal Name *</label>
+                  <input name="full_name" value={cadaver.full_name} onChange={onChangeField} required />
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Tax (12%)</span>
-                  <span>{php(tax)}</span>
+                <div className="field">
+                  <label>Date of Birth</label>
+                  <input type="date" name="dob" value={cadaver.dob} onChange={onChangeField} />
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Shipping</span>
-                  <span>{shipping === 0 ? "Free" : php(shipping)}</span>
+                <div className="field">
+                  <label>Age</label>
+                  <input type="number" name="age" value={cadaver.age} onChange={onChangeField} />
                 </div>
-                <div className="flex justify-between text-gray-800 font-bold text-lg border-t border-gray-300 pt-2">
-                  <span>Total</span>
-                  <span>{php(total)}</span>
+              </div>
+
+              <div className="row-grid">
+                <div className="field">
+                  <label>Sex *</label>
+                  <select name="sex" value={cadaver.sex} onChange={onChangeField} required>
+                    <option value="">Select…</option>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Civil Status *</label>
+                  <select name="civil_status" value={cadaver.civil_status} onChange={onChangeField} required>
+                    <option value="">Select…</option>
+                    <option>Single</option>
+                    <option>Married</option>
+                    <option>Widowed</option>
+                    <option>Separated</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Religion *</label>
+                  <input name="religion" value={cadaver.religion} onChange={onChangeField} required />
+                </div>
+              </div>
+
+              {/* Death Details */}
+              <div className="row-grid">
+                <div className="field">
+                  <label>Date & Time of Death *</label>
+                  <input
+                    type="datetime-local"
+                    name="death_datetime"
+                    value={cadaver.death_datetime}
+                    onChange={onChangeField}
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label>Place of Death *</label>
+                  <input
+                    name="place_of_death"
+                    value={cadaver.place_of_death}
+                    onChange={onChangeField}
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label>Cause of Death (optional)</label>
+                  <input
+                    name="cause_of_death"
+                    value={cadaver.cause_of_death}
+                    onChange={onChangeField}
+                  />
+                </div>
+              </div>
+
+              {/* Next of Kin */}
+              <div className="row-grid">
+                <div className="field">
+                  <label>Primary Contact Name *</label>
+                  <input name="kin_name" value={cadaver.kin_name} onChange={onChangeField} required />
+                </div>
+                <div className="field">
+                  <label>Relationship *</label>
+                  <input name="kin_relation" value={cadaver.kin_relation} onChange={onChangeField} required />
+                </div>
+                <div className="field">
+                  <label>Mobile *</label>
+                  <input name="kin_mobile" value={cadaver.kin_mobile} onChange={onChangeField} required />
+                </div>
+              </div>
+              <div className="row-grid">
+                <div className="field">
+                  <label>Email *</label>
+                  <input type="email" name="kin_email" value={cadaver.kin_email} onChange={onChangeField} required />
+                </div>
+                <div className="field col-2">
+                  <label>Address *</label>
+                  <input name="kin_address" value={cadaver.kin_address} onChange={onChangeField} required />
+                </div>
+              </div>
+
+              {/* Logistics */}
+              <div className="row-grid">
+                <div className="field">
+                  <label>Current Location of Remains *</label>
+                  <input name="remains_location" value={cadaver.remains_location} onChange={onChangeField} required />
+                </div>
+                <div className="field">
+                  <label>Requested Pick-Up (Date & Time) *</label>
+                  <input
+                    type="datetime-local"
+                    name="pickup_datetime"
+                    value={cadaver.pickup_datetime}
+                    onChange={onChangeField}
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label>Special Handling (optional)</label>
+                  <input
+                    name="special_instructions"
+                    value={cadaver.special_instructions}
+                    onChange={onChangeField}
+                  />
+                </div>
+              </div>
+
+              {/* Documents */}
+              <div className="docs">
+                <div className="field">
+                  <label>Death Certificate (required)</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setDeathCertFile(e.target.files?.[0] || null)}
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label>Claimant / Next of Kin ID (optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setClaimantIdFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+                <div className="field">
+                  <label>Burial / Cremation Permit (optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setPermitFile(e.target.files?.[0] || null)}
+                  />
                 </div>
               </div>
             </div>
+
+            <div className="modal-footer">
+              <button onClick={() => setShowCadaverModal(false)} className="secondary">Done</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
       <Footer />
     </>
   );
-};
-
-export default Checkout;
+}
