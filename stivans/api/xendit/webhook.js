@@ -1,11 +1,15 @@
 // /api/xendit/webhook.js
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+const SUPABASE_URL =
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-// NOTE: add SUPABASE_SERVICE_ROLE_KEY in Vercel (Server-side only).
+// Let us read the raw body
 export const config = { api: { bodyParser: false } };
 
 function readBody(req) {
@@ -23,11 +27,11 @@ export default async function handler(req, res) {
     const raw = await readBody(req);
     const payload = JSON.parse(raw || '{}');
 
-    // Common invoice events: INVOICE_PAID, INVOICE_EXPIRED, INVOICE_FAILED
-    const event = payload.event;
-    const invoice = payload.data || {};
+    // Xendit sends event names like: invoice.paid / INVOICE_PAID etc.
+    const event = payload?.event;
+    const invoice = payload?.data || {};
     const invoiceId = invoice.id;
-    const externalId = invoice.external_id; // e.g., "order_<uuid>"
+    const externalId = invoice.external_id;   // e.g. "order_<uuid>"
     const amount = invoice.amount;
 
     let orderId = null;
@@ -35,7 +39,7 @@ export default async function handler(req, res) {
       orderId = externalId.replace('order_', '');
     }
 
-    // Record payment row
+    // Record the webhook call in payments table
     await supabase.from('payments').insert({
       order_id: orderId || null,
       provider: 'xendit',
@@ -48,17 +52,27 @@ export default async function handler(req, res) {
 
     if (orderId) {
       if (event === 'invoice.paid' || event === 'INVOICE_PAID') {
-        await supabase.from('orders').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', orderId);
-      } else if (event === 'invoice.expired' || event === 'INVOICE_EXPIRED') {
-        await supabase.from('orders').update({ status: 'failed' }).eq('id', orderId);
-      } else if (event === 'invoice.failed' || event === 'INVOICE_FAILED') {
-        await supabase.from('orders').update({ status: 'failed' }).eq('id', orderId);
+        await supabase
+          .from('orders')
+          .update({ status: 'paid', paid_at: new Date().toISOString() })
+          .eq('id', orderId);
+      } else if (
+        event === 'invoice.expired' ||
+        event === 'INVOICE_EXPIRED' ||
+        event === 'invoice.failed' ||
+        event === 'INVOICE_FAILED'
+      ) {
+        await supabase
+          .from('orders')
+          .update({ status: 'failed' })
+          .eq('id', orderId);
       }
     }
 
+    // Always 200 so Xendit stops retrying
     return res.status(200).json({ ok: true });
   } catch (e) {
-    console.error('webhook error', e);
-    return res.status(200).json({ ok: true }); // respond 200 so Xendit stops retrying; log for investigation
+    console.error('[webhook] error', e);
+    return res.status(200).json({ ok: true });
   }
 }
