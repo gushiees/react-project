@@ -9,6 +9,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.warn('[create-invoice] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
 }
 
+// Service key bypasses RLS (intended for server-only code)
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -19,20 +20,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    // --- 0) Auth: get user from Bearer token (optional but recommended) ---
+    // --- 0) Auth: get user from Bearer token ---
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    let userId = null;
 
-    if (token) {
-      const { data: uData, error: uErr } = await supabase.auth.getUser(token);
-      if (uErr || !uData?.user?.id) {
-        return res.status(401).json({ error: 'Invalid session token' });
-      }
-      userId = uData.user.id;
-    } else {
+    if (!token) {
       return res.status(401).json({ error: 'No auth token' });
     }
+
+    const { data: uData, error: uErr } = await supabase.auth.getUser(token);
+    if (uErr || !uData?.user?.id) {
+      return res.status(401).json({ error: 'Invalid session token' });
+    }
+    const userId = uData.user.id;
 
     // --- 1) Parse payload from Checkout ---
     const {
@@ -40,27 +40,27 @@ export default async function handler(req, res) {
       subtotal = 0,
       tax = 0,
       shipping = 0,
-      total,                      // we will NOT insert total_price; DB computes that; this 'total' is only for Xendit amount consistency check
+      total,                      // client-side computed; we recompute on server
       payment_method = null,
-      cadaver = {},               // cadaver details with urls already uploaded client-side
+      cadaver = {},               // includes already-uploaded doc URLs
     } = req.body || {};
-
-    // Normalize numbers
-    const normSubtotal = Number(subtotal) || 0;
-    const normTax      = Number(tax) || 0;
-    const normShip     = Number(shipping) || 0;
-    const amountToCharge = Math.round((normSubtotal + normTax + normShip) * 100) / 100;
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'No items to order' });
     }
 
-    // Validate required cadaver fields (death certificate URL MUST be present)
+    // Require death certificate
     if (!cadaver?.death_certificate_url) {
       return res.status(400).json({ error: 'Death certificate is required' });
     }
 
-    // --- 2) Create order (DO NOT set total_price – it’s generated in your DB) ---
+    // Normalize numbers and recompute amount for Xendit
+    const normSubtotal = Number(subtotal) || 0;
+    const normTax      = Number(tax) || 0;
+    const normShip     = Number(shipping) || 0;
+    const amountToCharge = Math.round((normSubtotal + normTax + normShip) * 100) / 100;
+
+    // --- 2) Create order (do NOT set total_price; your DB handles it) ---
     const { data: order, error: oErr } = await supabase
       .from('orders')
       .insert({
@@ -69,7 +69,6 @@ export default async function handler(req, res) {
         subtotal: normSubtotal,
         tax: normTax,
         shipping: normShip,
-        // do not set total_price here; let DB computed column handle it
         xendit_payment_method: payment_method,
       })
       .select()
@@ -80,15 +79,26 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Failed to create order', details: oErr?.message || oErr });
     }
 
-    // --- 3) Insert order items (includes image_url column) ---
-    const itemRows = items.map((it) => ({
-      order_id: order.id,
-      product_id: it.product_id ?? it.id ?? null,
-      name: it.name ?? '',
-      price: Number(it.price) || 0,
-      quantity: Number(it.quantity) || 1,
-      image_url: it.image_url || null,
-    }));
+    // --- 3) Insert order items (include REQUIRED unit_price & total_price) ---
+    const itemRows = items.map((it) => {
+      const unit = Number(it.price) || 0;
+      const qty  = Math.max(1, Number(it.quantity) || 1);
+
+      return {
+        order_id: order.id,
+        product_id: it.product_id ?? it.id ?? null,
+        name: it.name ?? '',
+        image_url: it.image_url || null,
+
+        // Your schema requires these NOT NULL:
+        unit_price: unit,
+        total_price: unit * qty,
+
+        // Keep existing columns too (your table has them)
+        price: unit,
+        quantity: qty,
+      };
+    });
 
     const { error: oiErr } = await supabase.from('order_items').insert(itemRows);
     if (oiErr) {
@@ -96,7 +106,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Failed to add order items', details: oiErr.message || oiErr });
     }
 
-    // --- 4) Insert cadaver details (requires order_id + URLs already uploaded) ---
+    // --- 4) Insert cadaver details ---
     const cadaverRow = {
       order_id: order.id,
 
@@ -130,9 +140,7 @@ export default async function handler(req, res) {
       residence: cadaver.residence || null,
     };
 
-    const { error: cvErr } = await supabase
-      .from('cadaver_details')
-      .insert(cadaverRow);
+    const { error: cvErr } = await supabase.from('cadaver_details').insert(cadaverRow);
     if (cvErr) {
       console.error('[create-invoice] cadaver_details insert error:', cvErr);
       return res.status(400).json({ error: 'Failed to save cadaver details', details: cvErr.message || cvErr });
@@ -152,13 +160,12 @@ export default async function handler(req, res) {
       currency: 'PHP',
       success_redirect_url: SITE_URL ? `${SITE_URL}/checkout?paid=1` : undefined,
       failure_redirect_url: SITE_URL ? `${SITE_URL}/checkout?paid=0` : undefined,
-      // payer_email: optional – you can add from user metadata if you want
     };
 
     const resp = await fetch('https://api.xendit.co/v2/invoices', {
       method: 'POST',
       headers: {
-        'Authorization': 'Basic ' + Buffer.from(`${XENDIT_KEY}:`).toString('base64'),
+        Authorization: 'Basic ' + Buffer.from(`${XENDIT_KEY}:`).toString('base64'),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(invoicePayload),
@@ -170,7 +177,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Xendit error', details: inv });
     }
 
-    // --- 6) Update order with invoice id/url (still pending until webhook marks paid) ---
+    // --- 6) Store invoice id/url on the order ---
     const { error: upErr } = await supabase
       .from('orders')
       .update({
@@ -178,13 +185,9 @@ export default async function handler(req, res) {
         xendit_invoice_url: inv.invoice_url || null,
       })
       .eq('id', order.id);
+    if (upErr) console.warn('[create-invoice] could not store invoice refs:', upErr);
 
-    if (upErr) {
-      console.warn('[create-invoice] could not store invoice refs:', upErr);
-      // not fatal for the flow
-    }
-
-    // --- 7) Return invoice URL to redirect the user ---
+    // --- 7) Done: return hosted invoice URL ---
     return res.status(200).json({
       order_id: order.id,
       invoice_id: inv.id,
