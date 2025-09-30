@@ -1,45 +1,44 @@
+// src/pages/checkout/checkout.jsx
 import React, { useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { useCart } from "../../contexts/cartContext";
 import { supabase } from "../../supabaseClient";
 import "./checkout.css";
-
-// ❗ You said you already have this helper in src/data/orders.js
 import { uploadDeathCertificate } from "../../data/orders";
 
-// Peso formatter
+const API_BASE = import.meta.env.VITE_API_BASE || ""; // set to your Vercel URL in .env.local for local dev
+
 function php(amount) {
-  const numericAmount = Number(amount) || 0;
-  return (
-    "₱" +
-    numericAmount.toLocaleString("en-PH", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-  );
+  const n = Number(amount) || 0;
+  return "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export default function Checkout() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { clearCart } = useCart();
 
-  // We expect Cart to navigate with: navigate('/checkout', { state: { selected } })
-  // where selected = [{ product, quantity }]
-  const selected = Array.isArray(location.state?.selected) ? location.state.selected : [];
+  // ✅ Read items from router state OR fallback to sessionStorage after refresh
+  const stateItems = Array.isArray(location.state?.items) ? location.state.items : null;
+  const storedItems = !stateItems
+    ? JSON.parse(sessionStorage.getItem("checkout.items") || "[]")
+    : null;
 
-  // Compute totals (front-end preview). Server will also validate.
+  // This is the list we’ll use everywhere:
+  // [{ id, name, price, image_url, stock_quantity, quantity }]
+  const items = stateItems ?? storedItems ?? [];
+
+  // Totals (client-side preview)
   const subtotal = useMemo(
-    () => selected.reduce((acc, it) => acc + (it.product?.price ?? 0) * (it.quantity ?? 1), 0),
-    [selected]
+    () => items.reduce((acc, it) => acc + Number(it.price) * Number(it.quantity), 0),
+    [items]
   );
   const tax = useMemo(() => subtotal * 0.12, [subtotal]);
   const shipping = useMemo(() => (subtotal > 2000 ? 0 : 150), [subtotal]);
   const total = useMemo(() => subtotal + tax + shipping, [subtotal, tax, shipping]);
 
-  // --- Cadaver modal & form state ---
+  // Cadaver modal/form state (unchanged)
   const [showCadaverModal, setShowCadaverModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -51,22 +50,17 @@ export default function Checkout() {
     sex: "",
     civil_status: "",
     religion: "",
-
     death_datetime: "",
     place_of_death: "",
     cause_of_death: "",
-
     kin_name: "",
     kin_relation: "",
     kin_mobile: "",
     kin_email: "",
     kin_address: "",
-
     remains_location: "",
     pickup_datetime: "",
     special_instructions: "",
-
-    // optional extras
     occupation: "",
     nationality: "",
     residence: "",
@@ -105,7 +99,7 @@ export default function Checkout() {
     try {
       setErrorMsg("");
 
-      if (selected.length === 0) {
+      if (items.length === 0) {
         setErrorMsg("No items selected for checkout.");
         return;
       }
@@ -113,34 +107,24 @@ export default function Checkout() {
 
       setSaving(true);
 
-      // 1) Get a logged-in access token
-      const {
-        data: { session },
-        error: sessErr,
-      } = await supabase.auth.getSession();
+      // Get logged-in session (required)
+      const { data: { session }, error: sessErr } = await supabase.auth.getSession();
       if (sessErr || !session) {
         setSaving(false);
         setErrorMsg("You must be signed in to place an order.");
         return;
       }
-
       const user = session.user;
 
-      // 2) Upload required/optional documents to Supabase Storage
-      //    Death certificate is required
-      const death_certificate_url = await uploadDeathCertificate(
-        deathCertFile,
-        user.id,
-        /* orderId */ "pending" // not used by helper for path uniqueness; include if your helper expects it
-      );
+      // Upload required/optional documents
+      const death_certificate_url = await uploadDeathCertificate(deathCertFile, user.id, "pending");
 
       let claimant_id_url = null;
       if (claimantIdFile) {
         const { data, error } = await supabase.storage
           .from("docs")
           .upload(`claimant/${user.id}/${Date.now()}_${claimantIdFile.name}`, claimantIdFile, {
-            cacheControl: "3600",
-            upsert: false,
+            cacheControl: "3600", upsert: false,
           });
         if (error) throw error;
         const { data: pub } = supabase.storage.from("docs").getPublicUrl(data.path);
@@ -152,45 +136,40 @@ export default function Checkout() {
         const { data, error } = await supabase.storage
           .from("docs")
           .upload(`permits/${user.id}/${Date.now()}_${permitFile.name}`, permitFile, {
-            cacheControl: "3600",
-            upsert: false,
+            cacheControl: "3600", upsert: false,
           });
         if (error) throw error;
         const { data: pub } = supabase.storage.from("docs").getPublicUrl(data.path);
         permit_url = pub.publicUrl;
       }
 
-      // 3) Prepare payload for API
-      const itemsPayload = selected.map((it) => ({
-        product_id: it.product?.id ?? null, // if your products.id is uuid, this should be uuid
-        name: it.product?.name ?? "",
-        price: Number(it.product?.price ?? 0),
-        quantity: Number(it.quantity ?? 1),
-        image_url: it.product?.image_url ?? null,
-      }));
-
+      // Build payload for API from our flattened items
       const payload = {
-        items: itemsPayload,
+        items: items.map((it) => ({
+          product_id: it.id,
+          name: it.name,
+          price: Number(it.price),
+          quantity: Number(it.quantity),
+          image_url: it.image_url || null,
+        })),
         subtotal: Number(subtotal.toFixed(2)),
         tax: Number(tax.toFixed(2)),
         shipping: Number(shipping.toFixed(2)),
         total: Number(total.toFixed(2)),
-        payment_method: null, // or set a selection from your UI if you have one
+        payment_method: null,
         cadaver: {
           ...cadaver,
           age: cadaver.age ? Number(cadaver.age) : null,
-          // normalize datetimes to ISO if needed
           death_datetime: cadaver.death_datetime,
           pickup_datetime: cadaver.pickup_datetime,
-
           death_certificate_url,
           claimant_id_url,
           permit_url,
         },
       };
 
-      // 4) Call your serverless function to create order + invoice
-      const res = await fetch("/api/xendit/create-invoice", {
+      // Create order + xendit invoice via your serverless function
+      const res = await fetch(`${API_BASE}/api/xendit/create-invoice`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -206,11 +185,9 @@ export default function Checkout() {
 
       const data = await res.json();
 
-      // 5) Clear cart (optional: you can also wait for webhook to mark paid)
-      // We'll clear after a successful redirect to the invoice page
+      // Clear cart (and stash) and redirect to Xendit
       clearCart();
-
-      // 6) Redirect to Xendit hosted invoice
+      sessionStorage.removeItem("checkout.items");
       window.location.href = data.invoice_url;
     } catch (err) {
       console.error(err);
@@ -225,7 +202,7 @@ export default function Checkout() {
       <div className="checkout-page">
         <h1>Checkout</h1>
 
-        {selected.length === 0 ? (
+        {items.length === 0 ? (
           <div className="empty-checkout">
             <p>No items selected for checkout.</p>
             <a href="/cart"><button>Back to Cart</button></a>
@@ -234,22 +211,18 @@ export default function Checkout() {
           <div className="checkout-grid">
             {/* Left: Items */}
             <div className="co-items">
-              {selected.map((it) => (
-                <div className="co-item" key={it.product.id}>
-                  <img src={it.product.image_url} alt={it.product.name} />
+              {items.map((it) => (
+                <div className="co-item" key={it.id}>
+                  <img src={it.image_url} alt={it.name} />
                   <div className="co-item-info">
-                    <h3>{it.product.name}</h3>
-                    <p className="price">{php(it.product.price)}</p>
+                    <h3>{it.name}</h3>
+                    <p className="price">{php(it.price)}</p>
                     <p className="qty">Qty: {it.quantity}</p>
                   </div>
                 </div>
               ))}
 
-              <button
-                type="button"
-                className="cadaver-btn"
-                onClick={() => setShowCadaverModal(true)}
-              >
+              <button type="button" className="cadaver-btn" onClick={() => setShowCadaverModal(true)}>
                 Add Cadaver Details
               </button>
               <p className="cadaver-note">
@@ -260,30 +233,14 @@ export default function Checkout() {
             {/* Right: Summary */}
             <div className="co-summary">
               <h2>Order Summary</h2>
-              <div className="row">
-                <span>Subtotal</span>
-                <span>{php(subtotal)}</span>
-              </div>
-              <div className="row">
-                <span>Tax (12%)</span>
-                <span>{php(tax)}</span>
-              </div>
-              <div className="row">
-                <span>Shipping</span>
-                <span>{shipping === 0 ? "Free" : php(shipping)}</span>
-              </div>
-              <div className="total">
-                <strong>Total</strong>
-                <strong>{php(total)}</strong>
-              </div>
+              <div className="row"><span>Subtotal</span><span>{php(subtotal)}</span></div>
+              <div className="row"><span>Tax (12%)</span><span>{php(tax)}</span></div>
+              <div className="row"><span>Shipping</span><span>{shipping === 0 ? "Free" : php(shipping)}</span></div>
+              <div className="total"><strong>Total</strong><strong>{php(total)}</strong></div>
 
               {errorMsg && <p className="error">{errorMsg}</p>}
 
-              <button
-                className="place-order"
-                onClick={handlePlaceOrder}
-                disabled={saving}
-              >
+              <button className="place-order" onClick={handlePlaceOrder} disabled={saving}>
                 {saving ? "Creating Invoice..." : "Proceed to Payment"}
               </button>
               <a href="/cart" className="back-cart">Back to Cart</a>
@@ -292,7 +249,7 @@ export default function Checkout() {
         )}
       </div>
 
-      {/* --- Cadaver Modal --- */}
+      {/* Cadaver Modal (unchanged UI) */}
       {showCadaverModal && (
         <div className="modal-overlay" onClick={() => setShowCadaverModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -348,30 +305,15 @@ export default function Checkout() {
               <div className="row-grid">
                 <div className="field">
                   <label>Date & Time of Death *</label>
-                  <input
-                    type="datetime-local"
-                    name="death_datetime"
-                    value={cadaver.death_datetime}
-                    onChange={onChangeField}
-                    required
-                  />
+                  <input type="datetime-local" name="death_datetime" value={cadaver.death_datetime} onChange={onChangeField} required />
                 </div>
                 <div className="field">
                   <label>Place of Death *</label>
-                  <input
-                    name="place_of_death"
-                    value={cadaver.place_of_death}
-                    onChange={onChangeField}
-                    required
-                  />
+                  <input name="place_of_death" value={cadaver.place_of_death} onChange={onChangeField} required />
                 </div>
                 <div className="field">
                   <label>Cause of Death (optional)</label>
-                  <input
-                    name="cause_of_death"
-                    value={cadaver.cause_of_death}
-                    onChange={onChangeField}
-                  />
+                  <input name="cause_of_death" value={cadaver.cause_of_death} onChange={onChangeField} />
                 </div>
               </div>
 
@@ -409,21 +351,11 @@ export default function Checkout() {
                 </div>
                 <div className="field">
                   <label>Requested Pick-Up (Date & Time) *</label>
-                  <input
-                    type="datetime-local"
-                    name="pickup_datetime"
-                    value={cadaver.pickup_datetime}
-                    onChange={onChangeField}
-                    required
-                  />
+                  <input type="datetime-local" name="pickup_datetime" value={cadaver.pickup_datetime} onChange={onChangeField} required />
                 </div>
                 <div className="field">
                   <label>Special Handling (optional)</label>
-                  <input
-                    name="special_instructions"
-                    value={cadaver.special_instructions}
-                    onChange={onChangeField}
-                  />
+                  <input name="special_instructions" value={cadaver.special_instructions} onChange={onChangeField} />
                 </div>
               </div>
 
@@ -431,28 +363,15 @@ export default function Checkout() {
               <div className="docs">
                 <div className="field">
                   <label>Death Certificate (required)</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setDeathCertFile(e.target.files?.[0] || null)}
-                    required
-                  />
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => setDeathCertFile(e.target.files?.[0] || null)} required />
                 </div>
                 <div className="field">
                   <label>Claimant / Next of Kin ID (optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setClaimantIdFile(e.target.files?.[0] || null)}
-                  />
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => setClaimantIdFile(e.target.files?.[0] || null)} />
                 </div>
                 <div className="field">
                   <label>Burial / Cremation Permit (optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setPermitFile(e.target.files?.[0] || null)}
-                  />
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => setPermitFile(e.target.files?.[0] || null)} />
                 </div>
               </div>
             </div>
