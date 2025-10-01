@@ -50,7 +50,8 @@ export default function Admin() {
   const [usersErr, setUsersErr] = useState(null);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
-  const perPage = 50;
+  const [total, setTotal] = useState(0);
+  const perPage = 20;
 
   // ----- Auth guard -----
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function Admin() {
     }
   };
 
-  // ----- Products -----
+  // ===== PRODUCTS =====
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
@@ -200,7 +201,7 @@ export default function Admin() {
     }
   };
 
-  // ----- Users -----
+  // ===== USERS =====
   const fetchUsers = useCallback(async () => {
     try {
       setUsersErr(null);
@@ -214,7 +215,7 @@ export default function Admin() {
       const u = new URL("/api/admin/users/list", window.location.href);
       u.searchParams.set("page", String(page));
       u.searchParams.set("perPage", String(perPage));
-      if (q) u.searchParams.set("q", q);
+      if (q.trim()) u.searchParams.set("q", q.trim());
 
       const resp = await fetch(u.toString(), {
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -223,6 +224,7 @@ export default function Admin() {
       if (!resp.ok) throw new Error(json.error || "Failed to load users");
 
       setUsersList(json.users || []);
+      setTotal(json.total || 0);
     } catch (e) {
       console.error(e);
       setUsersErr(e.message);
@@ -238,6 +240,10 @@ export default function Admin() {
   }, [activeTab, user, fetchUsers]);
 
   const deleteUserCompletely = async (targetUserId, targetEmail) => {
+    if (targetUserId === user?.id) {
+      alert("You cannot delete your own admin account.");
+      return;
+    }
     if (
       !window.confirm(
         `Delete user ${targetEmail || targetUserId}? This cannot be undone.`
@@ -265,7 +271,12 @@ export default function Admin() {
       const json = await resp.json();
       if (!resp.ok) throw new Error(json.error || "Delete failed");
 
-      await fetchUsers();
+      // reload page 1 if list became empty
+      if (usersList.length === 1 && page > 1) {
+        setPage((p) => p - 1);
+      } else {
+        await fetchUsers();
+      }
     } catch (e) {
       console.error(e);
       setUsersErr(e.message);
@@ -282,6 +293,8 @@ export default function Admin() {
       </div>
     );
   }
+
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   return (
     <div className="admin-container">
@@ -427,41 +440,71 @@ export default function Admin() {
           {usersLoading && <p>Loading users…</p>}
 
           {!usersLoading && !usersErr && (
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Email</th>
-                  <th>Created</th>
-                  <th>Last sign-in</th>
-                  <th>User ID</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usersList.length === 0 ? (
+            <>
+              <table className="admin-table">
+                <thead>
                   <tr>
-                    <td colSpan="5">No users found.</td>
+                    <th>Email</th>
+                    <th>Created</th>
+                    <th>Last sign-in</th>
+                    <th>User ID</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
-                ) : (
-                  usersList.map((u) => (
-                    <tr key={u.id}>
-                      <td>{u.email || "—"}</td>
-                      <td>{formatDate(u.created_at)}</td>
-                      <td>{formatDate(u.last_sign_in_at)}</td>
-                      <td style={{ fontFamily: "monospace" }}>{u.id}</td>
-                      <td style={{ textAlign: "right" }}>
-                        <button
-                          className="delete"
-                          onClick={() => deleteUserCompletely(u.id, u.email)}
-                        >
-                          Delete
-                        </button>
-                      </td>
+                </thead>
+                <tbody>
+                  {usersList.length === 0 ? (
+                    <tr>
+                      <td colSpan="5">No users found.</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    usersList.map((u) => (
+                      <tr key={u.id}>
+                        <td>{u.email || "—"}</td>
+                        <td>{formatDate(u.created_at)}</td>
+                        <td>{formatDate(u.last_sign_in_at)}</td>
+                        <td style={{ fontFamily: "monospace" }}>{u.id}</td>
+                        <td style={{ textAlign: "right" }}>
+                          <button
+                            className="delete"
+                            disabled={u.id === user.id}
+                            title={
+                              u.id === user.id
+                                ? "You can’t delete your own admin account"
+                                : "Delete user"
+                            }
+                            onClick={() =>
+                              deleteUserCompletely(u.id, u.email)
+                            }
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              <div className="users-pagination">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                >
+                  ◀ Prev
+                </button>
+                <span>
+                  Page {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() =>
+                    setPage((p) => (p < totalPages ? p + 1 : p))
+                  }
+                  disabled={page >= totalPages}
+                >
+                  Next ▶
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}
