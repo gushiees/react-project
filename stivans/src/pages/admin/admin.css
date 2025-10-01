@@ -1,0 +1,259 @@
+.admin-container {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 2rem auto;
+}
+
+.admin-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.admin-table th, .admin-table td {
+  width: 25%;
+  text-align: left;
+  padding: 12px 15px;
+  border-bottom: 1px solid #e2e8f0;
+  word-wrap: break-word;
+}
+
+.admin-table th {
+  background-color: #f7f7f7;
+}
+
+.admin-table .actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-table .actions button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.admin-table .actions button.delete {
+  background-color: #e53e3e;
+  color: white;
+}
+.product-form {
+  margin-top: 2rem;
+  padding: 2rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+/* Add to admin.css */
+.admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #ddd;
+  margin-bottom: 2rem;
+}
+.admin-tabs button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  border-bottom: 2px solid transparent;
+}
+.admin-tabs button.active {
+  border-bottom-color: var(--primary); /* Use your primary color */
+  font-weight: 600;
+}
+
+.drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  position: relative; /* Needed for the input overlay */
+}
+
+.drop-zone.dragging {
+  background-color: #f0f8ff;
+  border-color: #007bff;
+}
+
+.drop-zone p {
+  margin: 0;
+  color: #666;
+}
+
+.drop-zone input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0; /* Make the default input invisible */
+  cursor: pointer;
+}
+
+/* --- NEW: Styles for the existing image grid --- */
+.existing-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 1rem;
+}
+
+.existing-image-item {
+  position: relative;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.existing-image-item img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  display: block;
+}
+
+.existing-image-item button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background-color: rgba(229, 62, 62, 0.8);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* ---  Styles for stock --- */
+/* Style for the highlighted row */
+.admin-table tr.out-of-stock-row {
+  background-color: #fff5f5; /* A very light red */
+  color: #a0aec0; /* Gray out the text */
+}
+
+/* Base style for the status badge */
+.stock-status {
+  padding: 4px 10px;
+  border-radius: 9999px; /* Pill shape */
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  text-transform: uppercase;
+}
+
+/* Green badge for "In Stock" */
+.in-stock {
+  background-color: #38a169;
+}
+
+/* Red badge for "Out of Stock" */
+.out-of-stock-badge {
+  background-color: #e53e3e;
+}
+.editable-stock-value {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  display: inline-block; /* Makes padding and other box properties work */
+}
+
+.editable-stock-value:hover {
+  background-color: #e2e8f0; /* A light gray hover effect */
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.logout-button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #1f2937;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.inline-edit-stock {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.inline-stock-input {
+  width: 90px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.save-stock,
+.cancel-stock {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.save-stock { background: #2563eb; color: #fff; }
+.cancel-stock { background: #e5e7eb; color: #111827; }
+
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.logout-button {
+  padding: 8px 16px;
+  background-color: #1f2937;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.inline-edit-stock {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.inline-stock-input {
+  width: 90px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.save-stock,
+.cancel-stock {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.save-stock { background: #2563eb; color: #fff; }
+.cancel-stock { background: #e5e7eb; color: #111827; }

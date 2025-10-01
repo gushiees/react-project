@@ -1,5 +1,5 @@
-import "./Footer.css";
-import { Link } from "react-router-dom";
+import "./footer.css";
+import { Link } from "react-router-dom"; 
 
 export default function Footer() {
   return (
@@ -36,11 +36,11 @@ export default function Footer() {
         <div className="footer-column">
           <h4>Insurance</h4>
           <ul>
-            <li><Link to="/insurance/basic">Basic Protection</Link></li>
-            <li><Link to="/insurance/family">Family Protection</Link></li>
-            <li><Link to="/insurance/legacy">Premium Legacy</Link></li>
-            <li><Link to="/insurance/policy">Policy Management</Link></li>
-            <li><Link to="/insurance/claims">Claims Process</Link></li>
+            <li><Link to="/insurance">Basic Protection</Link></li>
+            <li><Link to="/insurance">Family Protection</Link></li>
+            <li><Link to="/insurance">Premium Legacy</Link></li>
+            <li><Link to="/insurance">Policy Management</Link></li>
+            <li><Link to="/insurance">Claims Process</Link></li>
           </ul>
         </div>
 
@@ -62,7 +62,7 @@ export default function Footer() {
         <p>
           © {new Date().getFullYear()} St. Ivans. All rights reserved. |{" "}
           <Link to="/privacy">Privacy Policy</Link> |{" "}
-          <Link to="/terms">Terms of Service</Link>
+          <Link to="/terms">Terms of Services</Link>
         </p>
       </div>
     </footer>

@@ -1,38 +1,69 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from './supabaseClient';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
-    let ignore = false;
-
-    (async () => {
+    const fetchSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!ignore) setSession(session);
-      setLoading(false);
-    })();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setUser({ ...session.user, ...profile });
+      } else {
+        setUser(null);
+      }
+      setLoadingAuth(false);
+    };
 
-    // ✅ correct destructuring: { data: { subscription } }
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => setSession(session)
-    );
+    fetchSession();
 
-    // ✅ correct cleanup: subscription.unsubscribe()
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        fetchSession();
+      } else {
+        setUser(null);
+      }
+    });
+
     return () => {
-      ignore = true;
-      subscription?.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user: session?.user ?? null, session, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const login = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+    if (profileError) throw profileError;
+
+    const fullUser = { ...data.user, ...profile };
+    setUser(fullUser);
+    return fullUser;
+  };
+
+  const logout = () => supabase.auth.signOut();
+
+  const value = {
+    user,
+    loadingAuth,
+    login,
+    logout,
+  };
+
+  return <AuthContext.Provider value={value}>{!loadingAuth && children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

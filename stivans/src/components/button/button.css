@@ -1,0 +1,76 @@
+:root{
+  --btn-black:#0b0b0c;
+  --btn-white:#fff;
+  --btn-gray-500:#bdbdbd;
+  --btn-gray-300:#d6d6d6;
+  --btn-border:#e5e7eb;
+  --btn-gold:#f6b300;
+  --btn-focus:#3b82f6;
+  --btn-radius:10px;
+  --btn-h:48px;
+  --btn-fw:800;
+  --btn-ls:.04em;
+}
+
+/* container */
+.btn-wrap { position: relative; display: inline-block; }
+
+/* base */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:10px;
+  padding:0 20px; min-height:var(--btn-h);
+  border-radius:var(--btn-radius); border:2px solid transparent;
+  font-weight:var(--btn-fw); text-transform:uppercase; letter-spacing:var(--btn-ls);
+  line-height:1; cursor:pointer; user-select:none;
+  transition:transform .02s ease-in, background-color .15s, color .15s, border-color .15s;
+}
+.btn:focus-visible{ outline:3px solid var(--btn-focus); outline-offset:2px; }
+.btn:active{ transform: translateY(1px); }
+.btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+.has-dropdown { padding-right:16px; }
+
+.btn__label{ display:inline-block; }
+
+/* caret */
+.btn__caret{ margin-left:8px; transition:transform .15s ease; display:inline-block; }
+.btn__caret.open{ transform: rotate(180deg); }
+
+/* variants (match your mock) */
+.btn--primary{ background:var(--btn-black); color:var(--btn-white); border-color:var(--btn-black); }
+.btn--primary:hover{ filter:brightness(1.1); }
+
+.btn--secondary{ background:var(--btn-white); color:var(--btn-black); border-color:var(--btn-border); }
+.btn--secondary:hover{ background:#fafafa; }
+
+.btn--gray{ background:var(--btn-gray-500); color:var(--btn-black); border-color:var(--btn-gray-500); }
+.btn--light{ background:var(--btn-gray-300); color:#ffffff; border-color:var(--btn-gray-300); }
+
+.btn--accent{ background:var(--btn-white); color:var(--btn-gold); border-color:var(--btn-border); }
+.btn--inverseAccent{ background:var(--btn-black); color:var(--btn-gold); border-color:var(--btn-black); }
+
+/* optional icon-only */
+.btn--icon,
+.btn--icon-outlined{
+  background:transparent; color:var(--btn-black); border:2px solid var(--btn-border);
+}
+
+/* dropdown menu (built-in; safe to leave even if unused) */
+.btn__menu{
+  position:absolute; top:calc(100% + 8px);
+  min-width:220px; background:#fff; border:1px solid var(--btn-border);
+  border-radius:10px; padding:6px; box-shadow:0 10px 30px rgba(0,0,0,.08);
+  opacity:0; pointer-events:none; transform: translateY(-4px);
+  transition: opacity .15s ease, transform .15s ease; z-index:50;
+}
+.btn__menu.open{ opacity:1; pointer-events:auto; transform: translateY(0); }
+.btn__menu--left{ left:0; } .btn__menu--right{ right:0; }
+
+.btn__menuItem{
+  display:block; width:100%; padding:10px 12px; border-radius:8px;
+  text-decoration:none; color:#111827; font-weight:600; background:transparent;
+  border:none; text-align:left; cursor:pointer;
+}
+.btn__menuItem:hover{ background:#f3f4f6; }
+
+/* manual active ring if you pass isActive */
+.button-active{ box-shadow: 0 0 0 3px var(--btn-focus); }

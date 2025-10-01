@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "../../supabaseClient";
+import { useAuth } from "../../AuthContext.jsx"; // Import useAuth
 import "./login.css";
+import introImg from "../../assets/intro.jpg";
+
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth(); // <-- Get the new login function from context
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -12,37 +16,34 @@ export default function Login() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
+  // --- UPDATED handleSubmit FUNCTION ---
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setPending(true);
 
-    // Optional: persist session toggle (remember me)
-    supabase.auth.setSession({}); // noop to ensure client is ready
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-        options: { shouldCreateUser: false },
-      });
-      if (error) throw error;
+      // Call the login function from the context. It returns the full user object.
+      const user = await login(email, password);
 
-      // If you want "remember me" to disable auto sign-out when tab closes,
-      // supabase-js already persists session in localStorage by default.
-      navigate("/profile");
+      // Redirect based on the role from the returned user object
+      if (user && user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.message);
-    } finally {
-      setPending(false);
+      setPending(false); // Make sure to stop pending on error
     }
+    // No 'finally' block needed anymore
   }
 
   return (
     <div className="login__wrap">
       {/* Left image panel */}
       <div className="login__left" aria-hidden="true">
-        {/* Put an image at public/login-side.jpg or change the URL below */}
-        <img src="/login-side.jpg" alt="" />
+        <img src={introImg} alt="" />
       </div>
 
       {/* Right form panel */}

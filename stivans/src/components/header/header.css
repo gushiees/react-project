@@ -31,7 +31,7 @@
   text-decoration: none;
 }
 .nav-link.active {
-  border-bottom: 2px solid #007bff; /* highlight active */
+  border-bottom: 2px solid #f6b300; /* highlight active */
 }
 
 /* Right actions */
@@ -52,7 +52,7 @@
   position: absolute;
   top: -6px;
   right: -10px;
-  background: #007bff;
+  background: #f6b300;
   color: #fff;
   border-radius: 999px;
   font-size: 12px;
@@ -70,4 +70,10 @@
 }
 .signin-btn:hover {
   background: #0056b3;
+}
+
+.user-email-prefix {
+  margin-left: 5px;
+    font-size: 1rem;
+    color: #333;
 }

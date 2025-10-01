@@ -1,0 +1,103 @@
+.admin-login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f7fafc;
+}
+
+.admin-login-form {
+  padding: 2.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.admin-login-form h2 {
+  margin-bottom: 0.5rem;
+  color: #2d3748;
+}
+
+.admin-login-form p {
+  margin-bottom: 1.5rem;
+  color: #718096;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.logout-button {
+  padding: 8px 16px;
+  background-color: #e53e3e; /* A red color for logout */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.logout-button:hover {
+  background-color: #c53030;
+}
+
+/* Form fields */
+.admin-login-form .form-group {
+  text-align: left;
+  margin-bottom: 1rem;
+}
+
+.admin-login-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: #374151;
+}
+
+.admin-login-form input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+}
+
+.admin-login-form input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+
+/* Submit button */
+.admin-login-form button[type="submit"] {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-login-form button[disabled] {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Error text (reuses your class) */
+.error-message {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  text-align: left;
+}
