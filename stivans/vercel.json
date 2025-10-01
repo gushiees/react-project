@@ -1,12 +1,14 @@
 {
+  "version": 2,
   "functions": {
-    "api/**/*.{js,ts}": {
-      "runtime": "nodejs"
-    }
+    "api/**/*.js": { "runtime": "nodejs" },
+    "api/**/*.ts": { "runtime": "nodejs" }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*\\..*)", "destination": "/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
 }
