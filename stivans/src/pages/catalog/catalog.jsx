@@ -1,12 +1,14 @@
-// src/pages/catalog/Catalog.jsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./catalog.css";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { Link } from "react-router-dom";
 import { fetchProducts } from "../../data/products.jsx";
 
-// Helper function for currency formatting
+// ⬇️ Reusable search bar
+import SearchBar, { sortRecords } from "../../components/search/SearchBar";
+
+// Currency helper
 function php(amount) {
   const numericAmount = Number(amount) || 0;
   return "₱" + numericAmount.toLocaleString("en-PH");
@@ -16,30 +18,85 @@ export default function Catalog() {
   const [bundles, setBundles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
+  // Search/filter state coming from SearchBar
+  const [filters, setFilters] = useState({
+    query: "",
+    category: "",
+    priceMin: null,
+    priceMax: null,
+    sort: "relevance",
+  });
+
   useEffect(() => {
     const loadProducts = async () => {
       try {
         setError(null);
         setLoading(true);
         const data = await fetchProducts();
-        setBundles(data);
+        setBundles(data || []);
       } catch (err) {
-        setError("Failed to load products. Please try again later.");
         console.error(err);
+        setError("Failed to load products. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
-    
     loadProducts();
   }, []);
+
+  // Build category list & suggestions for autocomplete
+  const categories = useMemo(() => {
+    const set = new Set(bundles.map((p) => p.category).filter(Boolean));
+    return Array.from(set).sort();
+  }, [bundles]);
+
+  const suggestions = useMemo(
+    () => bundles.map((p) => p.name).filter(Boolean),
+    [bundles]
+  );
+
+  // Only in-stock products
+  const inStockBundles = useMemo(
+    () => bundles.filter((b) => Number(b.stock_quantity) > 0),
+    [bundles]
+  );
+
+  // Apply filters locally
+  const filtered = useMemo(() => {
+    let list = [...inStockBundles];
+
+    // Text search
+    if (filters.query) {
+      const q = filters.query.toLowerCase();
+      list = list.filter((p) => p.name?.toLowerCase().includes(q));
+    }
+
+    // Category
+    if (filters.category) {
+      list = list.filter((p) => p.category === filters.category);
+    }
+
+    // Price range (inclusive)
+    if (filters.priceMin != null) {
+      list = list.filter((p) => Number(p.price) >= Number(filters.priceMin));
+    }
+    if (filters.priceMax != null) {
+      list = list.filter((p) => Number(p.price) <= Number(filters.priceMax));
+    }
+
+    // Sort (uses helper from SearchBar)
+    list = sortRecords(list, filters.sort);
+    return list;
+  }, [inStockBundles, filters]);
 
   if (loading) {
     return (
       <>
         <Header />
-        <main className="catalog-main"><div className="container"><p>Loading products...</p></div></main>
+        <main className="catalog-main">
+          <div className="container"><p>Loading products...</p></div>
+        </main>
         <Footer />
       </>
     );
@@ -49,14 +106,13 @@ export default function Catalog() {
     return (
       <>
         <Header />
-        <main className="catalog-main"><div className="container"><p className="error-message">{error}</p></div></main>
+        <main className="catalog-main">
+          <div className="container"><p className="error-message">{error}</p></div>
+        </main>
         <Footer />
       </>
     );
   }
-
-  // Create a new array that only contains in-stock products
-  const inStockBundles = bundles.filter(b => b.stock_quantity > 0);
 
   return (
     <div className="catalog-page">
@@ -66,13 +122,28 @@ export default function Catalog() {
         <div className="container">
           <div className="catalog-header">
             <h1>Funeral Bundles</h1>
-            <p className="catalog-sub">High-quality caskets with bundled non-life insurance included. Flexible payment options available.</p>
+            <p className="catalog-sub">
+              High-quality caskets with bundled non-life insurance included. Flexible payment options available.
+            </p>
+          </div>
+
+          {/* 🔎 Search + Filters */}
+          <div style={{ marginBottom: 16 }}>
+            <SearchBar
+              placeholder="Search products…"
+              suggestions={suggestions}
+              categories={categories}
+              minPrice={0}
+              maxPrice={500000}
+              initialState={{ sort: "relevance" }}
+              onChange={(s) => setFilters(s)}     // debounced updates as you type
+              onSubmit={(s) => setFilters(s)}     // Enter / Search click
+            />
           </div>
 
           <div className="catalog-grid">
-            {/* Map over the new filtered array instead of the original one */}
-            {inStockBundles.length > 0 ? (
-              inStockBundles.map((b) => (
+            {filtered.length > 0 ? (
+              filtered.map((b) => (
                 <article key={b.id} className="catalog-card" role="article" aria-labelledby={`title-${b.id}`}>
                   <div className="card-media">
                     <img src={b.image_url} alt={b.name} loading="lazy" />
@@ -100,8 +171,7 @@ export default function Catalog() {
                 </article>
               ))
             ) : (
-              // Show a message if all products are out of stock
-              <p>All products are currently out of stock. Please check back later.</p>
+              <p>No products match your filters.</p>
             )}
           </div>
         </div>
