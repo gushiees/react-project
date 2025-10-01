@@ -7,21 +7,20 @@ export default function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Optional: you can read params here if needed
-    // After Supabase finishes the magic link flow, the session is set.
-    // You can also show a spinner while checking the session.
-    const go = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      // Send them somewhere nice
-      navigate(session ? "/profile" : "/login", { replace: true });
-    };
-    go();
+    let active = true;
+    (async () => {
+      // Let Supabase parse the URL hash and set the session if present
+      await supabase.auth.getSession();
+      if (!active) return;
+      navigate("/profile", { replace: true });
+    })();
+    return () => { active = false; };
   }, [navigate]);
 
   return (
-    <div style={{ padding: "3rem", textAlign: "center" }}>
-      <h2>Signing you in…</h2>
-      <p>Please wait a moment.</p>
+    <div style={{ padding: 48, textAlign: "center" }}>
+      <h1>Signing you in…</h1>
+      <p>You’ll be redirected shortly.</p>
     </div>
   );
 }
