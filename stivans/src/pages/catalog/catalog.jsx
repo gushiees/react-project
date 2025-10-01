@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { fetchProducts } from "../../data/products.jsx";
 
 // ⬇️ Reusable search bar
-import SearchBar, { sortRecords } from "../../components/search/SearchBar";
+import SearchBar, { sortRecords } from "../../components/searchbar/SearchBar.jsx";
 
 // Currency helper
 function php(amount) {

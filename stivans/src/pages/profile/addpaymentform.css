@@ -1,0 +1,137 @@
+/* AddPaymentForm – gold & white theme (scoped) */
+
+:root {
+  --pm-brand: #d4af37;      /* gold */
+  --pm-brand-600: #b8860b;  /* darker gold */
+  --pm-bg: #ffffff;         /* white */
+  --pm-line: #e5e7eb;       /* soft gray */
+  --pm-text: #111827;       /* dark */
+  --pm-muted: #6b7280;      /* muted text */
+}
+
+/* Form container */
+.pm-form {
+  display: grid;
+  gap: 16px;
+  background: transparent; /* sits inside card */
+}
+
+/* Rows */
+.pm-row {
+  display: grid;
+  gap: 14px;
+}
+.pm-row.two {
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 640px) {
+  .pm-row.two {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Field group */
+.pm-field {
+  display: grid;
+  gap: 8px;
+}
+
+.pm-field label {
+  font-weight: 600;
+  color: var(--pm-text);
+  font-size: 0.95rem;
+}
+
+/* Inputs / Selects */
+.pm-field input,
+.pm-field select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  color: var(--pm-text);
+  background: var(--pm-bg);
+  border: 1px solid var(--pm-line);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  appearance: none;
+}
+
+.pm-field input::placeholder {
+  color: #9ca3af;
+}
+
+.pm-field input:focus,
+.pm-field select:focus {
+  border-color: var(--pm-brand);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.18);
+}
+
+/* Checkbox row */
+.pm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+  color: var(--pm-text);
+  font-size: 0.95rem;
+}
+
+.pm-check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--pm-line);
+  border-radius: 4px;
+  accent-color: var(--pm-brand);
+}
+
+/* Error alert */
+.pay-alert.err {
+  border: 1px solid #fecaca;
+  background: #fee2e2;
+  color: #7f1d1d;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+}
+
+/* Actions */
+.pm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+/* Buttons (scoped) */
+.pm-actions .btn {
+  border: 1px solid var(--pm-line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.04s ease, filter 0.2s ease, border-color 0.2s ease;
+}
+
+.pm-actions .btn:active {
+  transform: translateY(1px);
+}
+
+.pm-actions .btn.primary {
+  color: #3b2a00;
+  background: linear-gradient(135deg, var(--pm-brand) 0%, #f3d277 55%, #ffe7a3 100%);
+  border-color: #e6c25b;
+}
+.pm-actions .btn.primary:hover {
+  filter: brightness(0.98);
+}
+
+.pm-actions .btn.ghost {
+  background: var(--pm-bg);
+  color: var(--pm-text);
+  border-color: var(--pm-line);
+}
+.pm-actions .btn.ghost:hover {
+  border-color: var(--pm-brand);
+}
