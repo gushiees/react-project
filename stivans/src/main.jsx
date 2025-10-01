@@ -19,6 +19,7 @@ import Cart from "./pages/cart/cart.jsx";
 import Checkout from "./pages/checkout/checkout.jsx";
 import Catalog from "./pages/catalog/catalog.jsx";
 import ProductDetail from "./pages/product/productdetail.jsx";
+import AuthCallback from "./pages/auth/callback.jsx"; 
 
 // Auth / Context
 import { AuthProvider } from "./AuthContext.jsx";
@@ -43,7 +44,8 @@ const router = createBrowserRouter([
       { path: "insurance", element: <Insurance /> },
       { path: "admin/login", element: <AdminLogin /> },
       { path: "cart", element: <Cart /> },
-      { path: "checkout", element: <Checkout /> }, // ✅ added properly
+      { path: "checkout", element: <Checkout /> },
+      { path: "auth/callback", element: <AuthCallback /> }, // ✅ added properly
 
       // Protected routes
       {

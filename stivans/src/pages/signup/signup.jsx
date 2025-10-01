@@ -1,9 +1,9 @@
+// src/pages/signup/signup.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import "../login/login.css";
 import regImg from "../../assets/regis.jpg";
-
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -22,35 +22,45 @@ export default function Signup() {
     setPending(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // Prefer an explicit env var if you set one (VITE_SITE_URL). Fallback to prod/local.
+      const siteUrl =
+        import.meta.env.VITE_SITE_URL ||
+        (import.meta.env.PROD
+          ? "https://stivans.vercel.app"
+          : window.location.origin);
+
+      const redirectTo = `${siteUrl.replace(/\/$/, "")}/auth/callback`;
+
+      // Pass full_name to user metadata AND set a correct redirect
+      const { data, error: signErr } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: redirectTo,
+          data: fullName ? { full_name: fullName } : undefined,
         },
       });
-      if (error) throw error;
+      if (signErr) throw signErr;
 
-      // --- UPDATED LOGIC ---
-      // If a user was created and a full name was provided, try to update the profile.
-      if (data.user && fullName) {
-        const { error: profileError } = await supabase
+      // Best-effort: upsert into profiles table too
+      if (data.user) {
+        const { error: profileErr } = await supabase
           .from("profiles")
-          .upsert({ id: data.user.id, full_name: fullName });
-
-        // If the profile update fails, log it for the developer but don't stop the user.
-        if (profileError) {
-          console.error("Post-signup profile update failed:", profileError);
+          .upsert({ id: data.user.id, full_name: fullName || null });
+        if (profileErr) {
+          // Non-fatal
+          console.warn("Profile upsert warning:", profileErr.message || profileErr);
         }
       }
 
+      // If email confirmations are ON, supabase returns no session here
       if (data.session) {
         navigate("/profile");
       } else {
-        setNotice("Check your email to confirm your account, then log in.");
+        setNotice("We’ve sent a confirmation link to your email. Please verify to finish signup.");
       }
     } catch (err) {
-      setError(err.message);
+      setError(err?.message || "Signup failed. Please try again.");
     } finally {
       setPending(false);
     }
