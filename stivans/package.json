@@ -3,13 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-
   "engines": {
     "node": ">=20.19"
   },
-
   "packageManager": "npm@10.9.0",
-
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -17,16 +14,15 @@
     "preview": "vite preview",
     "preinstall": "node -e \"const v=process.versions.node.split('.').map(Number); if(v[0]<20||(v[0]===20&&v[1]<19)){ console.error('Node >=20.19 required'); process.exit(1) }\""
   },
-
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "icons": "^1.0.0",
     "react": "^19.1.1",
+    "react-calendar": "^6.0.0",
     "react-dom": "^19.1.1",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.9.1"
   },
-
   "devDependencies": {
     "@eslint/js": "^9.33.0",
     "@types/react": "^19.1.10",

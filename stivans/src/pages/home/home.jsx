@@ -60,20 +60,6 @@ export default function Home() {
               </div>
             </Link>
 
-            {/* Insurance */}
-            <Link to="/insurance" className="service-card" aria-label="Life Insurance">
-              <img src={svcInsurance} alt="" className="service-card__img" />
-              <div className="service-card__shade" aria-hidden="true" />
-              <div className="service-card__content">
-                <h3 className="service-card__title">Life Insurance</h3>
-                <p className="service-card__text">
-                  Affordable protection designed for students and families small premiums, meaningful
-                  coverage. Our micro-insurance plans bundle seamlessly with our funeral services for
-                  smoother claims and faster support.
-                </p>
-              </div>
-            </Link>
-
             {/* Chapels */}
             <Link to="/chapels" className="service-card" aria-label="Chapels">
               <img src={svcChapel} alt="" className="service-card__img" />
@@ -90,36 +76,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* ABOUT */}
-      <section className="section about">
-        <div className="container container--narrow">
-          <h2 className="section-title">About us</h2>
-
-          <div className="about__grid">
-            <div className="about__block">
-              <h3 className="about__heading">Mission</h3>
-              <p className="about__text">
-                At St. Ivans, our mission is to honor every life with warmth, dignity,
-                and meticulous care. We ease families’ burdens through compassionate
-                memorial services and clear, accessible support—before, during, and
-                after the goodbye.
-              </p>
-            </div>
-
-            <div className="about__block">
-              <h3 className="about__heading">Vision</h3>
-              <p className="about__text">
-                We envision a future where every family can create a meaningful,
-                personal farewell. St. Ivans will be the most trusted companion in
-                remembrance, uniting tradition with thoughtful, modern service so no
-                one faces loss alone.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <Footer />
     </div>
   );

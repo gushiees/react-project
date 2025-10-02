@@ -38,12 +38,6 @@ export default function Header() {
             Catalog
           </NavLink>
           <NavLink
-            to="/insurance"
-            className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
-          >
-            Insurance
-          </NavLink>
-          <NavLink
             to="/chapels"
             className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
           >

@@ -139,25 +139,24 @@
   width: min(1400px, 92%);      /* slightly narrower so cards feel balanced */
 }
 
-/* Responsive grid:
-   - Desktop (>=1440px): locks to 3x 519px columns.
-   - Below that: auto-fit 1–2–3 columns, cards scale with aspect-ratio. */
-.card-grid{
-  --card-min: 290px;                 /* smallest card width on small screens */
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--card-min), 1fr));
+/* Flexbox grid for services */
+.card-grid {
+  --card-min: 280px;
+  display: flex;
+  flex-wrap: wrap;
   gap: 28px;
-  justify-items: center;             /* centers cards in their tracks */
-  align-items: stretch;
+  justify-content: center;    /* ✅ center the row of cards */
+  align-items: start;
 }
 
-/* Card base: fluid by default; capped width so it doesn’t grow too big */
-.service-card{
+/* Card base: responsive, capped width */
+.service-card {
   position: relative;
   display: block;
+  flex: 1 1 var(--card-min);   /* responsive sizing */
+  max-width: 519px;
   width: 100%;
-  max-width: 519px;                  /* don’t exceed your design size */
-  aspect-ratio: 519 / 655;           /* preserve original shape */
+  aspect-ratio: 519 / 655;
   border-radius: 16px;
   overflow: hidden;
   background: var(--bg-dark);
@@ -174,11 +173,13 @@
   position: absolute;
   inset: 0;
 }
+
 .service-card__img{
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+
 .service-card__shade{
   background: linear-gradient(180deg, rgba(0,0,0,0) 42%, rgba(0,0,0,.75) 100%);
   z-index: 1;
@@ -225,15 +226,8 @@
 
 /* Desktop lock: exactly 3 × (519px × 655px) columns */
 @media (min-width: 1440px){
-  .card-grid{
-    grid-template-columns: repeat(3, 519px);
-    justify-content: center;
-    gap: 28px;
-  }
   .service-card{
-    max-width: none;
-    width: 519px;
-    aspect-ratio: 519 / 655;
+    flex: 0 0 519px;   /* ✅ exactly 3 fixed cards per row */
   }
 }
 
@@ -292,7 +286,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-
 /* === Make section headings BIG again === */
 
 /* Services heading */
@@ -306,21 +299,12 @@
   height: 6px !important;
 }
 
-/* About us heading */
-.about .section-title {
-  font-size: clamp(52px, 4.5vw, 72px) !important;
-  letter-spacing: 0.01em;
-  margin-bottom: 30px;
-}
-.about .section-title::after {
-  width: 100px !important;
-  height: 5px !important;
-}
+
 
 /* (Optional) on small phones keep them readable */
 @media (max-width: 420px){
   .services .section-title { font-size: 44px !important; }
-  .about .section-title { font-size: 40px !important; }
+  
 }
 
 
