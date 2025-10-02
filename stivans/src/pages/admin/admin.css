@@ -257,3 +257,44 @@
 
 .save-stock { background: #2563eb; color: #fff; }
 .cancel-stock { background: #e5e7eb; color: #111827; }
+
+
+/* toolbar */
+.toolbar {
+  margin: 10px 0 16px;
+  display: flex;
+  gap: 10px;
+}
+
+/* inline edit */
+.inline-edit {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.inline-edit input {
+  width: 90px;
+}
+
+/* stock click affordance */
+.stock-value { cursor: pointer; border-bottom: 1px dashed #aaa; }
+
+/* buttons */
+button.danger { background:#e03131; color:#fff; }
+button.ghost { background: transparent; border:1px solid #ccc; }
+
+/* Users tab */
+.role-inline { display:flex; align-items:center; gap:10px; }
+.role-select { padding:6px 8px; }
+
+.badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border:1px solid #ddd;
+  background:#f7f7f7;
+  text-transform: uppercase;
+  letter-spacing: .2px;
+}
+.badge.admin { background:#fff7e1; border-color:#e8d190; color:#7a5d00; }
+.badge.user  { background:#eef3ff; border-color:#cdd7ff; color:#294088; }
