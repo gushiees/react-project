@@ -1,0 +1,133 @@
+/* src/pages/profile/payments.css */
+/* GOLD + WHITE THEME, fully scoped so it won't affect sidebar */
+:root {
+  --brand: #d4af37;
+  --brand-600: #b8860b;
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --line: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --badge: #fff8e1;
+}
+
+/* Page container */
+.payments-page {
+  background: transparent;
+}
+
+/* Card */
+.payments-page .payments-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 30px rgba(17, 24, 39, 0.06);
+}
+
+.payments-page .payments-card h2 {
+  margin: 0 0 12px 0;
+  font-size: 1.5rem;
+  color: var(--text);
+}
+
+/* Alerts */
+.payments-page .payments-alert {
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 8px 0 16px;
+  font-size: 0.95rem;
+}
+
+.payments-page .payments-alert.error {
+  color: #7f1d1d;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+}
+
+/* List */
+.payments-page .payment-list {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 20px;
+}
+
+.payments-page .payment-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.payments-page .payment-item__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.payments-page .payment-item__sub {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.925rem;
+}
+
+.payments-page .payment-item__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Tags */
+.payments-page .badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--badge);
+  color: #3b2a00;
+  border: 1px solid #f1d28a;
+}
+
+.payments-page .pill {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand) 0%, #f3d277 55%, #ffe7a3 100%);
+  color: #3b2a00;
+  border: 1px solid #e6c25b;
+}
+
+/* Add section */
+.payments-page .payments-add {
+  margin-top: 12px;
+}
+
+/* Note */
+.payments-page .payments-note {
+  margin-top: 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  background: #fffef7;
+  border: 1px dashed #f1d28a;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+/* (Optional) Button tweaks only when inside payments page
+   If your <Button/> has its own styles, you can remove this */
+.payments-page .btn-primary,
+.payments-page button.btn-primary {
+  background: linear-gradient(135deg, var(--brand) 0%, #f3d277 55%, #ffe7a3 100%);
+  border: 1px solid #e6c25b;
+  color: #3b2a00;
+}
+.payments-page .btn-primary:hover,
+.payments-page button.btn-primary:hover {
+  filter: brightness(0.98);
+}

@@ -1,87 +1,234 @@
-/* ================================
-   ST. IVANS – ADDRESSES STYLES
-   ================================ */
+/* src/pages/profile/addresses.css */
 
+/* --- Theme tokens --- */
+:root {
+  --gold: #d4af37;
+  --gold-ink: #b99322;
+  --bg: #f8fafc;
+  --ink: #1f2937;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --ok: #10b981;
+  --warn: #f59e0b;
+  --danger: #dc2626;
+  --card: #ffffff;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --shadow-sm: 0 6px 24px rgba(0,0,0,.06);
+  --shadow-md: 0 10px 30px rgba(0,0,0,.08);
+}
+
+/* --- Page container --- */
 .addresses-container {
-  padding: 20px;
-  background: var(--white);
-  border-radius: var(--radius);
-  box-shadow: 0 2px 10px var(--shadow);
-  margin-bottom: 20px;
+  max-width: 980px;
+  margin: 32px auto;
+  padding: 0 20px;
+  color: var(--ink);
 }
 
-.addresses-title {
-  font-size: 1.5rem;
-  margin-bottom: 20px;
-  color: var(--primary);
+.addresses-container h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 24px 0 12px;
+  letter-spacing: .2px;
 }
 
+/* --- Alerts --- */
+.error-message,
+.success-message,
+.loading {
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-weight: 600;
+  margin: 12px 0 18px;
+  border: 1px solid;
+}
+
+.error-message { background:#fff1f2; color:#991b1b; border-color:#fecaca; }
+.success-message { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.loading { background:#fff; color:var(--muted); border-color:var(--line); }
+
+/* --- Card wrapper for the form --- */
 .address-form {
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+/* --- Form layout --- */
+.form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 14px;
 }
 
-@media (max-width: 768px) {
-  .address-form {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 700px) {
+  .form-row { grid-template-columns: 1fr; }
 }
 
-.address-form input,
-.address-form select {
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: var(--radius);
-  font-size: 1rem;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
-.address-actions {
+.form-group label {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.address-form input[type="text"],
+.address-form input[type="tel"],
+.address-form input[type="email"],
+.address-form input[type="number"] {
+  height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  outline: none;
+  transition: box-shadow .2s, border-color .2s;
+}
+
+.address-form input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px rgba(212,175,55,.18);
+}
+
+/* checkbox line */
+.form-group.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 4px;
+}
+
+.form-group.checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+}
+
+/* --- Buttons --- */
+.form-buttons {
   display: flex;
   gap: 10px;
-  margin-top: 15px;
+  margin-top: 8px;
+}
+
+.address-form button {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .04s ease, box-shadow .2s ease, background .2s;
+}
+
+.address-form button[disabled] {
+  opacity: .65;
+  cursor: default;
+}
+
+.address-form button:not(.cancel-button) {
+  background: var(--gold);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.address-form button:not(.cancel-button):hover { background: var(--gold-ink); }
+.address-form button:not(.cancel-button):active { transform: translateY(1px); }
+
+.cancel-button {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.cancel-button:hover { border-color: var(--gold); }
+
+/* --- List of addresses --- */
+.addresses-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+  .addresses-list { grid-template-columns: 1fr; }
 }
 
 .address-card {
-  padding: 15px;
-  border: 1px solid #eee;
-  border-radius: var(--radius);
-  margin-bottom: 15px;
   position: relative;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 16px 16px 12px;
 }
 
-.address-card.default {
-  border-color: var(--primary);
-  background-color: var(--accent);
-}
+.address-card p { margin: 2px 0; color: var(--ink); }
 
+/* “Default” badge */
 .default-badge {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: var(--primary);
-  color: white;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.8rem;
+  top: 12px;
+  right: 12px;
+  font-size: .78rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--gold);
+  padding: 4px 10px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
 }
 
-.address-buttons {
+.address-card.default-address {
+  border-color: var(--gold);
+  box-shadow: var(--shadow-md);
+}
+
+/* Card actions */
+.address-actions {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
-.form-buttons {
-  grid-column: 1 / -1;
-  display: flex;
-  gap: 10px;
+.address-actions button {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, transform .04s;
 }
 
-.address-empty {
-  text-align: center;
-  padding: 30px;
-  color: #888;
+.address-actions button:hover { border-color: var(--gold); }
+.address-actions button:active { transform: translateY(1px); }
+
+/* emphasis states */
+.address-actions .default-button {
+  border-color: var(--gold);
+  background: linear-gradient(#fff, #fff) padding-box,
+              linear-gradient(45deg, transparent, var(--gold)) border-box;
+}
+
+.address-actions .delete-button {
+  border-color: #f3c0c0;
+  color: #b91c1c;
+}
+
+.address-actions .delete-button:hover {
+  border-color: var(--danger);
+  background: #fff5f5;
 }
