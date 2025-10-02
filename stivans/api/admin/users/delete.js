@@ -16,6 +16,8 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
+export const config = { runtime: 'nodejs' }; // important
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -27,23 +29,29 @@ export default async function handler(req, res) {
 
     const { data: caller, error: callerErr } = await admin.auth.getUser(token);
     if (callerErr || !caller?.user) {
-      return res.status(401).json({ error: 'Invalid session token' });
+      return res.status(401).json({ error: 'Invalid session token', details: callerErr?.message || callerErr });
     }
 
     const callerUser = caller.user;
     const callerEmail = (callerUser.email || '').toLowerCase();
 
-    // 2) Ensure caller is admin (either via env whitelist or profiles.role === 'admin')
+    // 2) Ensure caller is admin
     let isAdmin = ADMIN_EMAILS.includes(callerEmail);
     if (!isAdmin) {
       const { data: prof, error: profErr } = await admin
-        .from('profiles').select('role').eq('id', callerUser.id).single();
+        .from('profiles')
+        .select('role')
+        .eq('id', callerUser.id)
+        .single();
+
       if (profErr) {
-        return res.status(400).json({ error: 'Failed to check caller role', details: profErr.message });
+        return res.status(400).json({ error: 'Failed to check caller role', details: profErr.message || profErr });
       }
       isAdmin = prof?.role === 'admin';
     }
-    if (!isAdmin) return res.status(403).json({ error: 'Auth error deleting user' });
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Auth error deleting user', details: 'Caller is not admin' });
+    }
 
     // 3) Payload
     const { userId } = req.body || {};
@@ -52,21 +60,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Refusing to delete the currently logged-in admin' });
     }
 
-    // 4) Delete from auth (this also cascades to profiles if you set ON DELETE CASCADE)
+    // 4) Delete from auth (service role required)
     const { error: delErr } = await admin.auth.admin.deleteUser(userId);
     if (delErr) {
-      return res.status(400).json({ error: 'Auth delete failed', details: delErr.message || delErr });
+      // Show the exact supabase error back to the client so we can see what's wrong
+      return res.status(400).json({
+        error: 'Auth delete failed',
+        details: delErr.message || delErr.error_description || delErr.error || delErr,
+      });
     }
-
-    // 5) Best effort cleanup of app tables if needed (usually unnecessary if FKs set to CASCADE/SET NULL)
-    // Example: await admin.from('payments').delete().eq('user_id', userId);
 
     return res.status(200).json({ ok: true });
   } catch (e) {
     console.error('[delete-user] server error:', e);
-    return res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: 'Server error', details: e.message || e });
   }
 }
-
-// IMPORTANT: use Node runtime (NOT edge, NOT nodejs18.x)
-export const config = { runtime: 'nodejs' };
