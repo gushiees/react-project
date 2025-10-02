@@ -1,111 +1,145 @@
 // api/admin/users/delete.js
+import { createClient } from "@supabase/supabase-js";
 
-import { createClient } from '@supabase/supabase-js';
+const SUPABASE_URL =
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const URL  = process.env.SUPABASE_URL;
-const SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!URL || !SVC) {
-  console.warn('[admin/delete] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-}
-
-const admin = createClient(URL, SVC, { auth: { persistSession: false } });
-
-/**
- * Utility to delete from a table and surface errors with context.
- */
-async function safeDelete({ table, where, label }) {
-  const q = admin.from(table).delete().match(where);
-  const { error, count } = await q.select('*', { count: 'exact' });
-  if (error) {
-    const info = {
-      where: 'db-delete',
-      table,
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-    };
-    throw Object.assign(new Error(`DB delete failed on ${table}`), { info });
-  }
-  return { table, deleted: count ?? 0, label };
-}
+// This client uses the Service Role key (server-side only!)
+const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { authorization } = req.headers;
-    const { userId } = req.body || {};
-    if (!authorization) return res.status(401).json({ error: 'Missing bearer token' });
-    if (!userId)       return res.status(400).json({ error: 'Missing userId' });
+    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+      return res.status(500).json({
+        step: "config",
+        error:
+          "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY (server env)",
+      });
+    }
 
-    // Verify caller & role
-    const token = authorization.replace(/^Bearer\s+/i, '');
-    const adminCaller = createClient(URL, SVC);
-    const { data: me, error: meErr } = await adminCaller.auth.getUser(token);
-    if (meErr || !me?.user) return res.status(401).json({ error: 'Invalid session' });
+    // 1) Require an authenticated *admin* caller
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
 
-    const { data: prof, error: profErr } = await admin
-      .from('profiles')
-      .select('role')
-      .eq('id', me.user.id)
+    if (!token) {
+      return res.status(401).json({ step: "authz", error: "No bearer token" });
+    }
+
+    const caller = await supabaseAdmin.auth.getUser(token);
+    if (caller.error || !caller.data?.user?.id) {
+      return res.status(401).json({
+        step: "authz",
+        error: "Invalid session token",
+        details: caller.error?.message,
+      });
+    }
+
+    // (Optional) If you keep roles in profiles, verify caller is admin here.
+    // If not, remove or adapt this section.
+    const adminCheck = await supabaseAdmin
+      .from("profiles")
+      .select("role")
+      .eq("id", caller.data.user.id)
       .maybeSingle();
-    if (profErr) {
-      return res.status(500).json({ error: 'Failed to read caller role', details: profErr.message });
+
+    const callerRole = adminCheck.data?.role || "user";
+    if (callerRole !== "admin") {
+      return res.status(403).json({ step: "authz", error: "Admin required" });
     }
-    if (!prof || prof.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden: admin role required' });
+
+    const { userId } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ step: "input", error: "Missing userId" });
     }
 
-    const report = [];
+    if (userId === caller.data.user.id) {
+      return res
+        .status(400)
+        .json({ step: "input", error: "You cannot delete yourself" });
+    }
 
-    // --- 1) Delete from public tables FIRST (safe order) ---
-    // adjust this list to match your schema; they are all keyed by user_id
-    const tablesInOrder = [
-      { table: 'payment_methods', where: { user_id: userId } },
-      { table: 'user_addresses',  where: { user_id: userId } },
-      // Orders: choose ONE of the two blocks below depending on how you want to handle orders.
-      // If you want to preserve order history, comment the next line out and ensure FK is SET NULL.
-      { table: 'orders',          where: { user_id: userId } },
-      // If you keep orders, you may also need to delete cadaver_details/payments after finding order ids.
-      // Example (uncomment and adapt if needed):
-      // { table: 'payments',       where: { order_id: someId } },
-      // { table: 'cadaver_details',where: { order_id: someId } },
-      { table: 'profiles',        where: { id: userId } }, // profile row
-    ];
+    // 2) DB cleanup first (safe even if user not in these tables)
+    // These should be CASCADE in your schema already, but we call them anyway
+    // to keep the error reporting granular.
+    try {
+      await supabaseAdmin.from("payment_methods").delete().eq("user_id", userId);
+      await supabaseAdmin.from("user_addresses").delete().eq("user_id", userId);
+      await supabaseAdmin.from("profiles").delete().eq("id", userId);
+    } catch (dbErr) {
+      // If RLS blocks these, you’ll see it here
+      return res.status(400).json({
+        step: "db",
+        error: "Database error deleting user-linked rows",
+        details: dbErr?.message || dbErr,
+      });
+    }
 
-    for (const t of tablesInOrder) {
+    // 3) Try deleting via supabase-js admin first (hard delete)
+    const del = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (del.error) {
+      // 3b) Fallback: call GoTrue REST with should_soft_delete=true
+      //     Some "unexpected_failure" cases succeed as soft deletes.
       try {
-        const r = await safeDelete({ ...t, label: 'pre-auth' });
-        report.push(r);
-      } catch (e) {
-        // Bubble the exact table failure
+        const gotrueResp = await fetch(
+          `${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}?should_soft_delete=true`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              apiKey: SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+            },
+          }
+        );
+
+        if (!gotrueResp.ok) {
+          let body = {};
+          try {
+            body = await gotrueResp.json();
+          } catch {}
+          return res.status(400).json({
+            step: "auth",
+            code: body?.error_code || body?.code || "unexpected_failure",
+            error: "Auth delete failed (soft)",
+            details: body?.error || body?.message || del.error?.message,
+          });
+        }
+
+        // Soft delete success
+        return res.status(200).json({
+          ok: true,
+          mode: "soft",
+          step: "auth",
+          message: "User soft-deleted via GoTrue",
+        });
+      } catch (softErr) {
         return res.status(400).json({
-          error: 'Database error deleting user',
-          step: 'db',
-          ...e.info,
+          step: "auth",
+          code: del.error?.status || "unexpected_failure",
+          error: "Auth delete failed",
+          details: del.error?.message || String(softErr),
         });
       }
     }
 
-    // --- 2) Delete from auth.users last ---
-    const { error: authErr } = await admin.auth.admin.deleteUser(userId);
-    if (authErr) {
-      return res.status(400).json({
-        error: 'Auth delete failed',
-        step: 'auth',
-        code: authErr.code,
-        message: authErr.message,
-      });
-    }
-    report.push({ step: 'auth', deleted: 1 });
-
-    return res.status(200).json({ ok: true, where: 'delete-v2', report });
+    // Hard delete success
+    return res.status(200).json({ ok: true, mode: "hard" });
   } catch (e) {
-    console.error('[admin/delete] Unexpected', e);
-    return res.status(500).json({ error: 'Unexpected server error' });
+    console.error("[admin/users/delete] server err:", e);
+    return res.status(500).json({
+      step: "server",
+      error: "Server error",
+      details: e?.message || e,
+    });
+    // no throw
   }
 }
