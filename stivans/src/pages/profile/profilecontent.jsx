@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../supabaseClient";
+import ChatBot from "../../components/Chatbot/Chatbot";
 import "./profilecontent.css";
 
 function php(n) {
@@ -422,6 +423,7 @@ export default function ProfileContent() {
             {/* Activity */}
             {activeTab === "activity" && <ActivityTimeline />}
           </div>
+          <ChatBot />
         </main>
       </div>
     </div>

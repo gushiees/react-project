@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { useCart } from "../../contexts/cartContext";
+import ChatBot from "../../components/Chatbot/Chatbot";
 import "./cart.css";
 
 function php(amount) {
@@ -213,7 +214,7 @@ export default function Cart() {
           </div>
         )}
       </div>
-
+      <ChatBot />
       <Footer />
     </>
   );
