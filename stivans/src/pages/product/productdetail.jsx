@@ -5,6 +5,7 @@ import Footer from "../../components/footer/footer";
 import "./productdetail.css";
 import { fetchProductById } from "../../data/products.jsx";
 import { useCart } from "../../contexts/cartContext.jsx";
+import ChatBot from "../../components/Chatbot/Chatbot";
 
 function php(amount) {
   const numericAmount = Number(amount) || 0;
@@ -215,6 +216,7 @@ export default function ProductDetail() {
           </div>
         </div>
       </main>
+      <ChatBot />
       <Footer />
       {showPopup && (
         <div className="cart-popup">

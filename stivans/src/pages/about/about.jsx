@@ -187,7 +187,6 @@ const About = () => {
           ))}
         </div>
       </div>
-
       <Footer />
     </section>
   );

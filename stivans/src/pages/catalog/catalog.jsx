@@ -45,7 +45,7 @@ export default function Catalog() {
     loadProducts();
   }, []);
 
-  // Build category list & suggestions for autocomplete
+  // Build category leeist & suggestions for autocomplete
   const categories = useMemo(() => {
     const set = new Set(bundles.map((p) => p.category).filter(Boolean));
     return Array.from(set).sort();
@@ -176,7 +176,6 @@ export default function Catalog() {
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );
