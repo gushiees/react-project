@@ -28,7 +28,7 @@ export default function Checkout() {
   const [purchaseType, setPurchaseType] = useState("self"); // 'self' | 'someone'
   const isForDeceased = purchaseType === "someone";
 
-  // Chapel booking add-on
+  // -------- Chapel booking (optional) --------
   const [chapels, setChapels] = useState([]);
   const [bookingEnabled, setBookingEnabled] = useState(false);
   const [selectedChapelId, setSelectedChapelId] = useState("");
@@ -38,11 +38,6 @@ export default function Checkout() {
   const [availabilityErr, setAvailabilityErr] = useState("");
   const [isAvailable, setIsAvailable] = useState(null); // null | true | false
 
-  // Cold storage fee: ₱5000/day (matches # of chapel days)
-  const COLD_STORAGE_PER_DAY = 5000;
-  const coldStorageDays = bookingEnabled ? Math.max(1, Number(numDays) || 1) : 0;
-  const coldStorageTotal = coldStorageDays * COLD_STORAGE_PER_DAY;
-
   // Derived chapel info
   const selectedChapel = useMemo(
     () => chapels.find((c) => c.id === selectedChapelId) || null,
@@ -51,6 +46,15 @@ export default function Checkout() {
   const chapelDays = bookingEnabled ? Math.max(1, Number(numDays) || 1) : 0;
   const chapelDailyRate = Number(selectedChapel?.daily_rate || 0);
   const chapelBookingTotal = chapelDays * chapelDailyRate;
+
+  // -------- Cold storage (optional, fully separate) --------
+  const COLD_STORAGE_PER_DAY = 5000;
+  const [coldEnabled, setColdEnabled] = useState(false);
+  const [coldStartDate, setColdStartDate] = useState("");
+  const [coldDays, setColdDays] = useState(1);
+
+  const coldValidDays = coldEnabled ? Math.max(1, Number(coldDays) || 1) : 0;
+  const coldStorageTotal = coldValidDays * COLD_STORAGE_PER_DAY;
 
   // Base totals (from cart)
   const baseSubtotal = useMemo(
@@ -70,17 +74,24 @@ export default function Checkout() {
         image_url: null,
       });
     }
-    if (bookingEnabled && coldStorageDays > 0) {
+    if (coldEnabled && coldValidDays > 0) {
       rows.push({
         id: "cold-storage-addon",
-        name: `Cold Storage (${coldStorageDays} day${coldStorageDays > 1 ? "s" : ""})`,
+        name: `Cold Storage (${coldValidDays} day${coldValidDays > 1 ? "s" : ""})`,
         price: COLD_STORAGE_PER_DAY,
-        quantity: coldStorageDays,
+        quantity: coldValidDays,
         image_url: null,
       });
     }
     return rows;
-  }, [bookingEnabled, selectedChapel, chapelDays, chapelDailyRate, coldStorageDays]);
+  }, [
+    bookingEnabled,
+    selectedChapel,
+    chapelDays,
+    chapelDailyRate,
+    coldEnabled,
+    coldValidDays,
+  ]);
 
   const subtotal = useMemo(() => {
     const addOns = extraLineItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
@@ -136,7 +147,7 @@ export default function Checkout() {
     })();
   }, []);
 
-  // Availability helpers
+  // Helpers: end dates
   const endDate = useMemo(() => {
     if (!startDate || chapelDays < 1) return "";
     const d = new Date(startDate + "T00:00:00");
@@ -144,6 +155,14 @@ export default function Checkout() {
     return d.toISOString().slice(0, 10);
   }, [startDate, chapelDays]);
 
+  const coldEndDate = useMemo(() => {
+    if (!coldStartDate || coldValidDays < 1) return "";
+    const d = new Date(coldStartDate + "T00:00:00");
+    d.setDate(d.getDate() + (coldValidDays - 1));
+    return d.toISOString().slice(0, 10);
+  }, [coldStartDate, coldValidDays]);
+
+  // Availability (chapel only)
   const checkAvailability = async () => {
     try {
       setAvailabilityErr("");
@@ -151,7 +170,6 @@ export default function Checkout() {
       if (!bookingEnabled || !selectedChapelId || !startDate || chapelDays < 1) return;
 
       setCheckingAvailability(true);
-      // Overlap check:
       const { data, error } = await supabase
         .from("chapel_bookings")
         .select("id,start_date,end_date,status,chapel_id")
@@ -214,7 +232,7 @@ export default function Checkout() {
       }
       if (!validateCadaver()) return;
 
-      // If booking is enabled, ensure availability is OK
+      // Validate chapel details if enabled
       if (bookingEnabled) {
         if (!selectedChapelId || !startDate || chapelDays < 1) {
           setErrorMsg("Please complete chapel booking details.");
@@ -222,6 +240,14 @@ export default function Checkout() {
         }
         if (isAvailable === false) {
           setErrorMsg("Selected chapel/dates are not available. Please adjust.");
+          return;
+        }
+      }
+
+      // Validate cold storage if enabled
+      if (coldEnabled) {
+        if (!coldStartDate || coldValidDays < 1) {
+          setErrorMsg("Please complete cold storage dates.");
           return;
         }
       }
@@ -291,6 +317,7 @@ export default function Checkout() {
         shipping: Number(shipping.toFixed(2)),
         total: Number(total.toFixed(2)),
         payment_method: null,
+        purchase_type: purchaseType, // 'self' | 'someone'
         cadaver: isForDeceased
           ? {
               ...cadaver,
@@ -308,12 +335,17 @@ export default function Checkout() {
               start_date: startDate,
               end_date: endDate,
               days: chapelDays,
-              cold_storage_days: coldStorageDays,
               chapel_amount: chapelBookingTotal,
-              cold_storage_amount: coldStorageTotal,
             }
           : null,
-        purchase_type: purchaseType,
+        cold_storage_booking: coldEnabled
+          ? {
+              start_date: coldStartDate,
+              end_date: coldEndDate,
+              days: coldValidDays,
+              amount: coldStorageTotal,
+            }
+          : null,
       };
 
       const res = await fetch(`${API_BASE}/api/xendit/create-invoice`, {
@@ -407,7 +439,6 @@ export default function Checkout() {
                   <p className="hint">No cadaver details needed now. Your plan will be recorded under your account.</p>
                 )}
 
-                {/* Cadaver details button (only if at-need) */}
                 {isForDeceased && (
                   <button
                     type="button"
@@ -419,7 +450,7 @@ export default function Checkout() {
                 )}
               </div>
 
-              {/* Chapel booking add-on */}
+              {/* Chapel booking (optional) */}
               <div className="card-block">
                 <div className="block-title">Chapel Booking (optional)</div>
 
@@ -494,8 +525,63 @@ export default function Checkout() {
                         <span>Chapel ({chapelDays}d × {php(chapelDailyRate)})</span>
                         <span>{php(chapelBookingTotal)}</span>
                       </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Cold storage (optional, separate dates) */}
+              <div className="card-block">
+                <div className="block-title">Cold Storage (optional)</div>
+
+                <label className="switch-row">
+                  <input
+                    type="checkbox"
+                    checked={coldEnabled}
+                    onChange={(e) => setColdEnabled(e.target.checked)}
+                  />
+                  <span>Reserve cold storage</span>
+                </label>
+
+                {coldEnabled && (
+                  <>
+                    <div className="row-grid tight">
+                      <div className="field">
+                        <label>Start Date</label>
+                        <input
+                          type="date"
+                          value={coldStartDate}
+                          onChange={(e) => setColdStartDate(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label>Number of Days</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={coldDays}
+                          onChange={(e) => setColdDays(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label>Rate (per day)</label>
+                        <input value={php(COLD_STORAGE_PER_DAY)} readOnly />
+                      </div>
+                    </div>
+
+                    {coldStartDate && coldValidDays > 0 && (
+                      <p className="hint">
+                        End date: <strong>{coldEndDate || "—"}</strong>
+                      </p>
+                    )}
+
+                    <div className="addon-totals">
                       <div className="row">
-                        <span>Cold Storage ({coldStorageDays}d × {php(COLD_STORAGE_PER_DAY)})</span>
+                        <span>Cold Storage ({coldValidDays}d × {php(COLD_STORAGE_PER_DAY)})</span>
                         <span>{php(coldStorageTotal)}</span>
                       </div>
                     </div>
