@@ -1,138 +1,183 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import "./chatbot.css"; // keep whatever styles you already have
 
-/**
- * Minimal, safe Chatbot panel (modal) with:
- * - interval cleanup on unmount
- * - abortable fetch for messages
- * - ESC to close, click-outside to close
- * - simple body scroll lock
- */
-export default function Chatbot({ open, onClose }) {
-  const [messages, setMessages] = useState([
-    { role: "assistant", content: "Hi! How can I help you today?" },
-  ]);
+const SITE = {
+  name: "St. Ivans",
+  catalogUrl: "/catalog",
+  chapelsUrl: "/chapels",
+  supportEmail: "support@stivans.ph",
+};
+
+const COPY = {
+  intro:
+    "Hi! I’m St. Ivans Support. Ask me about our funeral bundles, chapels, prices, how to book, or payments.",
+  mission:
+    "To provide compassionate, dignified, and affordable funeral services that honor the life of every individual.",
+  vision:
+    "To be the most trusted funeral service provider in the country, embracing innovation while preserving tradition.",
+  values: [
+    "Compassion & Respect — We treat every family with empathy and honor the dignity of every life.",
+    "Professionalism & Integrity — We uphold high standards with honesty and transparency.",
+    "Affordability & Accessibility — We make meaningful services within reach for all families.",
+    "Innovation with Tradition — We use technology to improve services while respecting culture.",
+  ],
+  services:
+    "We offer funeral arrangements, cremation, memorial planning, chapel bookings, and online tribute options.",
+  planning:
+    "You can plan a service online, call our hotline, or visit us. Online: add a bundle from the Catalog, proceed to Checkout, and complete details.",
+  nationwide:
+    "Yes. We’ve expanded across multiple regions in the country. Availability may vary by chapel.",
+  booking:
+    "To book a chapel, go to the Chapels page, pick a location and schedule, then follow the prompts.",
+  pricing:
+    "Browse the Catalog for current bundle prices. Each product page shows inclusions and monthly estimates.",
+  payments:
+    "We accept flexible modes via Xendit (cards, e-wallets, etc.). You’ll be redirected to a secure Xendit invoice to pay.",
+  faqs: [
+    "• What services do you offer? — Funeral arrangements, cremation, memorial planning, chapels, online tributes.",
+    "• How do I plan a funeral? — Use our website, call us, or visit in person.",
+    "• Are you nationwide? — Yes, in multiple regions.",
+    "• How do I book a chapel? — Go to Chapels, pick a branch/date, and book.",
+    "• How do I pay? — Secure Xendit invoice (cards, e-wallets, etc.).",
+  ],
+};
+
+function normalize(s) {
+  return (s || "").toLowerCase();
+}
+
+function makeReply(userText) {
+  const t = normalize(userText);
+
+  // quick intents
+  const has = (...keys) => keys.some(k => t.includes(k));
+
+  if (has("mission")) {
+    return `Our Mission\n${COPY.mission}`;
+  }
+  if (has("vision")) {
+    return `Our Vision\n${COPY.vision}`;
+  }
+  if (has("value", "values")) {
+    return `Our Values\n${COPY.values.join("\n")}`;
+  }
+  if (has("service", "offer", "what do you do")) {
+    return COPY.services;
+  }
+  if (has("plan", "planning", "how to start")) {
+    return COPY.planning;
+  }
+  if (has("nationwide", "country", "regions", "available everywhere")) {
+    return COPY.nationwide;
+  }
+  if (has("chapel", "chapels", "wake", "venue")) {
+    return `You can browse and book chapels here: ${SITE.chapelsUrl}`;
+  }
+  if (has("plan", "bundle", "package", "price", "cost")) {
+    return `For plans and pricing, visit our Catalog: ${SITE.catalogUrl}`;
+  }
+  if (has("book", "booking", "reserve", "schedule")) {
+    return COPY.booking;
+  }
+  if (has("pay", "payment", "xendit", "gcash", "card", "wallet")) {
+    return COPY.payments;
+  }
+  if (has("faq", "faqs", "question", "help")) {
+    return `FAQs\n${COPY.faqs.join("\n")}`;
+  }
+  if (has("contact", "email", "support", "helpdesk")) {
+    return `You can reply here or email us at ${SITE.supportEmail}.`;
+  }
+
+  // gentle default
+  return (
+    "Here’s a quick overview:\n" +
+    `• Catalog & pricing: ${SITE.catalogUrl}\n` +
+    `• Book a chapel: ${SITE.chapelsUrl}\n` +
+    "• Payments: Secure via Xendit (cards/e-wallets)\n" +
+    "You can also ask about: mission, vision, values, services, FAQs."
+  );
+}
+
+export default function Chatbot({ onClose }) {
+  const [open, setOpen] = useState(true);
   const [input, setInput] = useState("");
-  const abortRef = useRef(null);
-  const modalRef = useRef(null);
+  const [messages, setMessages] = useState([
+    { role: "assistant", text: "St. Ivans Support\n" + COPY.intro },
+  ]);
+  const listRef = useRef(null);
 
-  // Body scroll lock
+  // scroll to bottom on new message
   useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+    listRef.current?.scrollTo({ top: 999999, behavior: "smooth" });
+  }, [messages]);
 
-  // Interval (e.g., keepalive/ping) – cleaned up on unmount
-  useEffect(() => {
-    if (!open) return;
-    const t = setInterval(() => {
-      // example: ping or analytics heartbeat
-      // console.debug("chat heartbeat");
-    }, 30000);
-    return () => clearInterval(t);
-  }, [open]);
-
-  // ESC to close + click-outside to close
-  useEffect(() => {
-    if (!open) return;
-
-    const onKey = (e) => e.key === "Escape" && onClose?.();
-    const onClick = (e) => {
-      if (modalRef.current && !modalRef.current.contains(e.target)) onClose?.();
-    };
-
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onClick);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onClick);
-    };
-  }, [open, onClose]);
-
-  // Abort any inflight request when closing/unmounting
+  // cleanup example (no timers here, but keeping pattern)
   useEffect(() => {
     return () => {
-      if (abortRef.current) {
-        abortRef.current.abort();
-      }
+      /* if you add timers/fetch, clean up here */
     };
   }, []);
 
-  async function handleSend(e) {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text) return;
+  const disabled = useMemo(() => !input.trim(), [input]);
 
-    // add user message
-    setMessages((m) => [...m, { role: "user", content: text }]);
+  const send = (e) => {
+    e?.preventDefault?.();
+    const q = input.trim();
+    if (!q) return;
+
+    // push user msg
+    setMessages((m) => [...m, { role: "user", text: q }]);
     setInput("");
 
-    // abort any previous
-    if (abortRef.current) abortRef.current.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-
     try {
-      // Replace this with your real endpoint
-      const res = await fetch("/api/chatbot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, { role: "user", content: text }] }),
-        signal: ctrl.signal,
-      });
-
-      if (!res.ok) throw new Error("Failed to get reply");
-      const data = await res.json();
-
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", content: data.reply ?? "Thanks! Noted." },
-      ]);
+      // purely local reply
+      const answer = makeReply(q);
+      setMessages((m) => [...m, { role: "assistant", text: answer }]);
     } catch (err) {
-      if (err.name === "AbortError") return; // user closed or new send
+      console.error("Chatbot error:", err);
       setMessages((m) => [
         ...m,
-        { role: "assistant", content: "Sorry—something went wrong. Please try again." },
+        {
+          role: "assistant",
+          text:
+            "Sorry—something went wrong while composing a reply. Please try again.",
+        },
       ]);
     }
-  }
+  };
 
   if (!open) return null;
 
-  return createPortal(
-    <div className="chat-overlay" aria-modal="true" role="dialog">
-      <div className="chat-modal" ref={modalRef} role="document">
-        <header className="chat-head">
-          <div className="chat-title">St. Ivans Support</div>
-          <button className="chat-x" onClick={onClose} aria-label="Close">×</button>
-        </header>
-
-        <div className="chat-body">
-          {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`chat-msg ${m.role === "user" ? "me" : "bot"}`}
-            >
-              {m.content}
-            </div>
-          ))}
-        </div>
-
-        <form className="chat-form" onSubmit={handleSend}>
-          <input
-            className="chat-input"
-            placeholder="Ask about plans, pricing, chapels…"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-          />
-          <button className="chat-send" type="submit">Send</button>
-        </form>
+  return (
+    <div className="cbt-wrap" role="dialog" aria-label="St. Ivans Support">
+      <div className="cbt-head">
+        <div className="cbt-title">St. Ivans Support</div>
+        <button className="cbt-x" onClick={() => (setOpen(false), onClose?.())} aria-label="Close chat">
+          ×
+        </button>
       </div>
-    </div>,
-    document.body
+
+      <div className="cbt-body" ref={listRef}>
+        {messages.map((m, i) => (
+          <div key={i} className={`cbt-msg ${m.role}`}>
+            <div className="cbt-bubble">{m.text}</div>
+          </div>
+        ))}
+      </div>
+
+      <form className="cbt-foot" onSubmit={send}>
+        <input
+          className="cbt-input"
+          placeholder="Type your message…"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          aria-label="Message"
+        />
+        <button className="cbt-send" disabled={disabled}>
+          Send
+        </button>
+      </form>
+    </div>
   );
 }
