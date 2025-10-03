@@ -1,96 +1,110 @@
-import { useEffect, useRef, useState } from 'react';
-import { matchFaq } from '../../ai/faq';
-import './chatbot.css';
+// src/pages/anywhere/with-chatbot.jsx (example usage)
+import Chatbot from "../../components/Chatbot/Chatbot";
 
-export default function ChatBot({
-  systemPrompt = "You are St. Ivans' helpful support assistant. Be concise and friendly. If unsure, ask for clarification.",
-}) {
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [input, setInput] = useState('');
-  const [msgs, setMsgs] = useState([
-    { role: 'assistant', text: "Hi! I’m here to help. Ask me about products, orders, or payments." }
-  ]);
-  const scroller = useRef(null);
+const BOT_PROMPT = `
+You are St. Ivans’ virtual assistant. Be concise, warm, and professional.
+Always stay within St. Ivans services (bundles, chapel bookings, planning, documents, payments via Xendit).
+If you don’t know, offer to connect the user to support.
+Tone: calm, reassuring, helpful. 
+`;
 
-  useEffect(() => {
-    if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
-  }, [msgs, open]);
+const botRules = [
+  // What St. Ivans is
+  {
+    test: /(what|who).*st(\.| )?ivans|about you|what do you do/i,
+    reply: () =>
+      "St. Ivans provides compassionate, dignified, and affordable funeral services. We offer practical bundles, chapel bookings, and flexible payments via Xendit—combining technology with tradition to make arrangements simpler.",
+  },
 
-  async function askLLM(userText) {
-    // 1) Try FAQ
-    const faq = matchFaq(userText);
-    if (faq) return faq;
+  // Mission / Vision / Values
+  {
+    test: /(mission|vision|values)/i,
+    reply: () =>
+      "• Mission: To provide compassionate, dignified, and affordable funeral services that honor every life.\n" +
+      "• Vision: To be the most trusted funeral service provider in the country—embracing innovation while preserving tradition.\n" +
+      "• Values: Compassion & Respect; Professionalism & Integrity; Affordability & Accessibility; Innovation with Tradition.",
+  },
 
-    // 2) Fallback to LLM via your serverless proxy
-    const body = {
-      system: systemPrompt,
-      messages: [
-        ...msgs.map(m => ({ role: m.role, content: m.text })),
-        { role: 'user', content: userText }
-      ],
-      // model: 'llama-3.1-8b-instant', // optional override
-      temperature: 0.2
-    };
+  // Services
+  {
+    test: /(services|offer|do you have|what do you provide)/i,
+    reply: () =>
+      "We provide complete funeral arrangements, cremation services, memorial planning, chapel bookings, and online tribute options.",
+  },
 
-    const r = await fetch('/api/ai/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data?.details || data?.error || 'Chat failed');
-    return data.text || "Sorry, I couldn’t find that.";
-  }
+  // Planning
+  {
+    test: /(plan|arrange|set up).*funeral|how to start/i,
+    reply: () =>
+      "You can plan everything online through our website, call us for guided assistance, or visit us in person—whichever you prefer. I can point you to our bundles if you'd like.",
+  },
 
-  const onSend = async (e) => {
-    e?.preventDefault?.();
-    const text = input.trim();
-    if (!text || busy) return;
+  // Payment / Xendit
+  {
+    test: /(pay|payment|xendit|gcash|card|installment|monthly)/i,
+    reply: () =>
+      "We support secure payments via Xendit (cards, e-wallets like GCash/GrabPay, and bank transfer). We also provide flexible installment displays on product pages and at checkout.",
+  },
 
-    setMsgs(m => [...m, { role: 'user', text }]);
-    setInput('');
-    setBusy(true);
+  // Coverage / Regions
+  {
+    test: /(nationwide|coverage|available.*where|regions|areas)/i,
+    reply: () =>
+      "Yes. We serve Metro Manila and nearby regions directly, and we’re expanding nationwide through partner networks.",
+  },
 
-    try {
-      const reply = await askLLM(text);
-      setMsgs(m => [...m, { role: 'assistant', text: reply }]);
-    } catch (err) {
-      console.error(err);
-      setMsgs(m => [...m, { role: 'assistant', text: "Oops—I'm having trouble answering that right now." }]);
-    } finally {
-      setBusy(false);
-    }
-  };
+  // Chapels
+  {
+    test: /(chapel|book.*chapel|venue|location|branch)/i,
+    reply: () =>
+      "You can book chapels through our website. We serve Metro Manila locations (e.g., Kamuning, Commonwealth, Cubao) and are adding more venues.",
+  },
 
+  // Human handoff
+  {
+    test: /(talk to|agent|human|representative|contact|phone|email)/i,
+    reply: () =>
+      "I can connect you to our team. Please email support@stivans.ph or call +63 900 000 0000. If you share your name and number, we’ll reach out promptly.",
+  },
+];
+
+const botFAQs = [
+  {
+    q: "What services do you offer?",
+    a: "We provide funeral arrangements, cremation services, memorial planning, chapel bookings, and online tribute options.",
+    tags: ["services", "offer", "funeral", "cremation", "chapel", "memorial"],
+  },
+  {
+    q: "How do I plan a funeral with St. Ivans?",
+    a: "Plan directly online, call for guided help, or visit us in person—whatever’s most comfortable for you.",
+    tags: ["plan", "arrange", "start", "setup"],
+  },
+  {
+    q: "Are your services available nationwide?",
+    a: "Yes. We serve Metro Manila and nearby regions, and we’re expanding nationwide through partner networks.",
+    tags: ["nationwide", "coverage", "areas", "regions", "where"],
+  },
+  {
+    q: "Do you offer installment payments?",
+    a: "Yes. We display 12/6/3-month breakdowns on bundles and at checkout through Xendit.",
+    tags: ["installment", "monthly", "payments", "xendit"],
+  },
+];
+
+export default function PageWithBot() {
   return (
     <>
-      <button className="cb-launch" onClick={() => setOpen(o => !o)} aria-expanded={open}>
-        {open ? '×' : 'Chat'}
-      </button>
-
-      {open && (
-        <div className="cb-wrap" role="dialog" aria-label="Support chat" aria-modal="false">
-          <div className="cb-head">St. Ivans Support</div>
-          <div className="cb-body" ref={scroller}>
-            {msgs.map((m, i) => (
-              <div key={i} className={`cb-msg ${m.role}`}>
-                <div className="cb-bubble">{m.text}</div>
-              </div>
-            ))}
-            {busy && <div className="cb-typing">…</div>}
-          </div>
-          <form className="cb-inputrow" onSubmit={onSend}>
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your question…"
-              disabled={busy}
-            />
-            <button disabled={busy || !input.trim()}>Send</button>
-          </form>
-        </div>
-      )}
+      {/* … your page content … */}
+      <Chatbot
+        systemPrompt={BOT_PROMPT}
+        rules={botRules}
+        faqs={botFAQs}
+        greeting="Hi, I’m the St. Ivans assistant. Ask me about services, chapel bookings, prices, or payments."
+        fallback={(q) =>
+          `I’m not fully certain about “${q}”. I can connect you with our team at support@stivans.ph or +63 900 000 0000.`
+        }
+        context={{ site: "https://stivans.vercel.app" }}
+      />
     </>
   );
 }
