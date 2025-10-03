@@ -9,8 +9,6 @@ import svcFuneral from "../../assets/funeral.jpg";
 import svcInsurance from "../../assets/insurance.jpg";
 import svcChapel from "../../assets/chapel.jpg";
 
-import ChatBot from "../../components/Chatbot/Chatbot";
-
 export default function Home() {
   return (
     <div className="home">
@@ -121,7 +119,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <ChatBot />
       <Footer />
     </div>
   );
