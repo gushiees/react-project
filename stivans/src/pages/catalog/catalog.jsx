@@ -4,7 +4,6 @@ import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { Link } from "react-router-dom";
 import { fetchProducts } from "../../data/products.jsx";
-import ChatBot from "../../components/Chatbot/Chatbot";
 
 // ⬇️ Reusable search bar
 import SearchBar, { sortRecords } from "../../components/searchbar/SearchBar.jsx";
@@ -177,7 +176,6 @@ export default function Catalog() {
           </div>
         </div>
       </main>
-      <ChatBot /> 
       <Footer />
     </div>
   );

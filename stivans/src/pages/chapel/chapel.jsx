@@ -8,7 +8,7 @@ import { useUser } from "../../contexts/UserContext";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import Button from "../../components/button/button";
-import ChatBot from "../../components/Chatbot/Chatbot";
+
 
 const Chapels = () => {
   const { user } = useUser();
@@ -117,7 +117,6 @@ const Chapels = () => {
           </div>
         </section>
       </div>
-      <ChatBot />
       <Footer />
     </>
   );

@@ -5,7 +5,6 @@ import Footer from "../../components/footer/footer";
 import bannerImage from "../../assets/stivan10.png";
 import logoImage from "../../assets/stivanlogolight.png";
 import "./about.css";
-import ChatBot from "../../components/Chatbot/Chatbot";
 
 
 
@@ -188,7 +187,6 @@ const About = () => {
           ))}
         </div>
       </div>
-      <ChatBot />
       <Footer />
     </section>
   );
