@@ -19,7 +19,7 @@ import Checkout from "./pages/checkout/checkout.jsx";
 import Catalog from "./pages/catalog/catalog.jsx";
 import ProductDetail from "./pages/product/productdetail.jsx";
 import Contact from "./pages/contact/contact.jsx";
-
+import OrderReceipt from "./pages/orders/receipt.jsx";
 // Auth / Context
 import { AuthProvider } from "./AuthContext.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
@@ -44,6 +44,7 @@ const router = createBrowserRouter([
       { path: "cart", element: <Cart /> },
       { path: "checkout", element: <Checkout /> }, 
       { path: "contact", element: <Contact /> },
+      { path: "orders/:id", element: <OrderReceipt/> },
 
 
       // Protected routes

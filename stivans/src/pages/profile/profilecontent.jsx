@@ -4,7 +4,43 @@ import "./profilecontent.css";
 
 function php(n) {
   const v = Number(n) || 0;
-  return "₱" + v.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (
+    "₱" +
+    v.toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
+}
+
+// ----- NEW: cancel order helper -----
+async function cancelOrder(orderId) {
+  if (!window.confirm("Cancel this pending order?")) return;
+
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new Error("You must be signed in.");
+
+    const res = await fetch("/api/orders/cancel", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ orderId }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Cancel failed");
+
+    alert("Order cancelled.");
+    window.location.reload();
+  } catch (e) {
+    console.error(e);
+    alert(e.message || "Cancel failed");
+  }
 }
 
 export default function ProfileContent() {
@@ -68,7 +104,7 @@ export default function ProfileContent() {
   }, []);
 
   const paidOrdersCount = useMemo(
-    () => orders.filter(o => o.status === "paid").length,
+    () => orders.filter((o) => o.status === "paid").length,
     [orders]
   );
 
@@ -121,7 +157,7 @@ export default function ProfileContent() {
         .eq("user_id", user.id);
 
       if (oErr) throw oErr;
-      const orderIds = (myOrders || []).map(o => o.id);
+      const orderIds = (myOrders || []).map((o) => o.id);
       if (orderIds.length === 0) {
         setActivity([]);
         setActivityLoadedOnce(true);
@@ -131,13 +167,15 @@ export default function ProfileContent() {
       // 2) Get payments for those orders
       const { data: pays, error: pErr } = await supabase
         .from("payments")
-        .select("id, order_id, provider, provider_event, amount, currency, created_at")
+        .select(
+          "id, order_id, provider, provider_event, amount, currency, created_at"
+        )
         .in("order_id", orderIds)
         .order("created_at", { ascending: false });
 
       if (pErr) throw pErr;
 
-      // 3) Flatten into a timeline: combine payments + pseudo "order.created/updated" milestones
+      // 3) Flatten into a timeline: combine payments + pseudo milestones
       const items = [];
 
       // add payment events
@@ -147,26 +185,28 @@ export default function ProfileContent() {
           ts: p.created_at,
           order_id: p.order_id,
           title: p.provider_event?.toUpperCase?.() || "PAYMENT_EVENT",
-          detail: `${p.provider?.toUpperCase?.() || "XENDIT"} • ${php(p.amount)} ${p.currency || "PHP"}`
+          detail: `${
+            p.provider?.toUpperCase?.() || "XENDIT"
+          } • ${php(p.amount)} ${p.currency || "PHP"}`,
         });
       }
 
-      // add order milestones (created + if status paid/cancelled/failed, a status marker)
+      // add order milestones
       for (const o of myOrders || []) {
         items.push({
           type: "order",
           ts: o.created_at,
           order_id: o.id,
           title: "ORDER_PLACED",
-          detail: `Order submitted • Total ${php(o.total ?? o.total_price ?? 0)}`
+          detail: `Order submitted • Total ${php(o.total ?? o.total_price ?? 0)}`,
         });
         if (o.status && o.status !== "pending") {
           items.push({
             type: "order",
-            ts: o.created_at, // we don't have per-status timestamps; use created_at as coarse signal
+            ts: o.created_at,
             order_id: o.id,
             title: `STATUS_${o.status.toUpperCase()}`,
-            detail: `Order marked ${o.status}`
+            detail: `Order marked ${o.status}`,
           });
         }
       }
@@ -230,7 +270,8 @@ export default function ProfileContent() {
           <div className="pf-blank-ill">🧾</div>
           <div className="pf-blank-title">No orders to show</div>
           <div className="pf-blank-sub">
-            You’ll see your receipts and products here once you’ve completed a checkout.
+            You’ll see your receipts and products here once you’ve completed a
+            checkout.
           </div>
         </div>
       )}
@@ -244,7 +285,9 @@ export default function ProfileContent() {
                 <header className="order-head">
                   <div>
                     <div className="order-id">Order #{o.id.slice(0, 8)}</div>
-                    <div className="order-date">{new Date(o.created_at).toLocaleString()}</div>
+                    <div className="order-date">
+                      {new Date(o.created_at).toLocaleString()}
+                    </div>
                   </div>
                   <span className={`badge ${o.status}`}>{o.status}</span>
                 </header>
@@ -256,37 +299,72 @@ export default function ProfileContent() {
                     const unit = it.unit_price ?? it.price ?? 0;
                     return (
                       <div className="oi" key={it.id} title={name}>
-                        {img ? <img src={img} alt={name} /> : <div className="oi-ph" />}
+                        {img ? (
+                          <img src={img} alt={name} />
+                        ) : (
+                          <div className="oi-ph" />
+                        )}
                         <div className="oi-meta">
                           <div className="oi-name">{name}</div>
-                          <div className="oi-sub">Qty {it.quantity} • {php(unit)}</div>
+                          <div className="oi-sub">
+                            Qty {it.quantity} • {php(unit)}
+                          </div>
                         </div>
                       </div>
                     );
                   })}
                   {o.order_items?.length > 3 && (
-                    <div className="more">+{o.order_items.length - 3} more</div>
+                    <div className="more">
+                      +{o.order_items.length - 3} more
+                    </div>
                   )}
                 </div>
 
                 <footer className="order-foot">
                   <div className="tally">
-                    <div><span>Subtotal</span><strong>{php(o.subtotal)}</strong></div>
-                    <div><span>Tax</span><strong>{php(o.tax)}</strong></div>
-                    <div><span>Shipping</span><strong>{php(o.shipping)}</strong></div>
-                    <div className="total"><span>Total</span><strong>{php(orderTotal)}</strong></div>
+                    <div>
+                      <span>Subtotal</span>
+                      <strong>{php(o.subtotal)}</strong>
+                    </div>
+                    <div>
+                      <span>Tax</span>
+                      <strong>{php(o.tax)}</strong>
+                    </div>
+                    <div>
+                      <span>Shipping</span>
+                      <strong>{php(o.shipping)}</strong>
+                    </div>
+                    <div className="total">
+                      <span>Total</span>
+                      <strong>{php(orderTotal)}</strong>
+                    </div>
                   </div>
 
-                  {o.xendit_invoice_id && (
-                    <a
-                      className="btn ghost"
-                      href={`https://dashboard.xendit.co/invoices/${o.xendit_invoice_id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      View Invoice
+                  <div className="order-actions">
+                    <a className="btn ghost" href={`/orders/${o.id}`}>
+                      View Receipt
                     </a>
-                  )}
+
+                    {o.status === "pending" && (
+                      <button
+                        className="btn danger"
+                        onClick={() => cancelOrder(o.id)}
+                      >
+                        Cancel Order
+                      </button>
+                    )}
+
+                    {o.xendit_invoice_id && (
+                      <a
+                        className="btn ghost"
+                        href={`https://dashboard.xendit.co/invoices/${o.xendit_invoice_id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Xendit Invoice
+                      </a>
+                    )}
+                  </div>
                 </footer>
               </article>
             );
@@ -305,7 +383,9 @@ export default function ProfileContent() {
         <div className="pf-blank">
           <div className="pf-blank-ill">📜</div>
           <div className="pf-blank-title">No activity (yet)</div>
-          <div className="pf-blank-sub">Your payment and order timeline will appear here.</div>
+          <div className="pf-blank-sub">
+            Your payment and order timeline will appear here.
+          </div>
         </div>
       )}
 
@@ -316,11 +396,17 @@ export default function ProfileContent() {
               <div className="tl-dot" />
               <div className="tl-content">
                 <div className="tl-top">
-                  <span className="tl-title">{a.title.replaceAll("_", " ")}</span>
-                  <span className="tl-time">{new Date(a.ts).toLocaleString()}</span>
+                  <span className="tl-title">
+                    {a.title.replaceAll("_", " ")}
+                  </span>
+                  <span className="tl-time">
+                    {new Date(a.ts).toLocaleString()}
+                  </span>
                 </div>
                 <div className="tl-sub">{a.detail}</div>
-                <div className="tl-meta">Order #{String(a.order_id).slice(0, 8)}</div>
+                <div className="tl-meta">
+                  Order #{String(a.order_id).slice(0, 8)}
+                </div>
               </div>
             </li>
           ))}
@@ -351,15 +437,24 @@ export default function ProfileContent() {
               {user && (
                 <>
                   <div className="pf-avatar">
-                    {(user.full_name || user.email || "U").slice(0, 1).toUpperCase()}
+                    {(user.full_name || user.email || "U")
+                      .slice(0, 1)
+                      .toUpperCase()}
                   </div>
-                  <div className="pf-name">{user.full_name || "Unnamed User"}</div>
+                  <div className="pf-name">
+                    {user.full_name || "Unnamed User"}
+                  </div>
                   <div className="pf-email">{user.email}</div>
 
                   <div className="pf-chips">
                     <span className="chip blue">{user.role}</span>
-                    <span className="chip">Member since {new Date(user.created_at).toLocaleDateString()}</span>
-                    {user.phone_number && <span className="chip">☎ {user.phone_number}</span>}
+                    <span className="chip">
+                      Member since{" "}
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </span>
+                    {user.phone_number && (
+                      <span className="chip">☎ {user.phone_number}</span>
+                    )}
                   </div>
 
                   <div className="pf-stats">
@@ -408,9 +503,12 @@ export default function ProfileContent() {
             {activeTab === "overview" && (
               <div className="pf-overview">
                 <div className="pf-card soft">
-                  <h3>Welcome back{user?.full_name ? `, ${user.full_name}` : ""}.</h3>
+                  <h3>
+                    Welcome back{user?.full_name ? `, ${user.full_name}` : ""}.
+                  </h3>
                   <p className="pf-sub">
-                    Use the tabs above to view receipts, payment activity, and more.
+                    Use the tabs above to view receipts, payment activity, and
+                    more.
                   </p>
                 </div>
               </div>
