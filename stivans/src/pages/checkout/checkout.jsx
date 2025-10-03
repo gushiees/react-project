@@ -8,7 +8,7 @@ import { supabase } from "../../supabaseClient";
 import "./checkout.css";
 import { uploadDeathCertificate } from "../../data/orders";
 
-const API_BASE = import.meta.env.VITE_API_BASE || ""; // (keep)
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 function php(amount) {
   const n = Number(amount) || 0;
@@ -19,16 +19,16 @@ export default function Checkout() {
   const location = useLocation();
   const { clearCart } = useCart();
 
-  // items from cart
+  // Items from cart (router state OR sessionStorage fallback)
   const stateItems = Array.isArray(location.state?.items) ? location.state.items : null;
   const storedItems = !stateItems ? JSON.parse(sessionStorage.getItem("checkout.items") || "[]") : null;
   const items = stateItems ?? storedItems ?? [];
 
-  // who is this for?
+  // Who is this for?
   const [purchaseType, setPurchaseType] = useState("self"); // 'self' | 'someone'
   const isForDeceased = purchaseType === "someone";
 
-  // chapel booking add-on
+  // Chapel booking add-on
   const [chapels, setChapels] = useState([]);
   const [bookingEnabled, setBookingEnabled] = useState(false);
   const [selectedChapelId, setSelectedChapelId] = useState("");
@@ -38,12 +38,12 @@ export default function Checkout() {
   const [availabilityErr, setAvailabilityErr] = useState("");
   const [isAvailable, setIsAvailable] = useState(null); // null | true | false
 
-  // cold storage fee: ₱5000 per day (same # of days as booking)
+  // Cold storage fee: ₱5000/day (matches # of chapel days)
   const COLD_STORAGE_PER_DAY = 5000;
   const coldStorageDays = bookingEnabled ? Math.max(1, Number(numDays) || 1) : 0;
   const coldStorageTotal = coldStorageDays * COLD_STORAGE_PER_DAY;
 
-  // derived chapel info
+  // Derived chapel info
   const selectedChapel = useMemo(
     () => chapels.find((c) => c.id === selectedChapelId) || null,
     [chapels, selectedChapelId]
@@ -52,13 +52,13 @@ export default function Checkout() {
   const chapelDailyRate = Number(selectedChapel?.daily_rate || 0);
   const chapelBookingTotal = chapelDays * chapelDailyRate;
 
-  // base totals (from cart)
+  // Base totals (from cart)
   const baseSubtotal = useMemo(
     () => items.reduce((acc, it) => acc + Number(it.price) * Number(it.quantity), 0),
     [items]
   );
 
-  // add-on items go into invoice like line items for clarity
+  // Add-on line items (for invoice clarity)
   const extraLineItems = useMemo(() => {
     const rows = [];
     if (bookingEnabled && selectedChapel && chapelDays > 0) {
@@ -128,7 +128,7 @@ export default function Checkout() {
     setCadaver((prev) => ({ ...prev, [name]: value }));
   };
 
-  // fetch chapel list
+  // Fetch chapels
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase.from("chapels").select("id,name,daily_rate").order("name");
@@ -136,7 +136,7 @@ export default function Checkout() {
     })();
   }, []);
 
-  // availability check
+  // Availability helpers
   const endDate = useMemo(() => {
     if (!startDate || chapelDays < 1) return "";
     const d = new Date(startDate + "T00:00:00");
@@ -152,22 +152,18 @@ export default function Checkout() {
 
       setCheckingAvailability(true);
       // Overlap check:
-      // new [startDate, endDate] overlaps existing if:
-      // startDate <= existing.end_date && endDate >= existing.start_date && status != 'cancelled'
       const { data, error } = await supabase
         .from("chapel_bookings")
         .select("id,start_date,end_date,status,chapel_id")
         .eq("chapel_id", selectedChapelId)
         .neq("status", "cancelled")
-        .lte("start_date", endDate)     // existing.start_date <= new.endDate
-        .gte("end_date", startDate);    // existing.end_date   >= new.startDate
+        .lte("start_date", endDate)   // existing.start_date <= new.endDate
+        .gte("end_date", startDate);  // existing.end_date   >= new.startDate
 
       if (error) throw error;
       const conflict = Array.isArray(data) && data.length > 0;
       setIsAvailable(!conflict);
-      if (conflict) {
-        setAvailabilityErr("Selected dates are unavailable for this chapel. Please adjust.");
-      }
+      if (conflict) setAvailabilityErr("Selected dates are unavailable for this chapel. Please adjust.");
     } catch (e) {
       console.error(e);
       setAvailabilityErr("Unable to check availability right now.");
@@ -178,7 +174,6 @@ export default function Checkout() {
   };
 
   useEffect(() => {
-    // re-check when inputs change
     if (bookingEnabled && selectedChapelId && startDate && chapelDays > 0) {
       checkAvailability();
     } else {
@@ -219,7 +214,7 @@ export default function Checkout() {
       }
       if (!validateCadaver()) return;
 
-      // If booking is enabled, ensure availability is checked and true
+      // If booking is enabled, ensure availability is OK
       if (bookingEnabled) {
         if (!selectedChapelId || !startDate || chapelDays < 1) {
           setErrorMsg("Please complete chapel booking details.");
@@ -233,7 +228,7 @@ export default function Checkout() {
 
       setSaving(true);
 
-      // Get logged-in session (required)
+      // Get session
       const { data: { session }, error: sessErr } = await supabase.auth.getSession();
       if (sessErr || !session) {
         setSaving(false);
@@ -242,14 +237,13 @@ export default function Checkout() {
       }
       const user = session.user;
 
-      // Upload docs only if purchasing for someone deceased
+      // Upload docs only when buying for someone deceased
       let death_certificate_url = null;
       let claimant_id_url = null;
       let permit_url = null;
 
       if (isForDeceased) {
         death_certificate_url = await uploadDeathCertificate(deathCertFile, user.id, "pending");
-
         if (claimantIdFile) {
           const { data, error } = await supabase.storage
             .from("docs")
@@ -260,7 +254,6 @@ export default function Checkout() {
           const { data: pub } = supabase.storage.from("docs").getPublicUrl(data.path);
           claimant_id_url = pub.publicUrl;
         }
-
         if (permitFile) {
           const { data, error } = await supabase.storage
             .from("docs")
@@ -273,7 +266,7 @@ export default function Checkout() {
         }
       }
 
-      // Build payload: include cart items + chapel/cold-storage line items
+      // Build payload (cart + add-ons)
       const lineItems = [
         ...items.map((it) => ({
           product_id: it.id,
@@ -283,7 +276,7 @@ export default function Checkout() {
           image_url: it.image_url || null,
         })),
         ...extraLineItems.map((it) => ({
-          product_id: null, // add-on, not a product id
+          product_id: null, // add-on only
           name: it.name,
           price: Number(it.price),
           quantity: Number(it.quantity),
@@ -309,7 +302,6 @@ export default function Checkout() {
               permit_url,
             }
           : null,
-        // include chapel booking intent so the server can create a pending hold row
         chapel_booking: bookingEnabled && selectedChapel
           ? {
               chapel_id: selectedChapel.id,
@@ -321,10 +313,9 @@ export default function Checkout() {
               cold_storage_amount: coldStorageTotal,
             }
           : null,
-        purchase_type: purchaseType, // 'self' or 'someone'
+        purchase_type: purchaseType,
       };
 
-      // Create order + xendit invoice via your serverless function
       const res = await fetch(`${API_BASE}/api/xendit/create-invoice`, {
         method: "POST",
         headers: {
@@ -341,7 +332,7 @@ export default function Checkout() {
 
       const data = await res.json();
 
-      // Clear cart (and stash) and redirect to Xendit
+      // Success → clear cart + redirect to Xendit
       clearCart();
       sessionStorage.removeItem("checkout.items");
       window.location.href = data.invoice_url;
@@ -355,128 +346,9 @@ export default function Checkout() {
   return (
     <>
       <Header />
+
       <div className="checkout-page">
         <h1>Checkout</h1>
-
-        {/* Who is this for? */}
-        <div className="who-for">
-          <label>Who is this for?</label>
-          <div className="who-options">
-            <label className="radio">
-              <input
-                type="radio"
-                name="purchaseType"
-                value="self"
-                checked={purchaseType === "self"}
-                onChange={() => setPurchaseType("self")}
-              />
-              <span>Myself (pre-need)</span>
-            </label>
-            <label className="radio">
-              <input
-                type="radio"
-                name="purchaseType"
-                value="someone"
-                checked={purchaseType === "someone"}
-                onChange={() => setPurchaseType("someone")}
-              />
-              <span>Someone who has passed (at-need)</span>
-            </label>
-          </div>
-          {isForDeceased ? (
-            <p className="hint">
-              You’ll need to provide cadaver details and a death certificate before payment.
-            </p>
-          ) : (
-            <p className="hint">
-              No cadaver details needed now. Your plan will be recorded under your account.
-            </p>
-          )}
-        </div>
-
-        {/* Optional Chapel Booking */}
-        <div className="addon">
-          <div className="addon-head">
-            <label>
-              <input
-                type="checkbox"
-                checked={bookingEnabled}
-                onChange={(e) => setBookingEnabled(e.target.checked)}
-              />{" "}
-              Add Chapel Booking
-            </label>
-          </div>
-
-          {bookingEnabled && (
-            <div className="addon-body">
-              <div className="row-grid">
-                <div className="field">
-                  <label>Chapel</label>
-                  <select
-                    value={selectedChapelId}
-                    onChange={(e) => setSelectedChapelId(e.target.value)}
-                    required
-                  >
-                    <option value="">Select a chapel…</option>
-                    {chapels.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.daily_rate ? `— ${php(c.daily_rate)}/day` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field">
-                  <label>Start Date</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="field">
-                  <label>Number of Days</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={numDays}
-                    onChange={(e) => setNumDays(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              {startDate && chapelDays > 0 && (
-                <p className="hint">
-                  End date: <strong>{endDate || "—"}</strong>
-                </p>
-              )}
-
-              <div className="availability">
-                {checkingAvailability && <span>Checking availability…</span>}
-                {!checkingAvailability && availabilityErr && (
-                  <span className="error">{availabilityErr}</span>
-                )}
-                {!checkingAvailability && isAvailable === true && (
-                  <span className="ok">Dates are available ✅</span>
-                )}
-              </div>
-
-              <div className="addon-totals">
-                <div className="row">
-                  <span>Chapel ({chapelDays}d × {php(chapelDailyRate)})</span>
-                  <span>{php(chapelBookingTotal)}</span>
-                </div>
-                <div className="row">
-                  <span>Cold Storage ({coldStorageDays}d × {php(COLD_STORAGE_PER_DAY)})</span>
-                  <span>{php(coldStorageTotal)}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
 
         {items.length === 0 ? (
           <div className="empty-checkout">
@@ -485,7 +357,7 @@ export default function Checkout() {
           </div>
         ) : (
           <div className="checkout-grid">
-            {/* Left: Items */}
+            {/* LEFT: Items only */}
             <div className="co-items">
               {items.map((it) => (
                 <div className="co-item" key={it.id}>
@@ -497,42 +369,141 @@ export default function Checkout() {
                   </div>
                 </div>
               ))}
+            </div>
 
-              {/* Cadaver details only for at-need */}
-              {isForDeceased && (
-                <>
+            {/* RIGHT: Summary + choices + totals + CTA */}
+            <div className="co-summary">
+              <h2>Order Summary</h2>
+
+              {/* Who is this for? */}
+              <div className="card-block">
+                <div className="block-title">Who is this for?</div>
+                <div className="who-options">
+                  <label className="radio">
+                    <input
+                      type="radio"
+                      name="purchaseType"
+                      value="self"
+                      checked={purchaseType === "self"}
+                      onChange={() => setPurchaseType("self")}
+                    />
+                    <span>Myself (pre-need)</span>
+                  </label>
+                  <label className="radio">
+                    <input
+                      type="radio"
+                      name="purchaseType"
+                      value="someone"
+                      checked={purchaseType === "someone"}
+                      onChange={() => setPurchaseType("someone")}
+                    />
+                    <span>Someone who has passed (at-need)</span>
+                  </label>
+                </div>
+
+                {isForDeceased ? (
+                  <p className="hint">You’ll need to provide cadaver details and a death certificate before payment.</p>
+                ) : (
+                  <p className="hint">No cadaver details needed now. Your plan will be recorded under your account.</p>
+                )}
+
+                {/* Cadaver details button (only if at-need) */}
+                {isForDeceased && (
                   <button
                     type="button"
-                    className="cadaver-btn"
+                    className="cadaver-btn inline"
                     onClick={() => setShowCadaverModal(true)}
                   >
                     Add Cadaver Details
                   </button>
-                  <p className="cadaver-note">
-                    * Cadaver details and Death Certificate are required before payment.
-                  </p>
-                </>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* Right: Summary */}
-            <div className="co-summary">
-              <h2>Order Summary</h2>
+              {/* Chapel booking add-on */}
+              <div className="card-block">
+                <div className="block-title">Chapel Booking (optional)</div>
 
-              {/* show add-on lines if present */}
-              {bookingEnabled && selectedChapel && (
-                <div className="addon-review">
-                  <div className="row">
-                    <span>Chapel Booking</span>
-                    <span>{selectedChapel.name}</span>
-                  </div>
-                  <div className="row">
-                    <span>Dates</span>
-                    <span>{startDate} → {endDate}</span>
-                  </div>
-                </div>
-              )}
+                <label className="switch-row">
+                  <input
+                    type="checkbox"
+                    checked={bookingEnabled}
+                    onChange={(e) => setBookingEnabled(e.target.checked)}
+                  />
+                  <span>Include chapel booking for the wake</span>
+                </label>
 
+                {bookingEnabled && (
+                  <>
+                    <div className="row-grid tight">
+                      <div className="field">
+                        <label>Chapel</label>
+                        <select
+                          value={selectedChapelId}
+                          onChange={(e) => setSelectedChapelId(e.target.value)}
+                          required
+                        >
+                          <option value="">Select a chapel…</option>
+                          {chapels.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} {c.daily_rate ? `— ${php(c.daily_rate)}/day` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="field">
+                        <label>Start Date</label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label>Number of Days</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={numDays}
+                          onChange={(e) => setNumDays(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {startDate && chapelDays > 0 && (
+                      <p className="hint">
+                        End date: <strong>{endDate || "—"}</strong>
+                      </p>
+                    )}
+
+                    <div className="availability">
+                      {checkingAvailability && <span>Checking availability…</span>}
+                      {!checkingAvailability && availabilityErr && (
+                        <span className="error">{availabilityErr}</span>
+                      )}
+                      {!checkingAvailability && isAvailable === true && (
+                        <span className="ok">Dates are available ✅</span>
+                      )}
+                    </div>
+
+                    <div className="addon-totals">
+                      <div className="row">
+                        <span>Chapel ({chapelDays}d × {php(chapelDailyRate)})</span>
+                        <span>{php(chapelBookingTotal)}</span>
+                      </div>
+                      <div className="row">
+                        <span>Cold Storage ({coldStorageDays}d × {php(COLD_STORAGE_PER_DAY)})</span>
+                        <span>{php(coldStorageTotal)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Totals */}
               <div className="row"><span>Subtotal</span><span>{php(subtotal)}</span></div>
               <div className="row"><span>Tax (12%)</span><span>{php(tax)}</span></div>
               <div className="row"><span>Shipping</span><span>{shipping === 0 ? "Free" : php(shipping)}</span></div>
@@ -543,13 +514,14 @@ export default function Checkout() {
               <button className="place-order" onClick={handlePlaceOrder} disabled={saving}>
                 {saving ? "Creating Invoice..." : "Proceed to Payment"}
               </button>
+
               <a href="/cart" className="back-cart">Back to Cart</a>
             </div>
           </div>
         )}
       </div>
 
-      {/* --- Cadaver Modal --- */}
+      {/* Cadaver Modal */}
       {showCadaverModal && isForDeceased && (
         <div className="modal-overlay" onClick={() => setShowCadaverModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
