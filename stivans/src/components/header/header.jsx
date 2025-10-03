@@ -35,7 +35,7 @@ export default function Header() {
             to="/catalog"
             className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
           >
-            Catalog
+            Bundles
           </NavLink>
           <NavLink
             to="/chapels"
