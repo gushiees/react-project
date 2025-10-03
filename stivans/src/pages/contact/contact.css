@@ -1,50 +1,174 @@
-.contact-section {
-  padding: 60px 20px;
-  background: #ffffff; /* white background */
-  font-family: "Segoe UI", Arial, sans-serif;
-  color: #1f2937;
+/* ================================
+   ST. IVANS – CONTACT & REVIEWS PAGE STYLES
+   Clean & Improved Visual Balance
+   ================================ */
+
+:root {
+  --primary: #2e2e2e;       
+  --accent: #f6b300;        
+  --text: #333333;
+  --bg: #f4f4f4;
+  --white: #ffffff;
+  --shadow: rgba(0,0,0,0.12);
+  --radius: 12px;
+  --transition: 0.3s ease;
+  --font-main: 'Poppins', sans-serif;
 }
 
-/* ---- Headings ---- */
-.contact-title {
-  text-align: center;
-  font-size: 2.5rem;
-  font-weight: bold;
-  color: #2563eb; /* blue */
-  margin-bottom: 10px;
+/* ===========================
+   Layout
+   =========================== */
+body {
+  font-family: var(--font-main);
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  line-height: 1.6;
 }
 
-.contact-subtitle {
-  text-align: center;
-  margin-bottom: 40px;
-  font-size: 1.1rem;
-  color: #4b5563;
+.contact-reviews-section {
+  padding: 50px 20px;
 }
 
-/* ---- Layout ---- */
-.contact-form {
-  max-width: 600px;
+.contact-reviews-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  max-width: 1200px;
   margin: 0 auto;
-  background: #ffffff; /* white */
-  padding: 40px 30px;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
 }
 
-.contact-form h2 {
-  margin-bottom: 25px;
-  color: #2563eb; /* blue */
-  font-size: 1.6rem;
+/* ===========================
+   Left Column (Image + Title)
+   =========================== */
+.contact-reviews-left {
+  flex: 1;
+  min-width: 300px;
+  position: relative;
+}
+
+.contact-reviews-image-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+
+.contact-reviews-image {
+  width: 100%;
+  height: 600px;
+  object-fit: cover;
+  transition: transform var(--transition);
+}
+
+.contact-reviews-image-wrapper:hover .contact-reviews-image {
+  transform: scale(1.05);
+}
+
+.contact-reviews-overlay {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 14px 22px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.contact-reviews-logo {
+  max-width: 180px;
+  height: auto;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+}
+
+.contact-reviews-slogan {
+  font-size: 1.2rem;
   font-weight: 600;
-  text-align: center;
+  color: #fff;
+  letter-spacing: 1px;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* ===========================
+   Right Column (Accordion Info)
+   =========================== */
+.contact-reviews-right {
+  flex: 1.2;
+  min-width: 320px;
+}
+
+.contact-reviews-block {
+  background: var(--white);
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px var(--shadow);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.contact-reviews-block:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.accordion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 20px 24px;
+  cursor: pointer;
+  background: #fafafa;
+  border: none;
+  text-align: left;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--primary) !important; 
+  transition: background var(--transition);
+}
+
+.accordion-toggle:hover {
+  background: #f1f1f1;
+}
+
+/* Arrow */
+.arrow {
+  font-size: 1.3rem;
+  color: var(--accent);
+  transition: transform 0.25s ease;
+}
+
+.arrow.open {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.contact-reviews-block-content {
+  padding: 18px 24px 26px;
+  border-top: 1px solid #eee;
+  animation: fadeIn 0.6s ease;
+}
+
+/* ===========================
+   Contact Form
+   =========================== */
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 .contact-form label {
   display: block;
-  margin-bottom: 15px;
+  margin-bottom: 5px;
   font-weight: 500;
   font-size: 0.95rem;
-  color: #374151;
+  color: var(--text);
 }
 
 .contact-form input,
@@ -60,37 +184,332 @@
 
 .contact-form input:focus,
 .contact-form textarea:focus {
-  border-color: #2563eb;
+  border-color: var(--accent);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 0 3px rgba(246, 179, 0, 0.2);
 }
 
-/* ---- Textarea ---- */
 .contact-form textarea {
-  min-height: 150px;
+  min-height: 120px;
   resize: vertical;
 }
 
-/* ---- Success / Error Messages ---- */
+/* ===========================
+   Reviews Summary
+   =========================== */
+.reviews-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.average-rating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.rating-number {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.review-count {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.rating-breakdown {
+  width: 100%;
+}
+
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.rating-label {
+  width: 50px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.rating-bar-container {
+  flex: 1;
+  height: 8px;
+  background-color: #eee;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rating-bar {
+  height: 100%;
+  background-color: var(--accent);
+}
+
+.rating-count {
+  width: 30px;
+  text-align: right;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+/* ===========================
+   Review Form
+   =========================== */
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.review-form label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.review-form input,
+.review-form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  margin-top: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+.review-form input:focus,
+.review-form textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(246, 179, 0, 0.2);
+}
+
+.review-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* ===========================
+   Star Rating
+   =========================== */
+.star-rating {
+  display: flex;
+  gap: 3px;
+  margin-top: 5px;
+}
+
+.star {
+  font-size: 1.5rem;
+  color: #ddd;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.star.filled {
+  color: var(--accent);
+}
+
+.star:hover {
+  color: var(--accent);
+}
+
+/* ===========================
+   Reviews Controls
+   =========================== */
+.reviews-controls {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.filter-controls,
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-controls label,
+.sort-controls label {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.filter-controls select,
+.sort-controls select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: white;
+  font-family: inherit;
+}
+
+/* ===========================
+   Reviews List
+   =========================== */
+.reviews-list {
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.reviews-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reviews-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.reviews-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+.reviews-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.review-item {
+  padding: 20px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  background: white;
+  margin-bottom: 15px;
+  transition: all 0.3s ease;
+}
+
+.review-item:hover {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.reviewer-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reviewer-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.reviewer-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.review-date {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.review-title {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.review-content {
+  margin-bottom: 15px;
+}
+
+.review-text {
+  margin: 0 0 10px;
+  line-height: 1.5;
+  color: #555;
+}
+
+.verified-purchase {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  color: #16a34a;
+}
+
+.verified-icon {
+  font-weight: bold;
+}
+
+.review-actions {
+  display: flex;
+  gap: 15px;
+}
+
+.review-action-btn {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.review-action-btn:hover {
+  color: var(--accent);
+}
+
+.no-reviews {
+  text-align: center;
+  padding: 30px;
+  color: #666;
+  font-style: italic;
+}
+
+/* ===========================
+   Success / Error Messages
+   =========================== */
 .success-message {
-  color: #16a34a; /* green */
+  color: #16a34a;
   font-weight: 600;
   text-align: center;
   margin-bottom: 20px;
 }
 
 .error {
-  color: #dc2626; /* red */
+  color: #dc2626;
   font-size: 0.85rem;
   margin-top: 4px;
   display: block;
 }
 
-/* ---- Button ---- */
+/* ===========================
+   Button
+   =========================== */
 .btn-submit {
   width: 100%;
   padding: 14px;
-  background: #2563eb; /* blue */
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: 8px;
@@ -102,20 +521,42 @@
 }
 
 .btn-submit:hover {
-  background: #1e40af; /* darker blue on hover */
+  background: #e5a500;
 }
 
-/* ---- Responsive ---- */
-@media (max-width: 600px) {
-  .contact-form {
-    padding: 30px 20px;
+/* ===========================
+   Animations
+   =========================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===========================
+   Responsive
+   =========================== */
+@media (max-width: 768px) {
+  .contact-reviews-container {
+    flex-direction: column;
+    padding: 20px;
   }
 
-  .contact-title {
-    font-size: 2rem;
+  .reviews-controls {
+    flex-direction: column;
+    align-items: flex-start;
   }
-
-  .contact-form h2 {
-    font-size: 1.4rem;
+  
+  .review-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .reviewer-info {
+    align-self: flex-start;
   }
 }
