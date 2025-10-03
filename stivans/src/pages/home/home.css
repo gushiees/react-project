@@ -133,7 +133,7 @@
 }
 
 /* ================================
-   SERVICES — RESPONSIVE CARDS
+   SERVICES — RESPONSIVE RECTANGULAR CARDS
    ================================ */
 .services .container{
   width: min(1400px, 92%);      /* slightly narrower so cards feel balanced */
@@ -141,7 +141,7 @@
 
 /* Flexbox grid for services */
 .card-grid {
-  --card-min: 280px;
+  --card-min: 320px; /* Increased min-width for rectangular cards */
   display: flex;
   flex-wrap: wrap;
   gap: 28px;
@@ -149,14 +149,14 @@
   align-items: start;
 }
 
-/* Card base: responsive, capped width */
+/* Card base: now rectangular */
 .service-card {
   position: relative;
   display: block;
   flex: 1 1 var(--card-min);   /* responsive sizing */
-  max-width: 519px;
+  max-width: 680px; /* Adjusted max-width for 16:9 ratio */
   width: 100%;
-  aspect-ratio: 519 / 655;
+  aspect-ratio: 16 / 9; /* ✅ Changed to rectangular */
   border-radius: 16px;
   overflow: hidden;
   background: var(--bg-dark);
@@ -181,16 +181,21 @@
 }
 
 .service-card__shade{
-  background: linear-gradient(180deg, rgba(0,0,0,0) 42%, rgba(0,0,0,.75) 100%);
+  background: linear-gradient(90deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.75) 100%); /* ✅ Adjusted gradient for horizontal layout */
   z-index: 1;
   transition: background .25s ease;
 }
 .service-card__content{
-  inset: auto 18px 18px 18px;        /* only the bottom area */
+  inset: 18px; /* ✅ Content now uses all sides */
+  right: auto; /* Align content to the left */
+  max-width: 50%; /* Constrain content width */
   z-index: 2;
   color: #fff;
   text-shadow: 0 1px 12px rgba(0,0,0,.35);
   transition: transform .3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* Hover effects */
@@ -202,10 +207,10 @@
   outline: none;
 }
 .service-card:hover .service-card__shade{
-  background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.85) 100%);
+  background: linear-gradient(90deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.85) 100%);
 }
 .service-card:hover .service-card__content{
-  transform: translateY(-6px);
+  transform: translateX(-6px); /* ✅ Slide content on hover */
 }
 
 /* Typography (already responsive via clamp) */
@@ -224,10 +229,10 @@
   color: #ddd;
 }
 
-/* Desktop lock: exactly 3 × (519px × 655px) columns */
+/* Desktop lock: exactly 2 × (680px) columns */
 @media (min-width: 1440px){
   .service-card{
-    flex: 0 0 519px;   /* ✅ exactly 3 fixed cards per row */
+    flex: 0 0 680px;   /* ✅ exactly 2 fixed cards per row */
   }
 }
 
@@ -237,7 +242,102 @@
 }
 @media (max-width: 820px){
   .card-grid{ --card-min: 280px; }   /* stacks to 1 column when narrow */
+  /* On mobile, revert to vertical layout */
+  .service-card__content { max-width: 100%; }
+  .service-card__shade { background: linear-gradient(180deg, rgba(0,0,0,0) 42%, rgba(0,0,0,.75) 100%); }
+  .service-card:hover .service-card__content { transform: translateY(-6px); }
 }
+
+/* ================================
+   OUR COMMITMENTS (FORMAL & STYLISH)
+   ================================ */
+.commitments {
+  /* A subtle, elegant gradient background */
+  background: linear-gradient(145deg, #f5f5f5 0%, #e8e8e8 100%);
+  padding: 80px 0;
+  text-align: center;
+}
+
+.commitments__intro {
+  max-width: 700px;
+  margin: 0 auto 4rem auto;
+  font-size: 1.1rem;
+  color: #555;
+  line-height: 1.8;
+  font-family: 'Georgia', serif; /* Formal font for intro */
+}
+
+.values-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem; /* More space for elegance */
+}
+
+.value-item {
+  background: #fdfdfd; /* Off-white for a softer look */
+  padding: 3rem 2.5rem;
+  border-radius: 8px; /* Softer corners */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0,0,0,0.02); /* Layered shadow */
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  border-top: 3px solid transparent; /* For hover effect */
+}
+
+.value-item:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+  border-top-color: var(--accent); /* Accent color on hover */
+}
+
+.value-item__icon {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--accent);
+  width: 60px;
+  height: 60px;
+  line-height: 60px;
+  margin: 0 auto 1.5rem auto;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.value-item__title {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  color: var(--text-dark);
+  font-family: 'Georgia', serif; /* Formal serif font */
+  font-weight: 700;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+/* Decorative line under title */
+.value-item__title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 1px;
+  background: #ccc;
+}
+
+.value-item__text {
+  font-size: 0.95rem;
+  color: #666;
+  line-height: 1.7;
+}
+
+/* Responsive Design for Commitments Section */
+@media (max-width: 768px) {
+  .values-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .value-item { padding: 2rem 1.5rem; }
+}
+
 
 /* ================================
    ABOUT (center, tidy)

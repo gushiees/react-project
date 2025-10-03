@@ -40,7 +40,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SERVICES */}
+      {/* SERVICES (Original Layout) */}
       <section className="section services">
         <div className="container">
           <h2 className="section-title">Services</h2>
@@ -76,6 +76,52 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ======================================= */}
+      {/* OUR COMMITMENTS */}
+      {/* ======================================= */}
+      <section className="section commitments">
+        <div className="container">
+          <h2 className="section-title">Our Commitments</h2>
+          <p className="commitments__intro">
+            We are dedicated to providing support that is both professional and profoundly personal. 
+            Our promise is to stand by you with empathy and respect.
+          </p>
+          
+          <div className="values-grid">
+            {/* Value 1 */}
+            <div className="value-item">
+              <div className="value-item__icon">1</div>
+              <h3 className="value-item__title">Compassionate Guidance</h3>
+              <p className="value-item__text">
+                We listen with empathy and walk alongside you, offering gentle guidance and understanding 
+                during every step of the journey.
+              </p>
+            </div>
+
+            {/* Value 2 */}
+            <div className="value-item">
+              <div className="value-item__icon">2</div>
+              <h3 className="value-item__title">Dignified Services</h3>
+              <p className="value-item__text">
+                Every detail is handled with the utmost respect and care, ensuring a service that honors 
+                the life and legacy of your loved one.
+              </p>
+            </div>
+
+            {/* Value 3 */}
+            <div className="value-item">
+              <div className="value-item__icon">3</div>
+              <h3 className="value-item__title">Lifelong Support</h3>
+              <p className="value-item__text">
+                Our commitment doesn't end with the service. We provide resources and support for 
+                grief and healing for as long as you need us.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <Footer />
     </div>
   );
