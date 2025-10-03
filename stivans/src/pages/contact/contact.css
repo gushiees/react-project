@@ -1,0 +1,121 @@
+.contact-section {
+  padding: 60px 20px;
+  background: #ffffff; /* white background */
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #1f2937;
+}
+
+/* ---- Headings ---- */
+.contact-title {
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #2563eb; /* blue */
+  margin-bottom: 10px;
+}
+
+.contact-subtitle {
+  text-align: center;
+  margin-bottom: 40px;
+  font-size: 1.1rem;
+  color: #4b5563;
+}
+
+/* ---- Layout ---- */
+.contact-form {
+  max-width: 600px;
+  margin: 0 auto;
+  background: #ffffff; /* white */
+  padding: 40px 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.contact-form h2 {
+  margin-bottom: 25px;
+  color: #2563eb; /* blue */
+  font-size: 1.6rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.contact-form label {
+  display: block;
+  margin-bottom: 15px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  margin-top: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  border-color: #2563eb;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* ---- Textarea ---- */
+.contact-form textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+/* ---- Success / Error Messages ---- */
+.success-message {
+  color: #16a34a; /* green */
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.error {
+  color: #dc2626; /* red */
+  font-size: 0.85rem;
+  margin-top: 4px;
+  display: block;
+}
+
+/* ---- Button ---- */
+.btn-submit {
+  width: 100%;
+  padding: 14px;
+  background: #2563eb; /* blue */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-top: 10px;
+}
+
+.btn-submit:hover {
+  background: #1e40af; /* darker blue on hover */
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 600px) {
+  .contact-form {
+    padding: 30px 20px;
+  }
+
+  .contact-title {
+    font-size: 2rem;
+  }
+
+  .contact-form h2 {
+    font-size: 1.4rem;
+  }
+}
