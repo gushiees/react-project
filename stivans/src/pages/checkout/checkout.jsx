@@ -15,6 +15,23 @@ function php(amount) {
   return "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// simple phone validator: digits only (after stripping symbols), 8–15 digits
+function isValidPhone(raw) {
+  const digits = String(raw || "").replace(/[^\d]/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+}
+
+// date helpers
+function isoDateOnly(dt) {
+  // "YYYY-MM-DD" portion
+  return (dt || "").slice(0, 10);
+}
+function isFuture(dateTimeLocal) {
+  const now = new Date();
+  const d = new Date(dateTimeLocal);
+  return d.getTime() > now.getTime();
+}
+
 export default function Checkout() {
   const location = useLocation();
   const { clearCart } = useCart();
@@ -116,15 +133,16 @@ export default function Checkout() {
     religion: "",
     death_datetime: "",
     place_of_death: "",
-    cause_of_death: "",
+    cause_of_death: "Natural Causes", // dropdown default
+    cause_of_death_other: "", // only used if "Other" selected
     kin_name: "",
     kin_relation: "",
     kin_mobile: "",
     kin_email: "",
     kin_address: "",
     remains_location: "",
-    pickup_datetime: "",
-    special_instructions: "",
+    // pickup_datetime: REMOVED (assumed immediate)
+    special_handling: false, // checkbox
     occupation: "",
     nationality: "",
     residence: "",
@@ -135,8 +153,11 @@ export default function Checkout() {
   const [permitFile, setPermitFile] = useState(null);
 
   const onChangeField = (e) => {
-    const { name, value } = e.target;
-    setCadaver((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setCadaver((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? !!checked : value,
+    }));
   };
 
   // Fetch chapels
@@ -201,13 +222,15 @@ export default function Checkout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingEnabled, selectedChapelId, startDate, chapelDays]);
 
+  // ----- Validation for cadaver (at-need) -----
   const validateCadaver = () => {
     if (!isForDeceased) return true;
+
     const required = [
       "full_name", "sex", "civil_status", "religion",
       "death_datetime", "place_of_death",
       "kin_name", "kin_relation", "kin_mobile", "kin_email", "kin_address",
-      "remains_location", "pickup_datetime",
+      "remains_location",
     ];
     for (const k of required) {
       if (!String(cadaver[k] || "").trim()) {
@@ -215,10 +238,40 @@ export default function Checkout() {
         return false;
       }
     }
+
+    // phone number validation
+    if (!isValidPhone(cadaver.kin_mobile)) {
+      setErrorMsg("Please enter a valid contact number (8–15 digits).");
+      return false;
+    }
+
+    // death date constraints
+    if (isFuture(cadaver.death_datetime)) {
+      setErrorMsg("Date & time of death cannot be set in the future.");
+      return false;
+    }
+    if (cadaver.dob) {
+      // compare dates only
+      const birth = new Date(isoDateOnly(cadaver.dob) + "T00:00:00");
+      const death = new Date(cadaver.death_datetime);
+      if (death.getTime() < birth.getTime()) {
+        setErrorMsg("Date of death cannot be earlier than the date of birth.");
+        return false;
+      }
+    }
+
+    // cause of death: if "Other", the free-text must be provided
+    if (cadaver.cause_of_death === "Other" && !String(cadaver.cause_of_death_other || "").trim()) {
+      setErrorMsg("Please specify the cause of death (Other).");
+      return false;
+    }
+
+    // death certificate required
     if (!deathCertFile) {
       setErrorMsg("Death certificate is required.");
       return false;
     }
+
     return true;
   };
 
@@ -321,9 +374,15 @@ export default function Checkout() {
         cadaver: isForDeceased
           ? {
               ...cadaver,
+              // normalize data types
               age: cadaver.age ? Number(cadaver.age) : null,
-              death_datetime: cadaver.death_datetime,
-              pickup_datetime: cadaver.pickup_datetime,
+              // use combined cause_of_death if "Other"
+              cause_of_death:
+                cadaver.cause_of_death === "Other"
+                  ? cadaver.cause_of_death_other
+                  : cadaver.cause_of_death,
+              // pickup not used anymore — set null for backward compat
+              pickup_datetime: null,
               death_certificate_url,
               claimant_id_url,
               permit_url,
@@ -434,7 +493,7 @@ export default function Checkout() {
                 </div>
 
                 {isForDeceased ? (
-                  <p className="hint">You'll need to provide cadaver details and a death certificate before payment.</p>
+                  <p className="hint">You’ll need to provide cadaver details and a death certificate before payment.</p>
                 ) : (
                   <p className="hint">No cadaver details needed now. Your plan will be recorded under your account.</p>
                 )}
@@ -607,7 +666,7 @@ export default function Checkout() {
         )}
       </div>
 
-      {/* Cadaver Modal - Updated with Professional Design */}
+      {/* Cadaver Modal */}
       {showCadaverModal && isForDeceased && (
         <div className="modal-overlay" onClick={() => setShowCadaverModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -665,7 +724,13 @@ export default function Checkout() {
               <div className="row-grid">
                 <div className="field">
                   <label data-required="*">Date & Time of Death</label>
-                  <input type="datetime-local" name="death_datetime" value={cadaver.death_datetime} onChange={onChangeField} required />
+                  <input
+                    type="datetime-local"
+                    name="death_datetime"
+                    value={cadaver.death_datetime}
+                    onChange={onChangeField}
+                    required
+                  />
                 </div>
                 <div className="field">
                   <label data-required="*">Place of Death</label>
@@ -673,9 +738,37 @@ export default function Checkout() {
                 </div>
                 <div className="field">
                   <label data-required="*">Cause of Death</label>
-                  <input name="cause_of_death" value={cadaver.cause_of_death} onChange={onChangeField} required />
+                  <select
+                    name="cause_of_death"
+                    value={cadaver.cause_of_death}
+                    onChange={onChangeField}
+                    required
+                  >
+                    <option>Natural Causes</option>
+                    <option>Illness</option>
+                    <option>Accident</option>
+                    <option>Cardiac Arrest</option>
+                    <option>Respiratory Failure</option>
+                    <option>COVID-19</option>
+                    <option>Unknown</option>
+                    <option>Other</option>
+                  </select>
                 </div>
               </div>
+
+              {cadaver.cause_of_death === "Other" && (
+                <div className="row-grid">
+                  <div className="field col-2">
+                    <label data-required="*">Please specify</label>
+                    <input
+                      name="cause_of_death_other"
+                      value={cadaver.cause_of_death_other}
+                      onChange={onChangeField}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Next of Kin Section */}
               <div className="section-divider">Next of Kin Information</div>
@@ -690,7 +783,13 @@ export default function Checkout() {
                 </div>
                 <div className="field">
                   <label data-required="*">Mobile</label>
-                  <input name="kin_mobile" value={cadaver.kin_mobile} onChange={onChangeField} required />
+                  <input
+                    name="kin_mobile"
+                    value={cadaver.kin_mobile}
+                    onChange={onChangeField}
+                    placeholder="e.g., 09171234567"
+                    required
+                  />
                 </div>
               </div>
               <div className="row-grid">
@@ -712,12 +811,16 @@ export default function Checkout() {
                   <input name="remains_location" value={cadaver.remains_location} onChange={onChangeField} required />
                 </div>
                 <div className="field">
-                  <label data-required="*">Requested Pick-Up (Date & Time)</label>
-                  <input type="datetime-local" name="pickup_datetime" value={cadaver.pickup_datetime} onChange={onChangeField} required />
-                </div>
-                <div className="field">
-                  <label>Special Handling (optional)</label>
-                  <input name="special_instructions" value={cadaver.special_instructions} onChange={onChangeField} />
+                  <label>Special Handling</label>
+                  <label className="switch-row">
+                    <input
+                      type="checkbox"
+                      name="special_handling"
+                      checked={!!cadaver.special_handling}
+                      onChange={onChangeField}
+                    />
+                    <span>Special handling required</span>
+                  </label>
                 </div>
               </div>
 
@@ -726,36 +829,30 @@ export default function Checkout() {
               <div className="docs">
                 <div className="field">
                   <label data-required="*">
-                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 10L12 5L17 10" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M12 5V15" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M20 13V19C20 19.5304 19.7893 20.0391 19.4142 20.4142C19.0391 20.7893 18.5304 21 18 21H6C5.46957 21 4.96086 20.7893 4.58579 20.4142C4.21071 20.0391 4 19.5304 4 19V13" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
                     Death Certificate (required)
                   </label>
-                  <input type="file" accept="image/*,.pdf" onChange={(e) => setDeathCertFile(e.target.files?.[0] || null)} required />
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setDeathCertFile(e.target.files?.[0] || null)}
+                    required
+                  />
                 </div>
                 <div className="field">
-                  <label>
-                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 10L12 5L17 10" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M12 5V15" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M20 13V19C20 19.5304 19.7893 20.0391 19.4142 20.4142C19.0391 20.7893 18.5304 21 18 21H6C5.46957 21 4.96086 20.7893 4.58579 20.4142C4.21071 20.0391 4 19.5304 4 19V13" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Claimant / Next of Kin ID (optional)
-                  </label>
-                  <input type="file" accept="image/*,.pdf" onChange={(e) => setClaimantIdFile(e.target.files?.[0] || null)} />
+                  <label>Claimant / Next of Kin ID (optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setClaimantIdFile(e.target.files?.[0] || null)}
+                  />
                 </div>
                 <div className="field">
-                  <label>
-                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 10L12 5L17 10" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M12 5V15" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M20 13V19C20 19.5304 19.7893 20.0391 19.4142 20.4142C19.0391 20.7893 18.5304 21 18 21H6C5.46957 21 4.96086 20.7893 4.58579 20.4142C4.21071 20.0391 4 19.5304 4 19V13" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Burial / Cremation Permit (optional)
-                  </label>
-                  <input type="file" accept="image/*,.pdf" onChange={(e) => setPermitFile(e.target.files?.[0] || null)} />
+                  <label>Burial / Cremation Permit (optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setPermitFile(e.target.files?.[0] || null)}
+                  />
                 </div>
               </div>
             </div>
