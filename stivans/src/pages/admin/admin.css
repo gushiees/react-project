@@ -168,7 +168,7 @@
 }
 
 .editable-stock-value:hover {
-  background-color: #e2e8f0; /* A light gray hover effect */
+  background-color: #e2e8f0; /* A liggght gray hover effect */
 }
 
 .admin-header {
@@ -257,3 +257,68 @@
 
 .save-stock { background: #2563eb; color: #fff; }
 .cancel-stock { background: #e5e7eb; color: #111827; }
+
+
+/* toolbar */
+.toolbar {
+  margin: 10px 0 16px;
+  display: flex;
+  gap: 10px;
+}
+
+/* inline edit */
+.inline-edit {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.inline-edit input {
+  width: 90px;
+}
+
+/* stock click affordance */
+.stock-value { cursor: pointer; border-bottom: 1px dashed #aaa; }
+
+/* buttons */
+button.danger { background:#e03131; color:#fff; }
+button.ghost { background: transparent; border:1px solid #ccc; }
+
+/* Users tab */
+.role-inline { display:flex; align-items:center; gap:10px; }
+.role-select { padding:6px 8px; }
+
+.badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border:1px solid #ddd;
+  background:#f7f7f7;
+  text-transform: uppercase;
+  letter-spacing: .2px;
+}
+.badge.admin { background:#fff7e1; border-color:#e8d190; color:#7a5d00; }
+.badge.user  { background:#eef3ff; border-color:#cdd7ff; color:#294088; }
+
+
+.ui-slide{
+  position: fixed; top:0; right:0; height:100vh; width:min(980px,100%);
+  background:#fff; border-left:1px solid #eee; box-shadow: -8px 0 24px rgba(0,0,0,.08);
+  z-index: 60; overflow:auto;
+}
+.ui-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #eee; }
+.ui-tabs{ display:flex; gap:8px; padding:10px 12px; border-bottom:1px solid #eee; }
+.ui-tabs button{ padding:8px 12px; border-radius:999px; }
+.ui-tabs .active{ background:#fff7e1; border:1px solid #e8d190; }
+
+.ui-section{ padding:14px 16px; }
+.ui-card{ border:1px solid #eee; border-radius:12px; padding:12px; margin-bottom:14px; background:#fff; }
+.ui-row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.ui-inline{ display:flex; align-items:center; gap:8px; }
+.ui-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.ui-grid-4{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.ui-list{ list-style:none; padding:0; margin:8px 0; display:grid; gap:8px; }
+.ui-list li{ padding:8px 10px; border:1px solid #eee; border-radius:8px; background:#fafafa; }
+
+.ui-section label{ font-size:12px; color:#666; display:block; margin-bottom:6px; }
+.ui-section textarea{ width:100%; min-height:72px; border:1px solid #ddd; border-radius:8px; padding:8px; }
+.ui-section input[type="number"]{ width:100%; border:1px solid #ddd; border-radius:8px; padding:6px 8px; }

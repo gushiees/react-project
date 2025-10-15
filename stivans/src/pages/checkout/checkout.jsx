@@ -1,5 +1,5 @@
 // src/pages/checkout/checkout.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
@@ -8,7 +8,7 @@ import { supabase } from "../../supabaseClient";
 import "./checkout.css";
 import { uploadDeathCertificate } from "../../data/orders";
 
-const API_BASE = import.meta.env.VITE_API_BASE || ""; // set to your Vercel URL in .env.local for local dev
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 function php(amount) {
   const n = Number(amount) || 0;
@@ -19,26 +19,90 @@ export default function Checkout() {
   const location = useLocation();
   const { clearCart } = useCart();
 
-  // ✅ Read items from router state OR fallback to sessionStorage after refresh
+  // Items from cart (router state OR sessionStorage fallback)
   const stateItems = Array.isArray(location.state?.items) ? location.state.items : null;
-  const storedItems = !stateItems
-    ? JSON.parse(sessionStorage.getItem("checkout.items") || "[]")
-    : null;
-
-  // This is the list we’ll use everywhere:
-  // [{ id, name, price, image_url, stock_quantity, quantity }]
+  const storedItems = !stateItems ? JSON.parse(sessionStorage.getItem("checkout.items") || "[]") : null;
   const items = stateItems ?? storedItems ?? [];
 
-  // Totals (client-side preview)
-  const subtotal = useMemo(
+  // Who is this for?
+  const [purchaseType, setPurchaseType] = useState("self"); // 'self' | 'someone'
+  const isForDeceased = purchaseType === "someone";
+
+  // -------- Chapel booking (optional) --------
+  const [chapels, setChapels] = useState([]);
+  const [bookingEnabled, setBookingEnabled] = useState(false);
+  const [selectedChapelId, setSelectedChapelId] = useState("");
+  const [startDate, setStartDate] = useState(""); // yyyy-mm-dd
+  const [numDays, setNumDays] = useState(1);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [availabilityErr, setAvailabilityErr] = useState("");
+  const [isAvailable, setIsAvailable] = useState(null); // null | true | false
+
+  // Derived chapel info
+  const selectedChapel = useMemo(
+    () => chapels.find((c) => c.id === selectedChapelId) || null,
+    [chapels, selectedChapelId]
+  );
+  const chapelDays = bookingEnabled ? Math.max(1, Number(numDays) || 1) : 0;
+  const chapelDailyRate = Number(selectedChapel?.daily_rate || 0);
+  const chapelBookingTotal = chapelDays * chapelDailyRate;
+
+  // -------- Cold storage (optional, fully separate) --------
+  const COLD_STORAGE_PER_DAY = 5000;
+  const [coldEnabled, setColdEnabled] = useState(false);
+  const [coldStartDate, setColdStartDate] = useState("");
+  const [coldDays, setColdDays] = useState(1);
+
+  const coldValidDays = coldEnabled ? Math.max(1, Number(coldDays) || 1) : 0;
+  const coldStorageTotal = coldValidDays * COLD_STORAGE_PER_DAY;
+
+  // Base totals (from cart)
+  const baseSubtotal = useMemo(
     () => items.reduce((acc, it) => acc + Number(it.price) * Number(it.quantity), 0),
     [items]
   );
+
+  // Add-on line items (for invoice clarity)
+  const extraLineItems = useMemo(() => {
+    const rows = [];
+    if (bookingEnabled && selectedChapel && chapelDays > 0) {
+      rows.push({
+        id: "chapel-addon",
+        name: `Chapel Booking — ${selectedChapel.name} (${chapelDays} day${chapelDays > 1 ? "s" : ""})`,
+        price: chapelDailyRate,
+        quantity: chapelDays,
+        image_url: null,
+      });
+    }
+    if (coldEnabled && coldValidDays > 0) {
+      rows.push({
+        id: "cold-storage-addon",
+        name: `Cold Storage (${coldValidDays} day${coldValidDays > 1 ? "s" : ""})`,
+        price: COLD_STORAGE_PER_DAY,
+        quantity: coldValidDays,
+        image_url: null,
+      });
+    }
+    return rows;
+  }, [
+    bookingEnabled,
+    selectedChapel,
+    chapelDays,
+    chapelDailyRate,
+    coldEnabled,
+    coldValidDays,
+  ]);
+
+  const subtotal = useMemo(() => {
+    const addOns = extraLineItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+    return baseSubtotal + addOns;
+  }, [baseSubtotal, extraLineItems]);
+
   const tax = useMemo(() => subtotal * 0.12, [subtotal]);
   const shipping = useMemo(() => (subtotal > 2000 ? 0 : 150), [subtotal]);
   const total = useMemo(() => subtotal + tax + shipping, [subtotal, tax, shipping]);
 
-  // Cadaver modal/form state (unchanged)
+  // --- Cadaver modal & form state ---
   const [showCadaverModal, setShowCadaverModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -75,7 +139,70 @@ export default function Checkout() {
     setCadaver((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Fetch chapels
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.from("chapels").select("id,name,daily_rate").order("name");
+      if (!error && Array.isArray(data)) setChapels(data);
+    })();
+  }, []);
+
+  // Helpers: end dates
+  const endDate = useMemo(() => {
+    if (!startDate || chapelDays < 1) return "";
+    const d = new Date(startDate + "T00:00:00");
+    d.setDate(d.getDate() + (chapelDays - 1));
+    return d.toISOString().slice(0, 10);
+  }, [startDate, chapelDays]);
+
+  const coldEndDate = useMemo(() => {
+    if (!coldStartDate || coldValidDays < 1) return "";
+    const d = new Date(coldStartDate + "T00:00:00");
+    d.setDate(d.getDate() + (coldValidDays - 1));
+    return d.toISOString().slice(0, 10);
+  }, [coldStartDate, coldValidDays]);
+
+  // Availability (chapel only)
+  const checkAvailability = async () => {
+    try {
+      setAvailabilityErr("");
+      setIsAvailable(null);
+      if (!bookingEnabled || !selectedChapelId || !startDate || chapelDays < 1) return;
+
+      setCheckingAvailability(true);
+      const { data, error } = await supabase
+        .from("chapel_bookings")
+        .select("id,start_date,end_date,status,chapel_id")
+        .eq("chapel_id", selectedChapelId)
+        .neq("status", "cancelled")
+        .lte("start_date", endDate)   // existing.start_date <= new.endDate
+        .gte("end_date", startDate);  // existing.end_date   >= new.startDate
+
+      if (error) throw error;
+      const conflict = Array.isArray(data) && data.length > 0;
+      setIsAvailable(!conflict);
+      if (conflict) setAvailabilityErr("Selected dates are unavailable for this chapel. Please adjust.");
+    } catch (e) {
+      console.error(e);
+      setAvailabilityErr("Unable to check availability right now.");
+      setIsAvailable(null);
+    } finally {
+      setCheckingAvailability(false);
+    }
+  };
+
+  useEffect(() => {
+    if (bookingEnabled && selectedChapelId && startDate && chapelDays > 0) {
+      checkAvailability();
+    } else {
+      setIsAvailable(null);
+      setAvailabilityErr("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingEnabled, selectedChapelId, startDate, chapelDays]);
+
   const validateCadaver = () => {
+    if (!isForDeceased) return true;
     const required = [
       "full_name", "sex", "civil_status", "religion",
       "death_datetime", "place_of_death",
@@ -105,9 +232,29 @@ export default function Checkout() {
       }
       if (!validateCadaver()) return;
 
+      // Validate chapel details if enabled
+      if (bookingEnabled) {
+        if (!selectedChapelId || !startDate || chapelDays < 1) {
+          setErrorMsg("Please complete chapel booking details.");
+          return;
+        }
+        if (isAvailable === false) {
+          setErrorMsg("Selected chapel/dates are not available. Please adjust.");
+          return;
+        }
+      }
+
+      // Validate cold storage if enabled
+      if (coldEnabled) {
+        if (!coldStartDate || coldValidDays < 1) {
+          setErrorMsg("Please complete cold storage dates.");
+          return;
+        }
+      }
+
       setSaving(true);
 
-      // Get logged-in session (required)
+      // Get session
       const { data: { session }, error: sessErr } = await supabase.auth.getSession();
       if (sessErr || !session) {
         setSaving(false);
@@ -116,59 +263,91 @@ export default function Checkout() {
       }
       const user = session.user;
 
-      // Upload required/optional documents
-      const death_certificate_url = await uploadDeathCertificate(deathCertFile, user.id, "pending");
-
+      // Upload docs only when buying for someone deceased
+      let death_certificate_url = null;
       let claimant_id_url = null;
-      if (claimantIdFile) {
-        const { data, error } = await supabase.storage
-          .from("docs")
-          .upload(`claimant/${user.id}/${Date.now()}_${claimantIdFile.name}`, claimantIdFile, {
-            cacheControl: "3600", upsert: false,
-          });
-        if (error) throw error;
-        const { data: pub } = supabase.storage.from("docs").getPublicUrl(data.path);
-        claimant_id_url = pub.publicUrl;
-      }
-
       let permit_url = null;
-      if (permitFile) {
-        const { data, error } = await supabase.storage
-          .from("docs")
-          .upload(`permits/${user.id}/${Date.now()}_${permitFile.name}`, permitFile, {
-            cacheControl: "3600", upsert: false,
-          });
-        if (error) throw error;
-        const { data: pub } = supabase.storage.from("docs").getPublicUrl(data.path);
-        permit_url = pub.publicUrl;
+
+      if (isForDeceased) {
+        death_certificate_url = await uploadDeathCertificate(deathCertFile, user.id, "pending");
+        if (claimantIdFile) {
+          const { data, error } = await supabase.storage
+            .from("docs")
+            .upload(`claimant/${user.id}/${Date.now()}_${claimantIdFile.name}`, claimantIdFile, {
+              cacheControl: "3600", upsert: false,
+            });
+          if (error) throw error;
+          const { data: pub } = supabase.storage.from("docs").getPublicUrl(data.path);
+          claimant_id_url = pub.publicUrl;
+        }
+        if (permitFile) {
+          const { data, error } = await supabase.storage
+            .from("docs")
+            .upload(`permits/${user.id}/${Date.now()}_${permitFile.name}`, permitFile, {
+              cacheControl: "3600", upsert: false,
+            });
+          if (error) throw error;
+          const { data: pub } = supabase.storage.from("docs").getPublicUrl(data.path);
+          permit_url = pub.publicUrl;
+        }
       }
 
-      // Build payload for API from our flattened items
-      const payload = {
-        items: items.map((it) => ({
+      // Build payload (cart + add-ons)
+      const lineItems = [
+        ...items.map((it) => ({
           product_id: it.id,
           name: it.name,
           price: Number(it.price),
           quantity: Number(it.quantity),
           image_url: it.image_url || null,
         })),
+        ...extraLineItems.map((it) => ({
+          product_id: null, // add-on only
+          name: it.name,
+          price: Number(it.price),
+          quantity: Number(it.quantity),
+          image_url: null,
+        })),
+      ];
+
+      const payload = {
+        items: lineItems,
         subtotal: Number(subtotal.toFixed(2)),
         tax: Number(tax.toFixed(2)),
         shipping: Number(shipping.toFixed(2)),
         total: Number(total.toFixed(2)),
         payment_method: null,
-        cadaver: {
-          ...cadaver,
-          age: cadaver.age ? Number(cadaver.age) : null,
-          death_datetime: cadaver.death_datetime,
-          pickup_datetime: cadaver.pickup_datetime,
-          death_certificate_url,
-          claimant_id_url,
-          permit_url,
-        },
+        purchase_type: purchaseType, // 'self' | 'someone'
+        cadaver: isForDeceased
+          ? {
+              ...cadaver,
+              age: cadaver.age ? Number(cadaver.age) : null,
+              death_datetime: cadaver.death_datetime,
+              pickup_datetime: cadaver.pickup_datetime,
+              death_certificate_url,
+              claimant_id_url,
+              permit_url,
+            }
+          : null,
+        chapel_booking: bookingEnabled && selectedChapel
+          ? {
+              chapel_id: selectedChapel.id,
+              start_date: startDate,
+              end_date: endDate,
+              days: chapelDays,
+              chapel_amount: chapelBookingTotal,
+            }
+          : null,
+        cold_storage_booking: coldEnabled
+          ? {
+              start_date: coldStartDate,
+              end_date: coldEndDate,
+              days: coldValidDays,
+              amount: coldStorageTotal,
+            }
+          : null,
       };
 
-      // Create order + xendit invoice via your serverless function
       const res = await fetch(`${API_BASE}/api/xendit/create-invoice`, {
         method: "POST",
         headers: {
@@ -185,7 +364,7 @@ export default function Checkout() {
 
       const data = await res.json();
 
-      // Clear cart (and stash) and redirect to Xendit
+      // Success → clear cart + redirect to Xendit
       clearCart();
       sessionStorage.removeItem("checkout.items");
       window.location.href = data.invoice_url;
@@ -199,6 +378,7 @@ export default function Checkout() {
   return (
     <>
       <Header />
+
       <div className="checkout-page">
         <h1>Checkout</h1>
 
@@ -209,7 +389,7 @@ export default function Checkout() {
           </div>
         ) : (
           <div className="checkout-grid">
-            {/* Left: Items */}
+            {/* LEFT: Items only */}
             <div className="co-items">
               {items.map((it) => (
                 <div className="co-item" key={it.id}>
@@ -221,18 +401,195 @@ export default function Checkout() {
                   </div>
                 </div>
               ))}
-
-              <button type="button" className="cadaver-btn" onClick={() => setShowCadaverModal(true)}>
-                Add Cadaver Details
-              </button>
-              <p className="cadaver-note">
-                * Cadaver details and Death Certificate are required before payment.
-              </p>
             </div>
 
-            {/* Right: Summary */}
+            {/* RIGHT: Summary + choices + totals + CTA */}
             <div className="co-summary">
               <h2>Order Summary</h2>
+
+              {/* Who is this for? */}
+              <div className="card-block">
+                <div className="block-title">Who is this for?</div>
+                <div className="who-options">
+                  <label className="radio">
+                    <input
+                      type="radio"
+                      name="purchaseType"
+                      value="self"
+                      checked={purchaseType === "self"}
+                      onChange={() => setPurchaseType("self")}
+                    />
+                    <span>Myself (pre-need)</span>
+                  </label>
+                  <label className="radio">
+                    <input
+                      type="radio"
+                      name="purchaseType"
+                      value="someone"
+                      checked={purchaseType === "someone"}
+                      onChange={() => setPurchaseType("someone")}
+                    />
+                    <span>Someone who has passed (at-need)</span>
+                  </label>
+                </div>
+
+                {isForDeceased ? (
+                  <p className="hint">You’ll need to provide cadaver details and a death certificate before payment.</p>
+                ) : (
+                  <p className="hint">No cadaver details needed now. Your plan will be recorded under your account.</p>
+                )}
+
+                {isForDeceased && (
+                  <button
+                    type="button"
+                    className="cadaver-btn inline"
+                    onClick={() => setShowCadaverModal(true)}
+                  >
+                    Add Cadaver Details
+                  </button>
+                )}
+              </div>
+
+              {/* Chapel booking (optional) */}
+              <div className="card-block">
+                <div className="block-title">Chapel Booking (optional)</div>
+
+                <label className="switch-row">
+                  <input
+                    type="checkbox"
+                    checked={bookingEnabled}
+                    onChange={(e) => setBookingEnabled(e.target.checked)}
+                  />
+                  <span>Include chapel booking for the wake</span>
+                </label>
+
+                {bookingEnabled && (
+                  <>
+                    <div className="row-grid tight">
+                      <div className="field">
+                        <label>Chapel</label>
+                        <select
+                          value={selectedChapelId}
+                          onChange={(e) => setSelectedChapelId(e.target.value)}
+                          required
+                        >
+                          <option value="">Select a chapel…</option>
+                          {chapels.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} {c.daily_rate ? `— ${php(c.daily_rate)}/day` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="field">
+                        <label>Start Date</label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label>Number of Days</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={numDays}
+                          onChange={(e) => setNumDays(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {startDate && chapelDays > 0 && (
+                      <p className="hint">
+                        End date: <strong>{endDate || "—"}</strong>
+                      </p>
+                    )}
+
+                    <div className="availability">
+                      {checkingAvailability && <span>Checking availability…</span>}
+                      {!checkingAvailability && availabilityErr && (
+                        <span className="error">{availabilityErr}</span>
+                      )}
+                      {!checkingAvailability && isAvailable === true && (
+                        <span className="ok">Dates are available ✅</span>
+                      )}
+                    </div>
+
+                    <div className="addon-totals">
+                      <div className="row">
+                        <span>Chapel ({chapelDays}d × {php(chapelDailyRate)})</span>
+                        <span>{php(chapelBookingTotal)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Cold storage (optional, separate dates) */}
+              <div className="card-block">
+                <div className="block-title">Cold Storage (optional)</div>
+
+                <label className="switch-row">
+                  <input
+                    type="checkbox"
+                    checked={coldEnabled}
+                    onChange={(e) => setColdEnabled(e.target.checked)}
+                  />
+                  <span>Reserve cold storage</span>
+                </label>
+
+                {coldEnabled && (
+                  <>
+                    <div className="row-grid tight">
+                      <div className="field">
+                        <label>Start Date</label>
+                        <input
+                          type="date"
+                          value={coldStartDate}
+                          onChange={(e) => setColdStartDate(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label>Number of Days</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={coldDays}
+                          onChange={(e) => setColdDays(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label>Rate (per day)</label>
+                        <input value={php(COLD_STORAGE_PER_DAY)} readOnly />
+                      </div>
+                    </div>
+
+                    {coldStartDate && coldValidDays > 0 && (
+                      <p className="hint">
+                        End date: <strong>{coldEndDate || "—"}</strong>
+                      </p>
+                    )}
+
+                    <div className="addon-totals">
+                      <div className="row">
+                        <span>Cold Storage ({coldValidDays}d × {php(COLD_STORAGE_PER_DAY)})</span>
+                        <span>{php(coldStorageTotal)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Totals */}
               <div className="row"><span>Subtotal</span><span>{php(subtotal)}</span></div>
               <div className="row"><span>Tax (12%)</span><span>{php(tax)}</span></div>
               <div className="row"><span>Shipping</span><span>{shipping === 0 ? "Free" : php(shipping)}</span></div>
@@ -243,14 +600,15 @@ export default function Checkout() {
               <button className="place-order" onClick={handlePlaceOrder} disabled={saving}>
                 {saving ? "Creating Invoice..." : "Proceed to Payment"}
               </button>
+
               <a href="/cart" className="back-cart">Back to Cart</a>
             </div>
           </div>
         )}
       </div>
 
-      {/* Cadaver Modal (unchanged UI) */}
-      {showCadaverModal && (
+      {/* Cadaver Modal */}
+      {showCadaverModal && isForDeceased && (
         <div className="modal-overlay" onClick={() => setShowCadaverModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">

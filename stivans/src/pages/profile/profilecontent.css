@@ -204,3 +204,134 @@
   .order-foot{flex-direction:column;align-items:flex-start}
   .tally{grid-auto-flow:row}
 }
+
+
+/* Tabs */
+.pf-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.pf-tabs.small { margin-bottom: 0; }
+.tab {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #e8e1cf;
+  background: #fff;
+  color: #7a6a2a;
+  font-weight: 600;
+}
+.tab.active {
+  background: #c9a227;
+  border-color: #b89220;
+  color: #111;
+}
+
+/* Toolbar & separators */
+.pf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 16px;
+}
+.pf-sep {
+  width: 1px;
+  height: 24px;
+  background: #eee4cc;
+}
+
+/* Ghost button (gold outline) */
+.btn.ghost {
+  border: 1px solid #e8e1cf;
+  background: #fff;
+  color: #7a6a2a;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.btn.ghost.active {
+  border-color: #b89220;
+  color: #111;
+}
+
+/* Timeline */
+.timeline {
+  position: relative;
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+.tl-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  position: relative;
+  padding: 12px 8px 12px 0;
+}
+.tl-item::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: -6px;
+  width: 2px;
+  background: #f0e6cd;
+}
+.tl-item:last-child::before { bottom: 18px; }
+
+.tl-dot {
+  flex: 0 0 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #c9a227;
+  margin: 6px 10px 0 0;
+  border: 2px solid #f6f1e3;
+}
+.tl-content {
+  background: #fff;
+  border: 1px solid #f0e6cd;
+  border-radius: 12px;
+  padding: 12px 14px;
+  flex: 1;
+}
+.tl-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.tl-title {
+  font-weight: 700;
+  color: #42380f;
+}
+.tl-time {
+  font-size: 12px;
+  color: #7f7f7f;
+}
+.tl-sub {
+  margin-top: 6px;
+  color: #444;
+}
+.tl-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #8a7d57;
+}
+
+/* Cards polish */
+.pf-card.soft {
+  border: 1px solid #f0e6cd;
+  background: #fffdfa;
+}
+
+/* Small badges for order status (reuse your palette) */
+.badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.badge.paid { background: #d9f7e3; color: #0f6b2f; }
+.badge.pending { background: #fff2c2; color: #7a5e00; }
+.badge.failed, .badge.cancelled { background: #fee2e2; color: #991b1b; }
