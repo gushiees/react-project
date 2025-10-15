@@ -1,201 +1,178 @@
-// /api/xendit/create-invoice.js
-import { createClient } from '@supabase/supabase-js';
+// Vercel Node 20 function
+export const config = { runtime: "nodejs" };
 
-const SUPABASE_URL =
-  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL; // allow either
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import fetch from "node-fetch";
+import { createClient } from "@supabase/supabase-js";
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.warn('[create-invoice] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-}
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
+const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
+// Your deployed site root, e.g. https://stivans.vercel.app
+const APP_URL = process.env.APP_URL || "https://stivans.vercel.app";
 
-// Service key bypasses RLS (intended for server-only code)
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    // --- 0) Auth: get user from Bearer token ---
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-    if (!token) {
-      return res.status(401).json({ error: 'No auth token' });
+    const auth = req.headers.authorization || "";
+    if (!auth.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const token = auth.replace("Bearer ", "");
+    const { data: { user }, error: userErr } = await sb.auth.getUser(token);
+    if (userErr || !user) {
+      return res.status(401).json({ error: "Invalid session" });
     }
 
-    const { data: uData, error: uErr } = await supabase.auth.getUser(token);
-    if (uErr || !uData?.user?.id) {
-      return res.status(401).json({ error: 'Invalid session token' });
-    }
-    const userId = uData.user.id;
-
-    // --- 1) Parse payload from Checkout ---
+    const payload = req.body || {};
     const {
-      items = [],                 // [{ product_id, name, price, quantity, image_url }]
+      items = [],
       subtotal = 0,
       tax = 0,
       shipping = 0,
-      total,                      // client-side computed; we recompute on server
-      payment_method = null,
-      cadaver = {},               // includes already-uploaded doc URLs
-    } = req.body || {};
+      total = 0,
+      cadaver = null,
+      chapel_booking = null,
+      purchase_type = "self",
+    } = payload;
 
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: 'No items to order' });
+      return res.status(400).json({ error: "No items to invoice" });
     }
 
-    // Require death certificate
-    if (!cadaver?.death_certificate_url) {
-      return res.status(400).json({ error: 'Death certificate is required' });
-    }
-
-    // Normalize numbers and recompute amount for Xendit
-    const normSubtotal = Number(subtotal) || 0;
-    const normTax      = Number(tax) || 0;
-    const normShip     = Number(shipping) || 0;
-    const amountToCharge = Math.round((normSubtotal + normTax + normShip) * 100) / 100;
-
-    // --- 2) Create order (do NOT set total_price; your DB handles it) ---
-    const { data: order, error: oErr } = await supabase
-      .from('orders')
+    // 1) Create order (pending)
+    const { data: orderRow, error: orderErr } = await sb
+      .from("orders")
       .insert({
-        user_id: userId,
-        status: 'pending',
-        subtotal: normSubtotal,
-        tax: normTax,
-        shipping: normShip,
-        xendit_payment_method: payment_method,
+        user_id: user.id,
+        status: "pending",
+        subtotal,
+        tax,
+        shipping,
+        total,
+        purchase_type,
       })
-      .select()
+      .select("*")
       .single();
 
-    if (oErr || !order) {
-      console.error('[create-invoice] order insert error:', oErr);
-      return res.status(400).json({ error: 'Failed to create order', details: oErr?.message || oErr });
+    if (orderErr) {
+      console.error(orderErr);
+      return res.status(400).json({ error: "Failed to create order" });
     }
 
-    // --- 3) Insert order items (include REQUIRED unit_price & total_price) ---
-    const itemRows = items.map((it) => {
-      const unit = Number(it.price) || 0;
-      const qty  = Math.max(1, Number(it.quantity) || 1);
+    const orderId = orderRow.id;
 
-      return {
-        order_id: order.id,
-        product_id: it.product_id ?? it.id ?? null,
-        name: it.name ?? '',
-        image_url: it.image_url || null,
+    // 2) Insert order items
+    const orderItemsPayload = items.map((it) => ({
+      order_id: orderId,
+      product_id: it.product_id,          // may be null for add-ons
+      quantity: Number(it.quantity) || 1,
+      unit_price: Number(it.price) || 0,
+      price: Number(it.price) || 0,
+      image_url: it.image_url || null,
+    }));
 
-        // Your schema requires these NOT NULL:
-        unit_price: unit,
-        total_price: unit * qty,
-
-        // Keep existing columns too (your table has them)
-        price: unit,
-        quantity: qty,
-      };
-    });
-
-    const { error: oiErr } = await supabase.from('order_items').insert(itemRows);
-    if (oiErr) {
-      console.error('[create-invoice] order_items insert error:', oiErr);
-      return res.status(400).json({ error: 'Failed to add order items', details: oiErr.message || oiErr });
+    const { error: itemsErr } = await sb.from("order_items").insert(orderItemsPayload);
+    if (itemsErr) {
+      console.error(itemsErr);
+      return res.status(400).json({ error: "Failed to add order items" });
     }
 
-    // --- 4) Insert cadaver details ---
-    const cadaverRow = {
-      order_id: order.id,
-
-      full_name: cadaver.full_name,
-      dob: cadaver.dob || null,
-      age: cadaver.age ?? null,
-      sex: cadaver.sex,
-      civil_status: cadaver.civil_status,
-      religion: cadaver.religion,
-
-      death_datetime: cadaver.death_datetime,
-      place_of_death: cadaver.place_of_death,
-      cause_of_death: cadaver.cause_of_death || null,
-
-      kin_name: cadaver.kin_name,
-      kin_relation: cadaver.kin_relation,
-      kin_mobile: cadaver.kin_mobile,
-      kin_email: cadaver.kin_email,
-      kin_address: cadaver.kin_address,
-
-      remains_location: cadaver.remains_location,
-      pickup_datetime: cadaver.pickup_datetime,
-      special_instructions: cadaver.special_instructions || null,
-
-      death_certificate_url: cadaver.death_certificate_url,
-      claimant_id_url: cadaver.claimant_id_url || null,
-      permit_url: cadaver.permit_url || null,
-
-      occupation: cadaver.occupation || null,
-      nationality: cadaver.nationality || null,
-      residence: cadaver.residence || null,
-    };
-
-    const { error: cvErr } = await supabase.from('cadaver_details').insert(cadaverRow);
-    if (cvErr) {
-      console.error('[create-invoice] cadaver_details insert error:', cvErr);
-      return res.status(400).json({ error: 'Failed to save cadaver details', details: cvErr.message || cvErr });
+    // 3) If chapel booking intent → create a pending hold
+    let chapelHoldId = null;
+    if (chapel_booking?.chapel_id && chapel_booking.start_date && chapel_booking.end_date) {
+      const { data: hold, error: holdErr } = await sb
+        .from("chapel_bookings")
+        .insert({
+          user_id: user.id,
+          chapel_id: chapel_booking.chapel_id,
+          start_date: chapel_booking.start_date,
+          end_date: chapel_booking.end_date,
+          days: chapel_booking.days || 1,
+          status: "hold", // change to 'paid' on webhook success
+          order_id: orderId,
+          snapshot_daily_rate: null, // optional snapshot column
+          base_amount: chapel_booking.chapel_amount || 0,
+          cold_storage_days: chapel_booking.cold_storage_days || 0,
+          cold_storage_amount: chapel_booking.cold_storage_amount || 0,
+          amount: (chapel_booking.chapel_amount || 0) + (chapel_booking.cold_storage_amount || 0),
+        })
+        .select("id")
+        .single();
+      if (holdErr) {
+        console.error(holdErr);
+        // don't block; you can also return error if you want it strict
+      } else {
+        chapelHoldId = hold.id;
+      }
     }
 
-    // --- 5) Create Xendit invoice ---
-    const XENDIT_KEY = process.env.XENDIT_SECRET_KEY;
-    if (!XENDIT_KEY) {
-      return res.status(500).json({ error: 'Missing XENDIT_SECRET_KEY' });
+    // 4) Store cadaver details if provided
+    if (cadaver) {
+      const { error: cadErr } = await sb
+        .from("cadaver_details")
+        .insert({
+          order_id: orderId,
+          ...cadaver,
+        });
+      if (cadErr) console.error("cadaver insert failed", cadErr);
     }
 
-    const SITE_URL = process.env.SITE_URL; // e.g. https://stivans.vercel.app
-    const invoicePayload = {
-      external_id: `order_${order.id}`,
-      amount: amountToCharge,
-      description: 'St. Ivans Order',
-      currency: 'PHP',
-      success_redirect_url: SITE_URL ? `${SITE_URL}/checkout?paid=1` : undefined,
-      failure_redirect_url: SITE_URL ? `${SITE_URL}/checkout?paid=0` : undefined,
-    };
+    // Build Xendit items
+    const xenditItems = items.map((it) => ({
+      name: it.name,
+      quantity: Number(it.quantity) || 1,
+      price: Math.round(Number(it.price) || 0), // Xendit wants integer (IDR) but for PHP: /v2 should accept amount
+      category: "funeral",
+      url: it.image_url || undefined,
+    }));
 
-    const resp = await fetch('https://api.xendit.co/v2/invoices', {
-      method: 'POST',
+    // 5) Create Xendit invoice with success/failure redirect URLs
+    const externalId = `order_${orderId}`;
+    const successUrl = `${APP_URL}/payment/success?order_id=${orderId}`;
+    const failureUrl = `${APP_URL}/payment/failed?order_id=${orderId}`;
+
+    const invRes = await fetch("https://api.xendit.co/v2/invoices", {
+      method: "POST",
       headers: {
-        Authorization: 'Basic ' + Buffer.from(`${XENDIT_KEY}:`).toString('base64'),
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        Authorization: "Basic " + Buffer.from(XENDIT_API_KEY + ":").toString("base64"),
       },
-      body: JSON.stringify(invoicePayload),
+      body: JSON.stringify({
+        external_id: externalId,
+        amount: Math.round(Number(total) || 0),
+        description: `St. Ivans Order ${orderId}`,
+        currency: "PHP",
+        items: xenditItems,
+        success_redirect_url: successUrl,
+        failure_redirect_url: failureUrl,
+        // recommended: add customer email to improve experience
+        payer_email: user.email,
+      }),
     });
 
-    const inv = await resp.json();
-    if (!resp.ok) {
-      console.error('[create-invoice] Xendit error:', inv);
-      return res.status(400).json({ error: 'Xendit error', details: inv });
+    if (!invRes.ok) {
+      const errText = await invRes.text();
+      console.error("Xendit invoice error:", errText);
+      return res.status(400).json({ error: "Failed to create invoice" });
     }
 
-    // --- 6) Store invoice id/url on the order ---
-    const { error: upErr } = await supabase
-      .from('orders')
-      .update({
-        xendit_invoice_id: inv.id || null,
-        xendit_invoice_url: inv.invoice_url || null,
-      })
-      .eq('id', order.id);
-    if (upErr) console.warn('[create-invoice] could not store invoice refs:', upErr);
+    const invoice = await invRes.json();
 
-    // --- 7) Done: return hosted invoice URL ---
+    // 6) save invoice id
+    await sb.from("orders").update({ xendit_invoice_id: invoice.id }).eq("id", orderId);
+
     return res.status(200).json({
-      order_id: order.id,
-      invoice_id: inv.id,
-      invoice_url: inv.invoice_url,
-      status: inv.status,
+      order_id: orderId,
+      invoice_id: invoice.id,
+      invoice_url: invoice.invoice_url,
     });
   } catch (e) {
-    console.error('[create-invoice] server error:', e);
-    return res.status(500).json({ error: 'Server error' });
+    console.error(e);
+    return res.status(500).json({ error: "Server error" });
   }
 }

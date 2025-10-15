@@ -26,6 +26,9 @@ import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 import { UserProvider } from "./contexts/UserContext.jsx";
 import { CartProvider } from "./contexts/cartContext.jsx";
 
+import PaymentSuccess from "./pages/payment/success.jsx";
+import PaymentFailed from "./pages/payment/failed.jsx";
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -45,6 +48,8 @@ const router = createBrowserRouter([
       { path: "checkout", element: <Checkout /> }, 
       { path: "contact", element: <Contact /> },
       { path: "orders/:id", element: <OrderReceipt/> },
+      { path: "payment/success", element: <PaymentSuccess /> },
+      { path: "payment/failed",  element: <PaymentFailed />  },
 
 
       // Protected routes

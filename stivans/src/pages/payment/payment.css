@@ -1,0 +1,44 @@
+.pay-shell {
+  max-width: 920px;
+  margin: 24px auto;
+  padding: 0 16px 32px;
+}
+.pay-card {
+  background: #fff;
+  border: 1px solid #e6eaf1;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 10px 24px rgba(2,6,23,.05);
+}
+.pay-card h1 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+.pay-card p { margin: 4px 0 10px; color: #4b5563; }
+
+.pay-summary {
+  margin: 14px 0 8px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+}
+.pay-summary > div {
+  display: flex; justify-content: space-between; padding: 6px 0;
+}
+.pay-summary span { color: #6b7280; }
+
+.pay-actions { display: flex; gap: 10px; margin-top: 12px; }
+.btn {
+  appearance: none; border: 1px solid #e5e7eb; background: #f9fafb; color: #111827;
+  padding: 10px 14px; border-radius: 10px; font-weight: 700; text-decoration: none;
+}
+.btn:hover { background: #f3f4f6; }
+.btn.primary { background: #111827; color: #fff; border-color: #111827; }
+.btn.primary:hover { opacity: .92; }
+
+.spinner {
+  width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #111827;
+  border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
