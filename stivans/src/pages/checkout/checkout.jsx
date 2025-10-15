@@ -15,21 +15,43 @@ function php(amount) {
   return "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// simple phone validator: digits only (after stripping symbols), 8–15 digits
+// ---- Phone helpers
+function digitsOnly(raw) {
+  return String(raw || "").replace(/[^\d]/g, "");
+}
 function isValidPhone(raw) {
-  const digits = String(raw || "").replace(/[^\d]/g, "");
-  return digits.length >= 8 && digits.length <= 15;
+  const d = digitsOnly(raw);
+  return d.length >= 8 && d.length <= 15;
 }
 
-// date helpers
+// ---- Date helpers
 function isoDateOnly(dt) {
-  // "YYYY-MM-DD" portion
   return (dt || "").slice(0, 10);
 }
 function isFuture(dateTimeLocal) {
   const now = new Date();
   const d = new Date(dateTimeLocal);
   return d.getTime() > now.getTime();
+}
+function computeAgeFromDates(dobISO, deathDTLocal) {
+  if (!dobISO || !deathDTLocal) return "";
+  const birth = new Date(dobISO + "T00:00:00");
+  const death = new Date(deathDTLocal);
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(death.getTime())) return "";
+  if (death < birth) return "";
+  let age = death.getFullYear() - birth.getFullYear();
+  const m = death.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && death.getDate() < birth.getDate())) age--;
+  return String(age);
+}
+function computeDobFromAge(ageStr, deathDTLocal) {
+  const age = Number(ageStr);
+  if (!deathDTLocal || !Number.isFinite(age) || age < 0 || age > 150) return "";
+  const death = new Date(deathDTLocal);
+  // Approximate DOB = same month/day, year - age (keeps it simple)
+  const approx = new Date(death);
+  approx.setFullYear(death.getFullYear() - age);
+  return approx.toISOString().slice(0, 10);
 }
 
 export default function Checkout() {
@@ -133,31 +155,72 @@ export default function Checkout() {
     religion: "",
     death_datetime: "",
     place_of_death: "",
-    cause_of_death: "Natural Causes", // dropdown default
-    cause_of_death_other: "", // only used if "Other" selected
+    cause_of_death: "Natural Causes",
+    cause_of_death_other: "",
     kin_name: "",
     kin_relation: "",
     kin_mobile: "",
     kin_email: "",
     kin_address: "",
     remains_location: "",
-    // pickup_datetime: REMOVED (assumed immediate)
-    special_handling: false, // checkbox
+    special_handling: false,
     occupation: "",
     nationality: "",
     residence: "",
   });
 
+  const [fieldErrors, setFieldErrors] = useState({}); // { fieldName: 'message' }
+
   const [deathCertFile, setDeathCertFile] = useState(null);
   const [claimantIdFile, setClaimantIdFile] = useState(null);
   const [permitFile, setPermitFile] = useState(null);
 
+  // ---- Cadaver field changes, with smart behavior ----
   const onChangeField = (e) => {
     const { name, value, type, checked } = e.target;
-    setCadaver((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? !!checked : value,
-    }));
+    const val = type === "checkbox" ? !!checked : value;
+
+    setCadaver((prev) => {
+      const next = { ...prev, [name]: val };
+
+      // Auto-calc AGE when dob + death are known
+      if ((name === "dob" && next.death_datetime) || (name === "death_datetime" && next.dob)) {
+        const autoAge = computeAgeFromDates(next.dob, next.death_datetime);
+        next.age = autoAge || next.age; // only overwrite if valid
+      }
+
+      // Backfill DOB when user types AGE and we have death_datetime; only if dob is empty.
+      if (name === "age" && next.death_datetime && !next.dob) {
+        const backfill = computeDobFromAge(val, next.death_datetime);
+        if (backfill) next.dob = backfill;
+      }
+
+      return next;
+    });
+
+    // clear field-level error as they type
+    setFieldErrors((fe) => ({ ...fe, [name]: "" }));
+  };
+
+  // Phone: enforce digits only & length during typing
+  const onPhoneChange = (e) => {
+    const cleaned = digitsOnly(e.target.value).slice(0, 15);
+    setCadaver((prev) => ({ ...prev, kin_mobile: cleaned }));
+    if (cleaned && !isValidPhone(cleaned)) {
+      setFieldErrors((fe) => ({ ...fe, kin_mobile: "8–15 digits required" }));
+    } else {
+      setFieldErrors((fe) => ({ ...fe, kin_mobile: "" }));
+    }
+  };
+  const onPhoneKeyDown = (e) => {
+    const allowed = [
+      "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab",
+    ];
+    const isCtrlCombo = e.ctrlKey || e.metaKey;
+    if (allowed.includes(e.key) || isCtrlCombo) return;
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+    }
   };
 
   // Fetch chapels
@@ -224,57 +287,61 @@ export default function Checkout() {
 
   // ----- Validation for cadaver (at-need) -----
   const validateCadaver = () => {
+    setFieldErrors({});
     if (!isForDeceased) return true;
 
-    const required = [
+    const req = [
       "full_name", "sex", "civil_status", "religion",
       "death_datetime", "place_of_death",
       "kin_name", "kin_relation", "kin_mobile", "kin_email", "kin_address",
       "remains_location",
     ];
-    for (const k of required) {
+
+    const fe = {};
+    for (const k of req) {
       if (!String(cadaver[k] || "").trim()) {
-        setErrorMsg(`Please fill in: ${k.replace(/_/g, " ")}`);
-        return false;
+        fe[k] = "Required";
       }
     }
 
     // phone number validation
-    if (!isValidPhone(cadaver.kin_mobile)) {
-      setErrorMsg("Please enter a valid contact number (8–15 digits).");
-      return false;
+    if (cadaver.kin_mobile && !isValidPhone(cadaver.kin_mobile)) {
+      fe.kin_mobile = "8–15 digits required";
     }
 
     // death date constraints
-    if (isFuture(cadaver.death_datetime)) {
-      setErrorMsg("Date & time of death cannot be set in the future.");
-      return false;
+    if (cadaver.death_datetime && isFuture(cadaver.death_datetime)) {
+      fe.death_datetime = "Cannot be in the future";
     }
     if (cadaver.dob) {
-      // compare dates only
       const birth = new Date(isoDateOnly(cadaver.dob) + "T00:00:00");
       const death = new Date(cadaver.death_datetime);
       if (death.getTime() < birth.getTime()) {
-        setErrorMsg("Date of death cannot be earlier than the date of birth.");
-        return false;
+        fe.death_datetime = "Death cannot be earlier than birth";
       }
     }
 
-    // cause of death: if "Other", the free-text must be provided
+    // cause of death "Other" requires detail
     if (cadaver.cause_of_death === "Other" && !String(cadaver.cause_of_death_other || "").trim()) {
-      setErrorMsg("Please specify the cause of death (Other).");
-      return false;
+      fe.cause_of_death_other = "Please specify";
     }
 
     // death certificate required
     if (!deathCertFile) {
-      setErrorMsg("Death certificate is required.");
+      fe.death_certificate_url = "Death certificate is required";
+    }
+
+    setFieldErrors(fe);
+    if (Object.keys(fe).length > 0) {
+      setErrorMsg("Please fix the highlighted fields.");
       return false;
     }
 
+    setErrorMsg("");
     return true;
   };
 
+  // ---- Submit
   const handlePlaceOrder = async () => {
     try {
       setErrorMsg("");
@@ -374,15 +441,12 @@ export default function Checkout() {
         cadaver: isForDeceased
           ? {
               ...cadaver,
-              // normalize data types
               age: cadaver.age ? Number(cadaver.age) : null,
-              // use combined cause_of_death if "Other"
               cause_of_death:
                 cadaver.cause_of_death === "Other"
                   ? cadaver.cause_of_death_other
                   : cadaver.cause_of_death,
-              // pickup not used anymore — set null for backward compat
-              pickup_datetime: null,
+              pickup_datetime: null, // legacy compat — not used
               death_certificate_url,
               claimant_id_url,
               permit_url,
@@ -433,6 +497,11 @@ export default function Checkout() {
       setSaving(false);
     }
   };
+
+  // For max attribute on death_datetime
+  const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
 
   return (
     <>
@@ -531,6 +600,7 @@ export default function Checkout() {
                           value={selectedChapelId}
                           onChange={(e) => setSelectedChapelId(e.target.value)}
                           required
+                          className={fieldErrors.selectedChapelId ? "err" : ""}
                         >
                           <option value="">Select a chapel…</option>
                           {chapels.map((c) => (
@@ -548,6 +618,7 @@ export default function Checkout() {
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
                           required
+                          className={fieldErrors.startDate ? "err" : ""}
                         />
                       </div>
 
@@ -559,6 +630,7 @@ export default function Checkout() {
                           value={numDays}
                           onChange={(e) => setNumDays(e.target.value)}
                           required
+                          className={fieldErrors.numDays ? "err" : ""}
                         />
                       </div>
                     </div>
@@ -612,6 +684,7 @@ export default function Checkout() {
                           value={coldStartDate}
                           onChange={(e) => setColdStartDate(e.target.value)}
                           required
+                          className={fieldErrors.coldStartDate ? "err" : ""}
                         />
                       </div>
 
@@ -623,6 +696,7 @@ export default function Checkout() {
                           value={coldDays}
                           onChange={(e) => setColdDays(e.target.value)}
                           required
+                          className={fieldErrors.coldDays ? "err" : ""}
                         />
                       </div>
 
@@ -681,41 +755,86 @@ export default function Checkout() {
               <div className="row-grid">
                 <div className="field">
                   <label data-required="*">Full Legal Name</label>
-                  <input name="full_name" value={cadaver.full_name} onChange={onChangeField} required />
+                  <input
+                    name="full_name"
+                    value={cadaver.full_name}
+                    onChange={onChangeField}
+                    className={fieldErrors.full_name ? "err" : ""}
+                    required
+                  />
+                  {fieldErrors.full_name && <small className="ferr">{fieldErrors.full_name}</small>}
                 </div>
                 <div className="field">
                   <label>Date of Birth</label>
-                  <input type="date" name="dob" value={cadaver.dob} onChange={onChangeField} />
+                  <input
+                    type="date"
+                    name="dob"
+                    value={cadaver.dob}
+                    onChange={onChangeField}
+                    max={new Date().toISOString().slice(0,10)}
+                    className={fieldErrors.dob ? "err" : ""}
+                  />
+                  {fieldErrors.dob && <small className="ferr">{fieldErrors.dob}</small>}
                 </div>
                 <div className="field">
-                  <label>Age</label>
-                  <input type="number" name="age" value={cadaver.age} onChange={onChangeField} />
+                  <label>Age (auto if DOB set)</label>
+                  <input
+                    type="number"
+                    name="age"
+                    value={cadaver.age}
+                    onChange={onChangeField}
+                    min={0}
+                    max={150}
+                    className={fieldErrors.age ? "err" : ""}
+                  />
+                  {fieldErrors.age && <small className="ferr">{fieldErrors.age}</small>}
                 </div>
               </div>
 
               <div className="row-grid">
                 <div className="field">
                   <label data-required="*">Sex</label>
-                  <select name="sex" value={cadaver.sex} onChange={onChangeField} required>
+                  <select
+                    name="sex"
+                    value={cadaver.sex}
+                    onChange={onChangeField}
+                    className={fieldErrors.sex ? "err" : ""}
+                    required
+                  >
                     <option value="">Select…</option>
                     <option>Male</option>
                     <option>Female</option>
                     <option>Other</option>
                   </select>
+                  {fieldErrors.sex && <small className="ferr">{fieldErrors.sex}</small>}
                 </div>
                 <div className="field">
                   <label data-required="*">Civil Status</label>
-                  <select name="civil_status" value={cadaver.civil_status} onChange={onChangeField} required>
+                  <select
+                    name="civil_status"
+                    value={cadaver.civil_status}
+                    onChange={onChangeField}
+                    className={fieldErrors.civil_status ? "err" : ""}
+                    required
+                  >
                     <option value="">Select…</option>
                     <option>Single</option>
                     <option>Married</option>
                     <option>Widowed</option>
                     <option>Separated</option>
                   </select>
+                  {fieldErrors.civil_status && <small className="ferr">{fieldErrors.civil_status}</small>}
                 </div>
                 <div className="field">
                   <label data-required="*">Religion</label>
-                  <input name="religion" value={cadaver.religion} onChange={onChangeField} required />
+                  <input
+                    name="religion"
+                    value={cadaver.religion}
+                    onChange={onChangeField}
+                    className={fieldErrors.religion ? "err" : ""}
+                    required
+                  />
+                  {fieldErrors.religion && <small className="ferr">{fieldErrors.religion}</small>}
                 </div>
               </div>
 
@@ -729,12 +848,22 @@ export default function Checkout() {
                     name="death_datetime"
                     value={cadaver.death_datetime}
                     onChange={onChangeField}
+                    max={nowLocal}
+                    className={fieldErrors.death_datetime ? "err" : ""}
                     required
                   />
+                  {fieldErrors.death_datetime && <small className="ferr">{fieldErrors.death_datetime}</small>}
                 </div>
                 <div className="field">
                   <label data-required="*">Place of Death</label>
-                  <input name="place_of_death" value={cadaver.place_of_death} onChange={onChangeField} required />
+                  <input
+                    name="place_of_death"
+                    value={cadaver.place_of_death}
+                    onChange={onChangeField}
+                    className={fieldErrors.place_of_death ? "err" : ""}
+                    required
+                  />
+                  {fieldErrors.place_of_death && <small className="ferr">{fieldErrors.place_of_death}</small>}
                 </div>
                 <div className="field">
                   <label data-required="*">Cause of Death</label>
@@ -742,6 +871,7 @@ export default function Checkout() {
                     name="cause_of_death"
                     value={cadaver.cause_of_death}
                     onChange={onChangeField}
+                    className={fieldErrors.cause_of_death ? "err" : ""}
                     required
                   >
                     <option>Natural Causes</option>
@@ -753,6 +883,7 @@ export default function Checkout() {
                     <option>Unknown</option>
                     <option>Other</option>
                   </select>
+                  {fieldErrors.cause_of_death && <small className="ferr">{fieldErrors.cause_of_death}</small>}
                 </div>
               </div>
 
@@ -764,8 +895,10 @@ export default function Checkout() {
                       name="cause_of_death_other"
                       value={cadaver.cause_of_death_other}
                       onChange={onChangeField}
+                      className={fieldErrors.cause_of_death_other ? "err" : ""}
                       required
                     />
+                    {fieldErrors.cause_of_death_other && <small className="ferr">{fieldErrors.cause_of_death_other}</small>}
                   </div>
                 </div>
               )}
@@ -775,31 +908,65 @@ export default function Checkout() {
               <div className="row-grid">
                 <div className="field">
                   <label data-required="*">Primary Contact Name</label>
-                  <input name="kin_name" value={cadaver.kin_name} onChange={onChangeField} required />
+                  <input
+                    name="kin_name"
+                    value={cadaver.kin_name}
+                    onChange={onChangeField}
+                    className={fieldErrors.kin_name ? "err" : ""}
+                    required
+                  />
+                  {fieldErrors.kin_name && <small className="ferr">{fieldErrors.kin_name}</small>}
                 </div>
                 <div className="field">
                   <label data-required="*">Relationship</label>
-                  <input name="kin_relation" value={cadaver.kin_relation} onChange={onChangeField} required />
+                  <input
+                    name="kin_relation"
+                    value={cadaver.kin_relation}
+                    onChange={onChangeField}
+                    className={fieldErrors.kin_relation ? "err" : ""}
+                    required
+                  />
+                  {fieldErrors.kin_relation && <small className="ferr">{fieldErrors.kin_relation}</small>}
                 </div>
                 <div className="field">
                   <label data-required="*">Mobile</label>
                   <input
+                    type="tel"
+                    inputMode="numeric"
                     name="kin_mobile"
                     value={cadaver.kin_mobile}
-                    onChange={onChangeField}
+                    onChange={onPhoneChange}
+                    onKeyDown={onPhoneKeyDown}
                     placeholder="e.g., 09171234567"
+                    className={fieldErrors.kin_mobile ? "err" : ""}
                     required
                   />
+                  {fieldErrors.kin_mobile && <small className="ferr">{fieldErrors.kin_mobile}</small>}
                 </div>
               </div>
               <div className="row-grid">
                 <div className="field">
                   <label data-required="*">Email</label>
-                  <input type="email" name="kin_email" value={cadaver.kin_email} onChange={onChangeField} required />
+                  <input
+                    type="email"
+                    name="kin_email"
+                    value={cadaver.kin_email}
+                    onChange={onChangeField}
+                    className={fieldErrors.kin_email ? "err" : ""}
+                    required
+                  />
+                  {fieldErrors.kin_email && <small className="ferr">{fieldErrors.kin_email}</small>}
                 </div>
                 <div className="field col-2">
                   <label data-required="*">Address</label>
-                  <input name="kin_address" value={cadaver.kin_address} onChange={onChangeField} required />
+                  <input
+                    name="kin_address"
+                    value={cadaver.kin_address}
+                    onChange={onChangeField}
+                    className={fieldErrors.kin_address ? "err" : ""}
+                    required
+                  />
+                  {fieldErrors.kin_address && <small className="ferr">{fieldErrors.kin_address}</small>}
                 </div>
               </div>
 
@@ -808,7 +975,14 @@ export default function Checkout() {
               <div className="row-grid">
                 <div className="field">
                   <label data-required="*">Current Location of Remains</label>
-                  <input name="remains_location" value={cadaver.remains_location} onChange={onChangeField} required />
+                  <input
+                    name="remains_location"
+                    value={cadaver.remains_location}
+                    onChange={onChangeField}
+                    className={fieldErrors.remains_location ? "err" : ""}
+                    required
+                  />
+                  {fieldErrors.remains_location && <small className="ferr">{fieldErrors.remains_location}</small>}
                 </div>
                 <div className="field">
                   <label>Special Handling</label>
@@ -828,15 +1002,23 @@ export default function Checkout() {
               <div className="section-divider">Documents</div>
               <div className="docs">
                 <div className="field">
-                  <label data-required="*">
-                    Death Certificate (required)
-                  </label>
+                  <label data-required="*">Death Certificate (required)</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
                     onChange={(e) => setDeathCertFile(e.target.files?.[0] || null)}
+                    className={fieldErrors.death_certificate_url ? "err" : ""}
                     required
                   />
+                  {deathCertFile && (
+                    <small className="file-hint">
+                      Selected: {deathCertFile.name}{" "}
+                      <button type="button" className="linklike" onClick={() => setDeathCertFile(null)}>
+                        remove
+                      </button>
+                    </small>
+                  )}
+                  {fieldErrors.death_certificate_url && <small className="ferr">{fieldErrors.death_certificate_url}</small>}
                 </div>
                 <div className="field">
                   <label>Claimant / Next of Kin ID (optional)</label>
@@ -845,6 +1027,7 @@ export default function Checkout() {
                     accept="image/*,.pdf"
                     onChange={(e) => setClaimantIdFile(e.target.files?.[0] || null)}
                   />
+                  {claimantIdFile && <small className="file-hint">Selected: {claimantIdFile.name}</small>}
                 </div>
                 <div className="field">
                   <label>Burial / Cremation Permit (optional)</label>
@@ -853,6 +1036,7 @@ export default function Checkout() {
                     accept="image/*,.pdf"
                     onChange={(e) => setPermitFile(e.target.files?.[0] || null)}
                   />
+                  {permitFile && <small className="file-hint">Selected: {permitFile.name}</small>}
                 </div>
               </div>
             </div>
