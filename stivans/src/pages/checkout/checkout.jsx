@@ -434,7 +434,7 @@ export default function Checkout() {
                 </div>
 
                 {isForDeceased ? (
-                  <p className="hint">You’ll need to provide cadaver details and a death certificate before payment.</p>
+                  <p className="hint">You'll need to provide cadaver details and a death certificate before payment.</p>
                 ) : (
                   <p className="hint">No cadaver details needed now. Your plan will be recorded under your account.</p>
                 )}
@@ -607,7 +607,7 @@ export default function Checkout() {
         )}
       </div>
 
-      {/* Cadaver Modal */}
+      {/* Cadaver Modal - Updated with Professional Design */}
       {showCadaverModal && isForDeceased && (
         <div className="modal-overlay" onClick={() => setShowCadaverModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -617,10 +617,11 @@ export default function Checkout() {
             </div>
 
             <div className="modal-body">
-              {/* Identity */}
+              {/* Identity Section */}
+              <div className="section-divider">Identity Information</div>
               <div className="row-grid">
                 <div className="field">
-                  <label>Full Legal Name *</label>
+                  <label data-required="*">Full Legal Name</label>
                   <input name="full_name" value={cadaver.full_name} onChange={onChangeField} required />
                 </div>
                 <div className="field">
@@ -635,7 +636,7 @@ export default function Checkout() {
 
               <div className="row-grid">
                 <div className="field">
-                  <label>Sex *</label>
+                  <label data-required="*">Sex</label>
                   <select name="sex" value={cadaver.sex} onChange={onChangeField} required>
                     <option value="">Select…</option>
                     <option>Male</option>
@@ -644,7 +645,7 @@ export default function Checkout() {
                   </select>
                 </div>
                 <div className="field">
-                  <label>Civil Status *</label>
+                  <label data-required="*">Civil Status</label>
                   <select name="civil_status" value={cadaver.civil_status} onChange={onChangeField} required>
                     <option value="">Select…</option>
                     <option>Single</option>
@@ -654,61 +655,64 @@ export default function Checkout() {
                   </select>
                 </div>
                 <div className="field">
-                  <label>Religion *</label>
+                  <label data-required="*">Religion</label>
                   <input name="religion" value={cadaver.religion} onChange={onChangeField} required />
                 </div>
               </div>
 
-              {/* Death Details */}
+              {/* Death Details Section */}
+              <div className="section-divider">Death Details</div>
               <div className="row-grid">
                 <div className="field">
-                  <label>Date & Time of Death *</label>
+                  <label data-required="*">Date & Time of Death</label>
                   <input type="datetime-local" name="death_datetime" value={cadaver.death_datetime} onChange={onChangeField} required />
                 </div>
                 <div className="field">
-                  <label>Place of Death *</label>
+                  <label data-required="*">Place of Death</label>
                   <input name="place_of_death" value={cadaver.place_of_death} onChange={onChangeField} required />
                 </div>
                 <div className="field">
-                  <label>Cause of Death (optional)</label>
-                  <input name="cause_of_death" value={cadaver.cause_of_death} onChange={onChangeField} />
+                  <label data-required="*">Cause of Death</label>
+                  <input name="cause_of_death" value={cadaver.cause_of_death} onChange={onChangeField} required />
                 </div>
               </div>
 
-              {/* Next of Kin */}
+              {/* Next of Kin Section */}
+              <div className="section-divider">Next of Kin Information</div>
               <div className="row-grid">
                 <div className="field">
-                  <label>Primary Contact Name *</label>
+                  <label data-required="*">Primary Contact Name</label>
                   <input name="kin_name" value={cadaver.kin_name} onChange={onChangeField} required />
                 </div>
                 <div className="field">
-                  <label>Relationship *</label>
+                  <label data-required="*">Relationship</label>
                   <input name="kin_relation" value={cadaver.kin_relation} onChange={onChangeField} required />
                 </div>
                 <div className="field">
-                  <label>Mobile *</label>
+                  <label data-required="*">Mobile</label>
                   <input name="kin_mobile" value={cadaver.kin_mobile} onChange={onChangeField} required />
                 </div>
               </div>
               <div className="row-grid">
                 <div className="field">
-                  <label>Email *</label>
+                  <label data-required="*">Email</label>
                   <input type="email" name="kin_email" value={cadaver.kin_email} onChange={onChangeField} required />
                 </div>
                 <div className="field col-2">
-                  <label>Address *</label>
+                  <label data-required="*">Address</label>
                   <input name="kin_address" value={cadaver.kin_address} onChange={onChangeField} required />
                 </div>
               </div>
 
-              {/* Logistics */}
+              {/* Logistics Section */}
+              <div className="section-divider">Logistics</div>
               <div className="row-grid">
                 <div className="field">
-                  <label>Current Location of Remains *</label>
+                  <label data-required="*">Current Location of Remains</label>
                   <input name="remains_location" value={cadaver.remains_location} onChange={onChangeField} required />
                 </div>
                 <div className="field">
-                  <label>Requested Pick-Up (Date & Time) *</label>
+                  <label data-required="*">Requested Pick-Up (Date & Time)</label>
                   <input type="datetime-local" name="pickup_datetime" value={cadaver.pickup_datetime} onChange={onChangeField} required />
                 </div>
                 <div className="field">
@@ -717,18 +721,40 @@ export default function Checkout() {
                 </div>
               </div>
 
-              {/* Documents */}
+              {/* Documents Section */}
+              <div className="section-divider">Documents</div>
               <div className="docs">
                 <div className="field">
-                  <label>Death Certificate (required)</label>
+                  <label data-required="*">
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 10L12 5L17 10" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 5V15" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M20 13V19C20 19.5304 19.7893 20.0391 19.4142 20.4142C19.0391 20.7893 18.5304 21 18 21H6C5.46957 21 4.96086 20.7893 4.58579 20.4142C4.21071 20.0391 4 19.5304 4 19V13" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Death Certificate (required)
+                  </label>
                   <input type="file" accept="image/*,.pdf" onChange={(e) => setDeathCertFile(e.target.files?.[0] || null)} required />
                 </div>
                 <div className="field">
-                  <label>Claimant / Next of Kin ID (optional)</label>
+                  <label>
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 10L12 5L17 10" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 5V15" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M20 13V19C20 19.5304 19.7893 20.0391 19.4142 20.4142C19.0391 20.7893 18.5304 21 18 21H6C5.46957 21 4.96086 20.7893 4.58579 20.4142C4.21071 20.0391 4 19.5304 4 19V13" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Claimant / Next of Kin ID (optional)
+                  </label>
                   <input type="file" accept="image/*,.pdf" onChange={(e) => setClaimantIdFile(e.target.files?.[0] || null)} />
                 </div>
                 <div className="field">
-                  <label>Burial / Cremation Permit (optional)</label>
+                  <label>
+                    <svg className="upload-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 10L12 5L17 10" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 5V15" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M20 13V19C20 19.5304 19.7893 20.0391 19.4142 20.4142C19.0391 20.7893 18.5304 21 18 21H6C5.46957 21 4.96086 20.7893 4.58579 20.4142C4.21071 20.0391 4 19.5304 4 19V13" stroke="#111827" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Burial / Cremation Permit (optional)
+                  </label>
                   <input type="file" accept="image/*,.pdf" onChange={(e) => setPermitFile(e.target.files?.[0] || null)} />
                 </div>
               </div>
