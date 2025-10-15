@@ -1,6 +1,9 @@
 import "./footer.css";
 import { Link } from "react-router-dom"; 
 
+// Make sure to import your image
+import footerLogo from "../../assets/stivanlogolight.png";
+
 export default function Footer() {
   return (
     <footer className="site-footer">
@@ -9,8 +12,7 @@ export default function Footer() {
         <div className="footer-brand">
           <h3>St. Ivans</h3>
           <p>
-            Supporting families with compassionate funeral services and
-            insurance solutions since 2025.
+            Supporting families with compassionate funeral services since 2025.
           </p>
           <div className="social-links">
             <a href="#" aria-label="Facebook">📘</a>
@@ -32,18 +34,6 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Insurance */}
-        <div className="footer-column">
-          <h4>Insurance</h4>
-          <ul>
-            <li><Link to="/insurance">Basic Protection</Link></li>
-            <li><Link to="/insurance">Family Protection</Link></li>
-            <li><Link to="/insurance">Premium Legacy</Link></li>
-            <li><Link to="/insurance">Policy Management</Link></li>
-            <li><Link to="/insurance">Claims Process</Link></li>
-          </ul>
-        </div>
-
         {/* Company */}
         <div className="footer-column">
           <h4>Company</h4>
@@ -59,6 +49,9 @@ export default function Footer() {
 
       {/* Copyright row */}
       <div className="footer-bottom">
+        {/* --- ADD THE IMAGE HERE --- */}
+        <img src={footerLogo} alt="St. Ivans Funeral Services" className="footer-logo" />
+        
         <p>
           © {new Date().getFullYear()} St. Ivans. All rights reserved. |{" "}
           <Link to="/privacy">Privacy Policy</Link> |{" "}

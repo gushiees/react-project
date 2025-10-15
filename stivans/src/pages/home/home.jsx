@@ -25,15 +25,15 @@ export default function Home() {
         <div className="hero__overlay" aria-hidden="true" />
         <div className="hero__content">
           <h1 className="hero__title">
-            <span>Your Comfort</span>
-            <span>to Heaven</span>
+            <span>Your Shepherd</span>
+            <span>to the Light</span>
           </h1>
 
           {/* Route to login using your Button component */}
           <Button
             id="hero-get-started"
             type="secondary"
-            label="Get Started"
+            label="Begin Arrangements"
             to="/login"
             externalStyles="hero__cta"
           />
