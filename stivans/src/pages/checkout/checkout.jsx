@@ -1,5 +1,5 @@
 // src/pages/checkout/checkout.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
@@ -48,7 +48,6 @@ function computeDobFromAge(ageStr, deathDTLocal) {
   const age = Number(ageStr);
   if (!deathDTLocal || !Number.isFinite(age) || age < 0 || age > 150) return "";
   const death = new Date(deathDTLocal);
-  // Approximate DOB = same month/day, year - age (keeps it simple)
   const approx = new Date(death);
   approx.setFullYear(death.getFullYear() - age);
   return approx.toISOString().slice(0, 10);
@@ -174,6 +173,7 @@ export default function Checkout() {
   const [deathCertFile, setDeathCertFile] = useState(null);
   const [claimantIdFile, setClaimantIdFile] = useState(null);
   const [permitFile, setPermitFile] = useState(null);
+  const deathCertInputRef = useRef(null); // ensures we can clear the file input reliably
 
   // ---- Cadaver field changes, with smart behavior ----
   const onChangeField = (e) => {
@@ -183,22 +183,16 @@ export default function Checkout() {
     setCadaver((prev) => {
       const next = { ...prev, [name]: val };
 
-      // Auto-calc AGE when dob + death are known
       if ((name === "dob" && next.death_datetime) || (name === "death_datetime" && next.dob)) {
         const autoAge = computeAgeFromDates(next.dob, next.death_datetime);
-        next.age = autoAge || next.age; // only overwrite if valid
+        next.age = autoAge || next.age;
       }
-
-      // Backfill DOB when user types AGE and we have death_datetime; only if dob is empty.
       if (name === "age" && next.death_datetime && !next.dob) {
         const backfill = computeDobFromAge(val, next.death_datetime);
         if (backfill) next.dob = backfill;
       }
-
       return next;
     });
-
-    // clear field-level error as they type
     setFieldErrors((fe) => ({ ...fe, [name]: "" }));
   };
 
@@ -213,21 +207,17 @@ export default function Checkout() {
     }
   };
   const onPhoneKeyDown = (e) => {
-    const allowed = [
-      "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab",
-    ];
+    const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab"];
     const isCtrlCombo = e.ctrlKey || e.metaKey;
     if (allowed.includes(e.key) || isCtrlCombo) return;
-    if (!/^\d$/.test(e.key)) {
-      e.preventDefault();
-    }
+    if (!/^\d$/.test(e.key)) e.preventDefault();
   };
 
   // Fetch chapels
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from("chapels").select("id,name,daily_rate").order("name");
-      if (!error && Array.isArray(data)) setChapels(data);
+      const { data } = await supabase.from("chapels").select("id,name,daily_rate").order("name");
+      if (Array.isArray(data)) setChapels(data);
     })();
   }, []);
 
@@ -259,15 +249,14 @@ export default function Checkout() {
         .select("id,start_date,end_date,status,chapel_id")
         .eq("chapel_id", selectedChapelId)
         .neq("status", "cancelled")
-        .lte("start_date", endDate)   // existing.start_date <= new.endDate
-        .gte("end_date", startDate);  // existing.end_date   >= new.startDate
+        .lte("start_date", endDate)
+        .gte("end_date", startDate);
 
       if (error) throw error;
       const conflict = Array.isArray(data) && data.length > 0;
       setIsAvailable(!conflict);
       if (conflict) setAvailabilityErr("Selected dates are unavailable for this chapel. Please adjust.");
-    } catch (e) {
-      console.error(e);
+    } catch {
       setAvailabilityErr("Unable to check availability right now.");
       setIsAvailable(null);
     } finally {
@@ -298,61 +287,48 @@ export default function Checkout() {
     ];
 
     const fe = {};
-    for (const k of req) {
-      if (!String(cadaver[k] || "").trim()) {
-        fe[k] = "Required";
-      }
-    }
+    for (const k of req) if (!String(cadaver[k] || "").trim()) fe[k] = "Required";
 
-    // phone number validation
-    if (cadaver.kin_mobile && !isValidPhone(cadaver.kin_mobile)) {
-      fe.kin_mobile = "8–15 digits required";
-    }
+    if (cadaver.kin_mobile && !isValidPhone(cadaver.kin_mobile)) fe.kin_mobile = "8–15 digits required";
+    if (cadaver.death_datetime && isFuture(cadaver.death_datetime)) fe.death_datetime = "Cannot be in the future";
 
-    // death date constraints
-    if (cadaver.death_datetime && isFuture(cadaver.death_datetime)) {
-      fe.death_datetime = "Cannot be in the future";
-    }
     if (cadaver.dob) {
       const birth = new Date(isoDateOnly(cadaver.dob) + "T00:00:00");
       const death = new Date(cadaver.death_datetime);
-      if (death.getTime() < birth.getTime()) {
-        fe.death_datetime = "Death cannot be earlier than birth";
-      }
+      if (death.getTime() < birth.getTime()) fe.death_datetime = "Death cannot be earlier than birth";
     }
 
-    // cause of death "Other" requires detail
     if (cadaver.cause_of_death === "Other" && !String(cadaver.cause_of_death_other || "").trim()) {
       fe.cause_of_death_other = "Please specify";
     }
 
-    // death certificate required
-    if (!deathCertFile) {
-      fe.death_certificate_url = "Death certificate is required";
-    }
+    if (!deathCertFile) fe.death_certificate_url = "Death certificate is required";
 
     setFieldErrors(fe);
     if (Object.keys(fe).length > 0) {
       setErrorMsg("Please fix the highlighted fields.");
       return false;
     }
-
     setErrorMsg("");
     return true;
+  };
+
+  // Validate only cadaver & close modal
+  const handleSaveCadaver = () => {
+    const ok = validateCadaver();
+    if (ok) setShowCadaverModal(false);
   };
 
   // ---- Submit
   const handlePlaceOrder = async () => {
     try {
       setErrorMsg("");
-
       if (items.length === 0) {
         setErrorMsg("No items selected for checkout.");
         return;
       }
       if (!validateCadaver()) return;
 
-      // Validate chapel details if enabled
       if (bookingEnabled) {
         if (!selectedChapelId || !startDate || chapelDays < 1) {
           setErrorMsg("Please complete chapel booking details.");
@@ -363,8 +339,6 @@ export default function Checkout() {
           return;
         }
       }
-
-      // Validate cold storage if enabled
       if (coldEnabled) {
         if (!coldStartDate || coldValidDays < 1) {
           setErrorMsg("Please complete cold storage dates.");
@@ -383,7 +357,7 @@ export default function Checkout() {
       }
       const user = session.user;
 
-      // Upload docs only when buying for someone deceased
+      // Upload docs only when at-need
       let death_certificate_url = null;
       let claimant_id_url = null;
       let permit_url = null;
@@ -412,7 +386,6 @@ export default function Checkout() {
         }
       }
 
-      // Build payload (cart + add-ons)
       const lineItems = [
         ...items.map((it) => ({
           product_id: it.id,
@@ -422,7 +395,7 @@ export default function Checkout() {
           image_url: it.image_url || null,
         })),
         ...extraLineItems.map((it) => ({
-          product_id: null, // add-on only
+          product_id: null,
           name: it.name,
           price: Number(it.price),
           quantity: Number(it.quantity),
@@ -437,7 +410,7 @@ export default function Checkout() {
         shipping: Number(shipping.toFixed(2)),
         total: Number(total.toFixed(2)),
         payment_method: null,
-        purchase_type: purchaseType, // 'self' | 'someone'
+        purchase_type: purchaseType,
         cadaver: isForDeceased
           ? {
               ...cadaver,
@@ -446,7 +419,7 @@ export default function Checkout() {
                 cadaver.cause_of_death === "Other"
                   ? cadaver.cause_of_death_other
                   : cadaver.cause_of_death,
-              pickup_datetime: null, // legacy compat — not used
+              pickup_datetime: null,
               death_certificate_url,
               claimant_id_url,
               permit_url,
@@ -486,8 +459,6 @@ export default function Checkout() {
       }
 
       const data = await res.json();
-
-      // Success → clear cart + redirect to Xendit
       clearCart();
       sessionStorage.removeItem("checkout.items");
       window.location.href = data.invoice_url;
@@ -503,97 +474,57 @@ export default function Checkout() {
     .toISOString()
     .slice(0, 16);
 
+  // ---- Inline UI polish (safe to keep minimal CSS edits in one place)
+  const card = { background: "#fff", borderRadius: 16, padding: 20, boxShadow: "0 6px 18px rgba(17,24,39,0.06)" };
+  const sectionTitle = { fontSize: 16, fontWeight: 700, marginBottom: 12 };
+  const block = { ...card, marginBottom: 16 };
+  const grid2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
+  const grid3 = { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 };
+  const row = { display: "flex", justifyContent: "space-between", margin: "8px 0" };
+
   return (
     <>
       <Header />
 
-      <div className="checkout-page">
-        <h1>Checkout</h1>
+      <div className="checkout-page" style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
+        <h1 style={{ margin: "8px 0 16px", fontSize: 28 }}>Checkout</h1>
 
         {items.length === 0 ? (
-          <div className="empty-checkout">
+          <div className="empty-checkout" style={{ ...card }}>
             <p>No items selected for checkout.</p>
             <a href="/cart"><button>Back to Cart</button></a>
           </div>
         ) : (
-          <div className="checkout-grid">
-            {/* LEFT: Items only */}
-            <div className="co-items">
-              {items.map((it) => (
-                <div className="co-item" key={it.id}>
-                  <img src={it.image_url} alt={it.name} />
-                  <div className="co-item-info">
-                    <h3>{it.name}</h3>
-                    <p className="price">{php(it.price)}</p>
-                    <p className="qty">Qty: {it.quantity}</p>
-                  </div>
+          <div className="checkout-grid" style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: 20 }}>
+            {/* LEFT: Items */}
+            <div className="co-items" style={{ display: "grid", gap: 12 }}>
+              <div style={{ ...block }}>
+                <h2 style={{ ...sectionTitle, marginBottom: 16 }}>Items</h2>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {items.map((it) => (
+                    <div key={it.id} className="co-item" style={{ display: "grid", gridTemplateColumns: "72px 1fr auto", gap: 12, alignItems: "center" }}>
+                      <img src={it.image_url} alt={it.name} style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 12, background: "#f3f4f6" }} />
+                      <div className="co-item-info" style={{ minWidth: 0 }}>
+                        <h3 style={{ margin: 0, fontSize: 16, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</h3>
+                        <p className="qty" style={{ margin: "2px 0 0", color: "#6b7280" }}>Qty: {it.quantity}</p>
+                      </div>
+                      <p className="price" style={{ margin: 0, fontWeight: 700 }}>{php(it.price)}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-
-            {/* RIGHT: Summary + choices + totals + CTA */}
-            <div className="co-summary">
-              <h2>Order Summary</h2>
-
-              {/* Who is this for? */}
-              <div className="card-block">
-                <div className="block-title">Who is this for?</div>
-                <div className="who-options">
-                  <label className="radio">
-                    <input
-                      type="radio"
-                      name="purchaseType"
-                      value="self"
-                      checked={purchaseType === "self"}
-                      onChange={() => setPurchaseType("self")}
-                    />
-                    <span>Myself (pre-need)</span>
-                  </label>
-                  <label className="radio">
-                    <input
-                      type="radio"
-                      name="purchaseType"
-                      value="someone"
-                      checked={purchaseType === "someone"}
-                      onChange={() => setPurchaseType("someone")}
-                    />
-                    <span>Someone who has passed (at-need)</span>
-                  </label>
-                </div>
-
-                {isForDeceased ? (
-                  <p className="hint">You’ll need to provide cadaver details and a death certificate before payment.</p>
-                ) : (
-                  <p className="hint">No cadaver details needed now. Your plan will be recorded under your account.</p>
-                )}
-
-                {isForDeceased && (
-                  <button
-                    type="button"
-                    className="cadaver-btn inline"
-                    onClick={() => setShowCadaverModal(true)}
-                  >
-                    Add Cadaver Details
-                  </button>
-                )}
               </div>
 
-              {/* Chapel booking (optional) */}
-              <div className="card-block">
-                <div className="block-title">Chapel Booking (optional)</div>
-
-                <label className="switch-row">
-                  <input
-                    type="checkbox"
-                    checked={bookingEnabled}
-                    onChange={(e) => setBookingEnabled(e.target.checked)}
-                  />
+              {/* Chapel */}
+              <div style={{ ...block }}>
+                <div style={sectionTitle}>Chapel Booking (optional)</div>
+                <label className="switch-row" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+                  <input type="checkbox" checked={bookingEnabled} onChange={(e) => setBookingEnabled(e.target.checked)} />
                   <span>Include chapel booking for the wake</span>
                 </label>
 
                 {bookingEnabled && (
                   <>
-                    <div className="row-grid tight">
+                    <div className="row-grid tight" style={grid3}>
                       <div className="field">
                         <label>Chapel</label>
                         <select
@@ -601,6 +532,7 @@ export default function Checkout() {
                           onChange={(e) => setSelectedChapelId(e.target.value)}
                           required
                           className={fieldErrors.selectedChapelId ? "err" : ""}
+                          style={{ width: "100%" }}
                         >
                           <option value="">Select a chapel…</option>
                           {chapels.map((c) => (
@@ -619,6 +551,7 @@ export default function Checkout() {
                           onChange={(e) => setStartDate(e.target.value)}
                           required
                           className={fieldErrors.startDate ? "err" : ""}
+                          style={{ width: "100%" }}
                         />
                       </div>
 
@@ -631,52 +564,44 @@ export default function Checkout() {
                           onChange={(e) => setNumDays(e.target.value)}
                           required
                           className={fieldErrors.numDays ? "err" : ""}
+                          style={{ width: "100%" }}
                         />
                       </div>
                     </div>
 
                     {startDate && chapelDays > 0 && (
-                      <p className="hint">
+                      <p className="hint" style={{ marginTop: 8, color: "#374151" }}>
                         End date: <strong>{endDate || "—"}</strong>
                       </p>
                     )}
 
-                    <div className="availability">
+                    <div className="availability" style={{ marginTop: 6 }}>
                       {checkingAvailability && <span>Checking availability…</span>}
-                      {!checkingAvailability && availabilityErr && (
-                        <span className="error">{availabilityErr}</span>
-                      )}
-                      {!checkingAvailability && isAvailable === true && (
-                        <span className="ok">Dates are available ✅</span>
-                      )}
+                      {!checkingAvailability && availabilityErr && <span className="error" style={{ color: "#b91c1c" }}>{availabilityErr}</span>}
+                      {!checkingAvailability && isAvailable === true && <span className="ok" style={{ color: "#065f46" }}>Dates are available ✅</span>}
                     </div>
 
-                    <div className="addon-totals">
-                      <div className="row">
+                    <div className="addon-totals" style={{ marginTop: 10, ...card, padding: 12 }}>
+                      <div className="row" style={row}>
                         <span>Chapel ({chapelDays}d × {php(chapelDailyRate)})</span>
-                        <span>{php(chapelBookingTotal)}</span>
+                        <span style={{ fontWeight: 700 }}>{php(chapelBookingTotal)}</span>
                       </div>
                     </div>
                   </>
                 )}
               </div>
 
-              {/* Cold storage (optional, separate dates) */}
-              <div className="card-block">
-                <div className="block-title">Cold Storage (optional)</div>
-
-                <label className="switch-row">
-                  <input
-                    type="checkbox"
-                    checked={coldEnabled}
-                    onChange={(e) => setColdEnabled(e.target.checked)}
-                  />
+              {/* Cold storage */}
+              <div style={{ ...block }}>
+                <div style={sectionTitle}>Cold Storage (optional)</div>
+                <label className="switch-row" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+                  <input type="checkbox" checked={coldEnabled} onChange={(e) => setColdEnabled(e.target.checked)} />
                   <span>Reserve cold storage</span>
                 </label>
 
                 {coldEnabled && (
                   <>
-                    <div className="row-grid tight">
+                    <div className="row-grid tight" style={grid3}>
                       <div className="field">
                         <label>Start Date</label>
                         <input
@@ -685,6 +610,7 @@ export default function Checkout() {
                           onChange={(e) => setColdStartDate(e.target.value)}
                           required
                           className={fieldErrors.coldStartDate ? "err" : ""}
+                          style={{ width: "100%" }}
                         />
                       </div>
 
@@ -697,44 +623,98 @@ export default function Checkout() {
                           onChange={(e) => setColdDays(e.target.value)}
                           required
                           className={fieldErrors.coldDays ? "err" : ""}
+                          style={{ width: "100%" }}
                         />
                       </div>
 
                       <div className="field">
                         <label>Rate (per day)</label>
-                        <input value={php(COLD_STORAGE_PER_DAY)} readOnly />
+                        <input value={php(COLD_STORAGE_PER_DAY)} readOnly style={{ width: "100%" }} />
                       </div>
                     </div>
 
                     {coldStartDate && coldValidDays > 0 && (
-                      <p className="hint">
+                      <p className="hint" style={{ marginTop: 8, color: "#374151" }}>
                         End date: <strong>{coldEndDate || "—"}</strong>
                       </p>
                     )}
 
-                    <div className="addon-totals">
-                      <div className="row">
+                    <div className="addon-totals" style={{ marginTop: 10, ...card, padding: 12 }}>
+                      <div className="row" style={row}>
                         <span>Cold Storage ({coldValidDays}d × {php(COLD_STORAGE_PER_DAY)})</span>
-                        <span>{php(coldStorageTotal)}</span>
+                        <span style={{ fontWeight: 700 }}>{php(coldStorageTotal)}</span>
                       </div>
                     </div>
                   </>
                 )}
               </div>
+            </div>
 
-              {/* Totals */}
-              <div className="row"><span>Subtotal</span><span>{php(subtotal)}</span></div>
-              <div className="row"><span>Tax (12%)</span><span>{php(tax)}</span></div>
-              <div className="row"><span>Shipping</span><span>{shipping === 0 ? "Free" : php(shipping)}</span></div>
-              <div className="total"><strong>Total</strong><strong>{php(total)}</strong></div>
+            {/* RIGHT: Summary + person type */}
+            <div className="co-summary" style={{ display: "grid", gap: 12, alignContent: "start" }}>
+              <div style={{ ...block }}>
+                <h2 style={{ ...sectionTitle }}>Who is this for?</h2>
+                <div className="who-options" style={{ display: "grid", gap: 8 }}>
+                  <label className="radio" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="radio"
+                      name="purchaseType"
+                      value="self"
+                      checked={purchaseType === "self"}
+                      onChange={() => setPurchaseType("self")}
+                    />
+                    <span>Myself (pre-need)</span>
+                  </label>
+                  <label className="radio" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      type="radio"
+                      name="purchaseType"
+                      value="someone"
+                      checked={purchaseType === "someone"}
+                      onChange={() => setPurchaseType("someone")}
+                    />
+                    <span>Someone who has passed (at-need)</span>
+                  </label>
+                </div>
 
-              {errorMsg && <p className="error">{errorMsg}</p>}
+                {isForDeceased ? (
+                  <p className="hint" style={{ marginTop: 8, color: "#374151" }}>
+                    You’ll need to provide cadaver details and a death certificate before payment.
+                  </p>
+                ) : (
+                  <p className="hint" style={{ marginTop: 8, color: "#374151" }}>
+                    No cadaver details needed now. Your plan will be recorded under your account.
+                  </p>
+                )}
 
-              <button className="place-order" onClick={handlePlaceOrder} disabled={saving}>
-                {saving ? "Creating Invoice..." : "Proceed to Payment"}
-              </button>
+                {isForDeceased && (
+                  <button
+                    type="button"
+                    className="cadaver-btn"
+                    style={{ marginTop: 10 }}
+                    onClick={() => setShowCadaverModal(true)}
+                  >
+                    Add / Edit Cadaver Details
+                  </button>
+                )}
+              </div>
 
-              <a href="/cart" className="back-cart">Back to Cart</a>
+              <div style={{ ...block }}>
+                <h2 style={{ ...sectionTitle }}>Totals</h2>
+                <div className="row" style={row}><span>Subtotal</span><span>{php(subtotal)}</span></div>
+                <div className="row" style={row}><span>Tax (12%)</span><span>{php(tax)}</span></div>
+                <div className="row" style={row}><span>Shipping</span><span>{shipping === 0 ? "Free" : php(shipping)}</span></div>
+                <div className="row" style={{ ...row, fontSize: 18 }}>
+                  <strong>Total</strong><strong>{php(total)}</strong>
+                </div>
+
+                {errorMsg && <p className="error" style={{ color: "#b91c1c", marginTop: 10 }}>{errorMsg}</p>}
+
+                <button className="place-order" onClick={handlePlaceOrder} disabled={saving} style={{ width: "100%", marginTop: 10 }}>
+                  {saving ? "Creating Invoice..." : "Proceed to Payment"}
+                </button>
+                <a href="/cart" className="back-cart" style={{ display: "inline-block", marginTop: 8 }}>Back to Cart</a>
+              </div>
             </div>
           </div>
         )}
@@ -742,307 +722,356 @@ export default function Checkout() {
 
       {/* Cadaver Modal */}
       {showCadaverModal && isForDeceased && (
-        <div className="modal-overlay" onClick={() => setShowCadaverModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Cadaver Details</h3>
-              <button className="close" onClick={() => setShowCadaverModal(false)}>×</button>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowCadaverModal(false)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,.45)",
+            display: "grid", placeItems: "center", padding: 16, zIndex: 50
+          }}
+        >
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "min(900px, 96vw)", background: "#fff", borderRadius: 16, overflow: "hidden" }}
+          >
+            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid #e5e7eb" }}>
+              <h3 style={{ margin: 0, fontSize: 18 }}>Cadaver Details</h3>
+              <button className="close" onClick={() => setShowCadaverModal(false)} style={{ fontSize: 20, lineHeight: 1 }}>×</button>
             </div>
 
-            <div className="modal-body">
+            <div className="modal-body" style={{ padding: 16, display: "grid", gap: 16 }}>
               {/* Identity Section */}
-              <div className="section-divider">Identity Information</div>
-              <div className="row-grid">
-                <div className="field">
-                  <label data-required="*">Full Legal Name</label>
-                  <input
-                    name="full_name"
-                    value={cadaver.full_name}
-                    onChange={onChangeField}
-                    className={fieldErrors.full_name ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.full_name && <small className="ferr">{fieldErrors.full_name}</small>}
+              <div className="section" style={{ ...card, padding: 16 }}>
+                <div className="section-divider" style={{ fontWeight: 700, marginBottom: 12 }}>Identity Information</div>
+                <div className="row-grid" style={grid3}>
+                  <div className="field">
+                    <label data-required="*">Full Legal Name</label>
+                    <input
+                      name="full_name"
+                      value={cadaver.full_name}
+                      onChange={onChangeField}
+                      className={fieldErrors.full_name ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.full_name && <small className="ferr">{fieldErrors.full_name}</small>}
+                  </div>
+                  <div className="field">
+                    <label>Date of Birth</label>
+                    <input
+                      type="date"
+                      name="dob"
+                      value={cadaver.dob}
+                      onChange={onChangeField}
+                      max={new Date().toISOString().slice(0,10)}
+                      className={fieldErrors.dob ? "err" : ""}
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.dob && <small className="ferr">{fieldErrors.dob}</small>}
+                  </div>
+                  <div className="field">
+                    <label>Age (auto if DOB set)</label>
+                    <input
+                      type="number"
+                      name="age"
+                      value={cadaver.age}
+                      onChange={onChangeField}
+                      min={0}
+                      max={150}
+                      className={fieldErrors.age ? "err" : ""}
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.age && <small className="ferr">{fieldErrors.age}</small>}
+                  </div>
                 </div>
-                <div className="field">
-                  <label>Date of Birth</label>
-                  <input
-                    type="date"
-                    name="dob"
-                    value={cadaver.dob}
-                    onChange={onChangeField}
-                    max={new Date().toISOString().slice(0,10)}
-                    className={fieldErrors.dob ? "err" : ""}
-                  />
-                  {fieldErrors.dob && <small className="ferr">{fieldErrors.dob}</small>}
-                </div>
-                <div className="field">
-                  <label>Age (auto if DOB set)</label>
-                  <input
-                    type="number"
-                    name="age"
-                    value={cadaver.age}
-                    onChange={onChangeField}
-                    min={0}
-                    max={150}
-                    className={fieldErrors.age ? "err" : ""}
-                  />
-                  {fieldErrors.age && <small className="ferr">{fieldErrors.age}</small>}
-                </div>
-              </div>
 
-              <div className="row-grid">
-                <div className="field">
-                  <label data-required="*">Sex</label>
-                  <select
-                    name="sex"
-                    value={cadaver.sex}
-                    onChange={onChangeField}
-                    className={fieldErrors.sex ? "err" : ""}
-                    required
-                  >
-                    <option value="">Select…</option>
-                    <option>Male</option>
-                    <option>Female</option>
-                    <option>Other</option>
-                  </select>
-                  {fieldErrors.sex && <small className="ferr">{fieldErrors.sex}</small>}
-                </div>
-                <div className="field">
-                  <label data-required="*">Civil Status</label>
-                  <select
-                    name="civil_status"
-                    value={cadaver.civil_status}
-                    onChange={onChangeField}
-                    className={fieldErrors.civil_status ? "err" : ""}
-                    required
-                  >
-                    <option value="">Select…</option>
-                    <option>Single</option>
-                    <option>Married</option>
-                    <option>Widowed</option>
-                    <option>Separated</option>
-                  </select>
-                  {fieldErrors.civil_status && <small className="ferr">{fieldErrors.civil_status}</small>}
-                </div>
-                <div className="field">
-                  <label data-required="*">Religion</label>
-                  <input
-                    name="religion"
-                    value={cadaver.religion}
-                    onChange={onChangeField}
-                    className={fieldErrors.religion ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.religion && <small className="ferr">{fieldErrors.religion}</small>}
+                <div className="row-grid" style={grid3}>
+                  <div className="field">
+                    <label data-required="*">Sex</label>
+                    <select
+                      name="sex"
+                      value={cadaver.sex}
+                      onChange={onChangeField}
+                      className={fieldErrors.sex ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    >
+                      <option value="">Select…</option>
+                      <option>Male</option>
+                      <option>Female</option>
+                      <option>Other</option>
+                    </select>
+                    {fieldErrors.sex && <small className="ferr">{fieldErrors.sex}</small>}
+                  </div>
+                  <div className="field">
+                    <label data-required="*">Civil Status</label>
+                    <select
+                      name="civil_status"
+                      value={cadaver.civil_status}
+                      onChange={onChangeField}
+                      className={fieldErrors.civil_status ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    >
+                      <option value="">Select…</option>
+                      <option>Single</option>
+                      <option>Married</option>
+                      <option>Widowed</option>
+                      <option>Separated</option>
+                    </select>
+                    {fieldErrors.civil_status && <small className="ferr">{fieldErrors.civil_status}</small>}
+                  </div>
+                  <div className="field">
+                    <label data-required="*">Religion</label>
+                    <input
+                      name="religion"
+                      value={cadaver.religion}
+                      onChange={onChangeField}
+                      className={fieldErrors.religion ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.religion && <small className="ferr">{fieldErrors.religion}</small>}
+                  </div>
                 </div>
               </div>
 
               {/* Death Details Section */}
-              <div className="section-divider">Death Details</div>
-              <div className="row-grid">
-                <div className="field">
-                  <label data-required="*">Date & Time of Death</label>
-                  <input
-                    type="datetime-local"
-                    name="death_datetime"
-                    value={cadaver.death_datetime}
-                    onChange={onChangeField}
-                    max={nowLocal}
-                    className={fieldErrors.death_datetime ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.death_datetime && <small className="ferr">{fieldErrors.death_datetime}</small>}
-                </div>
-                <div className="field">
-                  <label data-required="*">Place of Death</label>
-                  <input
-                    name="place_of_death"
-                    value={cadaver.place_of_death}
-                    onChange={onChangeField}
-                    className={fieldErrors.place_of_death ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.place_of_death && <small className="ferr">{fieldErrors.place_of_death}</small>}
-                </div>
-                <div className="field">
-                  <label data-required="*">Cause of Death</label>
-                  <select
-                    name="cause_of_death"
-                    value={cadaver.cause_of_death}
-                    onChange={onChangeField}
-                    className={fieldErrors.cause_of_death ? "err" : ""}
-                    required
-                  >
-                    <option>Natural Causes</option>
-                    <option>Illness</option>
-                    <option>Accident</option>
-                    <option>Cardiac Arrest</option>
-                    <option>Respiratory Failure</option>
-                    <option>COVID-19</option>
-                    <option>Unknown</option>
-                    <option>Other</option>
-                  </select>
-                  {fieldErrors.cause_of_death && <small className="ferr">{fieldErrors.cause_of_death}</small>}
-                </div>
-              </div>
-
-              {cadaver.cause_of_death === "Other" && (
-                <div className="row-grid">
-                  <div className="field col-2">
-                    <label data-required="*">Please specify</label>
+              <div className="section" style={{ ...card, padding: 16 }}>
+                <div className="section-divider" style={{ fontWeight: 700, marginBottom: 12 }}>Death Details</div>
+                <div className="row-grid" style={grid3}>
+                  <div className="field">
+                    <label data-required="*">Date & Time of Death</label>
                     <input
-                      name="cause_of_death_other"
-                      value={cadaver.cause_of_death_other}
+                      type="datetime-local"
+                      name="death_datetime"
+                      value={cadaver.death_datetime}
                       onChange={onChangeField}
-                      className={fieldErrors.cause_of_death_other ? "err" : ""}
+                      max={nowLocal}
+                      className={fieldErrors.death_datetime ? "err" : ""}
                       required
+                      style={{ width: "100%" }}
                     />
-                    {fieldErrors.cause_of_death_other && <small className="ferr">{fieldErrors.cause_of_death_other}</small>}
+                    {fieldErrors.death_datetime && <small className="ferr">{fieldErrors.death_datetime}</small>}
+                  </div>
+                  <div className="field">
+                    <label data-required="*">Place of Death</label>
+                    <input
+                      name="place_of_death"
+                      value={cadaver.place_of_death}
+                      onChange={onChangeField}
+                      className={fieldErrors.place_of_death ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.place_of_death && <small className="ferr">{fieldErrors.place_of_death}</small>}
+                  </div>
+                  <div className="field">
+                    <label data-required="*">Cause of Death</label>
+                    <select
+                      name="cause_of_death"
+                      value={cadaver.cause_of_death}
+                      onChange={onChangeField}
+                      className={fieldErrors.cause_of_death ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    >
+                      <option>Natural Causes</option>
+                      <option>Illness</option>
+                      <option>Accident</option>
+                      <option>Cardiac Arrest</option>
+                      <option>Respiratory Failure</option>
+                      <option>COVID-19</option>
+                      <option>Unknown</option>
+                      <option>Other</option>
+                    </select>
+                    {fieldErrors.cause_of_death && <small className="ferr">{fieldErrors.cause_of_death}</small>}
                   </div>
                 </div>
-              )}
+
+                {cadaver.cause_of_death === "Other" && (
+                  <div className="row-grid" style={grid2}>
+                    <div className="field" style={{ gridColumn: "1 / -1" }}>
+                      <label data-required="*">Please specify</label>
+                      <input
+                        name="cause_of_death_other"
+                        value={cadaver.cause_of_death_other}
+                        onChange={onChangeField}
+                        className={fieldErrors.cause_of_death_other ? "err" : ""}
+                        required
+                        style={{ width: "100%" }}
+                      />
+                      {fieldErrors.cause_of_death_other && <small className="ferr">{fieldErrors.cause_of_death_other}</small>}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Next of Kin Section */}
-              <div className="section-divider">Next of Kin Information</div>
-              <div className="row-grid">
-                <div className="field">
-                  <label data-required="*">Primary Contact Name</label>
-                  <input
-                    name="kin_name"
-                    value={cadaver.kin_name}
-                    onChange={onChangeField}
-                    className={fieldErrors.kin_name ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.kin_name && <small className="ferr">{fieldErrors.kin_name}</small>}
+              <div className="section" style={{ ...card, padding: 16 }}>
+                <div className="section-divider" style={{ fontWeight: 700, marginBottom: 12 }}>Next of Kin Information</div>
+                <div className="row-grid" style={grid3}>
+                  <div className="field">
+                    <label data-required="*">Primary Contact Name</label>
+                    <input
+                      name="kin_name"
+                      value={cadaver.kin_name}
+                      onChange={onChangeField}
+                      className={fieldErrors.kin_name ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.kin_name && <small className="ferr">{fieldErrors.kin_name}</small>}
+                  </div>
+                  <div className="field">
+                    <label data-required="*">Relationship</label>
+                    <input
+                      name="kin_relation"
+                      value={cadaver.kin_relation}
+                      onChange={onChangeField}
+                      className={fieldErrors.kin_relation ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.kin_relation && <small className="ferr">{fieldErrors.kin_relation}</small>}
+                  </div>
+                  <div className="field">
+                    <label data-required="*">Mobile</label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      name="kin_mobile"
+                      value={cadaver.kin_mobile}
+                      onChange={onPhoneChange}
+                      onKeyDown={onPhoneKeyDown}
+                      placeholder="e.g., 09171234567"
+                      className={fieldErrors.kin_mobile ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.kin_mobile && <small className="ferr">{fieldErrors.kin_mobile}</small>}
+                  </div>
                 </div>
-                <div className="field">
-                  <label data-required="*">Relationship</label>
-                  <input
-                    name="kin_relation"
-                    value={cadaver.kin_relation}
-                    onChange={onChangeField}
-                    className={fieldErrors.kin_relation ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.kin_relation && <small className="ferr">{fieldErrors.kin_relation}</small>}
-                </div>
-                <div className="field">
-                  <label data-required="*">Mobile</label>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    name="kin_mobile"
-                    value={cadaver.kin_mobile}
-                    onChange={onPhoneChange}
-                    onKeyDown={onPhoneKeyDown}
-                    placeholder="e.g., 09171234567"
-                    className={fieldErrors.kin_mobile ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.kin_mobile && <small className="ferr">{fieldErrors.kin_mobile}</small>}
-                </div>
-              </div>
-              <div className="row-grid">
-                <div className="field">
-                  <label data-required="*">Email</label>
-                  <input
-                    type="email"
-                    name="kin_email"
-                    value={cadaver.kin_email}
-                    onChange={onChangeField}
-                    className={fieldErrors.kin_email ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.kin_email && <small className="ferr">{fieldErrors.kin_email}</small>}
-                </div>
-                <div className="field col-2">
-                  <label data-required="*">Address</label>
-                  <input
-                    name="kin_address"
-                    value={cadaver.kin_address}
-                    onChange={onChangeField}
-                    className={fieldErrors.kin_address ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.kin_address && <small className="ferr">{fieldErrors.kin_address}</small>}
+                <div className="row-grid" style={grid2}>
+                  <div className="field">
+                    <label data-required="*">Email</label>
+                    <input
+                      type="email"
+                      name="kin_email"
+                      value={cadaver.kin_email}
+                      onChange={onChangeField}
+                      className={fieldErrors.kin_email ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.kin_email && <small className="ferr">{fieldErrors.kin_email}</small>}
+                  </div>
+                  <div className="field">
+                    <label data-required="*">Address</label>
+                    <input
+                      name="kin_address"
+                      value={cadaver.kin_address}
+                      onChange={onChangeField}
+                      className={fieldErrors.kin_address ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
+                    />
+                    {fieldErrors.kin_address && <small className="ferr">{fieldErrors.kin_address}</small>}
+                  </div>
                 </div>
               </div>
 
               {/* Logistics Section */}
-              <div className="section-divider">Logistics</div>
-              <div className="row-grid">
-                <div className="field">
-                  <label data-required="*">Current Location of Remains</label>
-                  <input
-                    name="remains_location"
-                    value={cadaver.remains_location}
-                    onChange={onChangeField}
-                    className={fieldErrors.remains_location ? "err" : ""}
-                    required
-                  />
-                  {fieldErrors.remains_location && <small className="ferr">{fieldErrors.remains_location}</small>}
-                </div>
-                <div className="field">
-                  <label>Special Handling</label>
-                  <label className="switch-row">
+              <div className="section" style={{ ...card, padding: 16 }}>
+                <div className="section-divider" style={{ fontWeight: 700, marginBottom: 12 }}>Logistics</div>
+                <div className="row-grid" style={grid2}>
+                  <div className="field">
+                    <label data-required="*">Current Location of Remains</label>
                     <input
-                      type="checkbox"
-                      name="special_handling"
-                      checked={!!cadaver.special_handling}
+                      name="remains_location"
+                      value={cadaver.remains_location}
                       onChange={onChangeField}
+                      className={fieldErrors.remains_location ? "err" : ""}
+                      required
+                      style={{ width: "100%" }}
                     />
-                    <span>Special handling required</span>
-                  </label>
+                    {fieldErrors.remains_location && <small className="ferr">{fieldErrors.remains_location}</small>}
+                  </div>
+                  <div className="field">
+                    <label>Special Handling</label>
+                    <label className="switch-row" style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        name="special_handling"
+                        checked={!!cadaver.special_handling}
+                        onChange={onChangeField}
+                      />
+                      <span>Special handling required</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
               {/* Documents Section */}
-              <div className="section-divider">Documents</div>
-              <div className="docs">
-                <div className="field">
-                  <label data-required="*">Death Certificate (required)</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setDeathCertFile(e.target.files?.[0] || null)}
-                    className={fieldErrors.death_certificate_url ? "err" : ""}
-                    required
-                  />
-                  {deathCertFile && (
-                    <small className="file-hint">
-                      Selected: {deathCertFile.name}{" "}
-                      <button type="button" className="linklike" onClick={() => setDeathCertFile(null)}>
-                        remove
-                      </button>
-                    </small>
-                  )}
-                  {fieldErrors.death_certificate_url && <small className="ferr">{fieldErrors.death_certificate_url}</small>}
-                </div>
-                <div className="field">
-                  <label>Claimant / Next of Kin ID (optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setClaimantIdFile(e.target.files?.[0] || null)}
-                  />
-                  {claimantIdFile && <small className="file-hint">Selected: {claimantIdFile.name}</small>}
-                </div>
-                <div className="field">
-                  <label>Burial / Cremation Permit (optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setPermitFile(e.target.files?.[0] || null)}
-                  />
-                  {permitFile && <small className="file-hint">Selected: {permitFile.name}</small>}
+              <div className="section" style={{ ...card, padding: 16 }}>
+                <div className="section-divider" style={{ fontWeight: 700, marginBottom: 12 }}>Documents</div>
+                <div className="row-grid" style={grid2}>
+                  <div className="field" style={{ gridColumn: "1 / -1" }}>
+                    <label data-required="*">Death Certificate (required)</label>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        ref={deathCertInputRef}
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => setDeathCertFile(e.target.files?.[0] || null)}
+                        className={fieldErrors.death_certificate_url ? "err" : ""}
+                      />
+                      {deathCertFile && (
+                        <small className="file-hint">
+                          Selected: {deathCertFile.name}{" "}
+                          <button
+                            type="button"
+                            className="linklike"
+                            onClick={() => {
+                              setDeathCertFile(null);
+                              if (deathCertInputRef.current) deathCertInputRef.current.value = "";
+                            }}
+                          >
+                            remove
+                          </button>
+                        </small>
+                      )}
+                      {fieldErrors.death_certificate_url && <small className="ferr">{fieldErrors.death_certificate_url}</small>}
+                    </div>
+                  </div>
+
+                  <div className="field">
+                    <label>Claimant / Next of Kin ID (optional)</label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setClaimantIdFile(e.target.files?.[0] || null)}
+                    />
+                    {claimantIdFile && <small className="file-hint">Selected: {claimantIdFile.name}</small>}
+                  </div>
+
+                  <div className="field">
+                    <label>Burial / Cremation Permit (optional)</label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setPermitFile(e.target.files?.[0] || null)}
+                    />
+                    {permitFile && <small className="file-hint">Selected: {permitFile.name}</small>}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="modal-footer">
-              <button onClick={() => setShowCadaverModal(false)} className="secondary">Done</button>
+            <div className="modal-footer" style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 16px", borderTop: "1px solid #e5e7eb" }}>
+              <button onClick={() => setShowCadaverModal(false)} className="secondary">Cancel</button>
+              <button onClick={handleSaveCadaver} className="primary">Save Details</button>
             </div>
           </div>
         </div>
