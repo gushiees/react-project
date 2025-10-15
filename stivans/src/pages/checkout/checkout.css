@@ -557,3 +557,12 @@
 .field .ferr { color:#b91c1c; display:block; margin-top:6px; font-size:0.85rem; }
 .file-hint { display:block; margin-top:6px; color:#374151; }
 .linklike { background:none;border:none;padding:0;margin-left:6px;text-decoration:underline;cursor:pointer;color:#1f2937;}
+.cadaver-grid { display: grid; gap: 14px; }
+.cad-card { background: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 6px 18px rgba(17,24,39,.06); }
+.cad-title { font-weight: 700; margin-bottom: 10px; }
+.cad-row { display: grid; gap: 10px; }
+.cad-row.cad-2 { grid-template-columns: 1fr 1fr; }
+.cad-row.cad-3 { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 860px) {
+  .cad-row.cad-2, .cad-row.cad-3 { grid-template-columns: 1fr; }
+}
