@@ -52,8 +52,8 @@
   position: absolute;
   top: -6px;
   right: -10px;
-  background: #f6b300;
-  color: #fff;
+  background: #f6b300 !important;
+  color: #000000;
   border-radius: 999px;
   font-size: 12px;
   padding: 2px 6px;

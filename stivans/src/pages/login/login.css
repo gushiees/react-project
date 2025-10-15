@@ -193,3 +193,254 @@ html, body, #root {
   .login__title { font-size: 28px; }
   .login__right { padding: 32px 16px; }
 }
+
+
+/* EULA Checkbox Styles */
+.login__checkbox {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.login__checkbox input {
+  margin-right: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.login__link {
+  background: none;
+  border: none;
+  color: var(--primary-color, #4361ee);
+  text-decoration: underline;
+  padding: 0;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.login__link:hover {
+  color: var(--primary-hover-color, #3a0ca3);
+}
+
+/* Enhanced EULA Modal Styles */
+.enhanced-modal {
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 700px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.enhanced-header {
+  background-color: #4361ee;
+  color: rgb(0, 0, 0);
+  padding: 1.5rem;
+  border-bottom: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.enhanced-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.enhanced-close {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.enhanced-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.enhanced-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  background-color: white;
+}
+
+.terms-container {
+  max-width: 100%;
+}
+
+.terms-container h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.8rem;
+  font-size: 1.2rem;
+  color: #2d3436;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 0.5rem;
+}
+
+.terms-container h4 {
+  margin-top: 1.2rem;
+  margin-bottom: 0.6rem;
+  font-size: 1.1rem;
+  color: #4361ee;
+}
+
+.terms-container p {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+  color: #495057;
+}
+
+.scroll-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.scroll-animation {
+  margin-top: 0.5rem;
+  width: 30px;
+  height: 50px;
+  border: 2px solid #6c757d;
+  border-radius: 15px;
+  position: relative;
+}
+
+.scroll-animation span {
+  display: block;
+  width: 6px;
+  height: 10px;
+  background-color: #6c757d;
+  border-radius: 3px;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: scroll 1.5s infinite;
+}
+
+@keyframes scroll {
+  0% {
+    top: 8px;
+    opacity: 1;
+  }
+  100% {
+    top: 30px;
+    opacity: 0;
+  }
+}
+
+.enhanced-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  background-color: #f8f9fa;
+}
+
+.modal-decline-btn {
+  background-color: #e9ecef;
+  color: #495057;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.modal-decline-btn:hover {
+  background-color: #dee2e6;
+}
+
+.modal-accept-btn {
+  background-color: #4361ee;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.modal-accept-btn.enabled {
+  background-color: #4361ee;
+}
+
+.modal-accept-btn.enabled:hover {
+  background-color: #3a0ca3;
+}
+
+.modal-accept-btn.disabled {
+  background-color: #adb5bd;
+  cursor: not-allowed;
+}
+
+/* LOGIN_GUEST */
+
+.login__guest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+  position: relative;
+}
+
+.login__guest span {
+  margin-bottom: 10px;
+  color: #6c757d;
+  font-size: 14px;
+  position: relative;
+  z-index: 1;
+  background-color: white;
+  padding: 0 10px;
+}
+
+.login__guest::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e9ecef;
+  z-index: 0;
+}
+
+.login__guest-btn {
+  background: none;
+  border: 1px solid #6db1f5;
+  color: #4494da;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  margin-top: 5px;
+}
+
+.login__guest-btn:hover {
+  background-color: #0077ee;
+  border-color: #adb5bd;
+  color: #ffffff;
+}

@@ -4,7 +4,6 @@ import { useAuth } from "../../AuthContext.jsx"; // Import useAuth
 import "./login.css";
 import introImg from "../../assets/intro.jpg";
 
-
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth(); // <-- Get the new login function from context
@@ -38,6 +37,14 @@ export default function Login() {
     }
     // No 'finally' block needed anymore
   }
+
+  // --- NEW FUNCTION FOR GUEST ACCESS ---
+  const handleGuestAccess = () => {
+    // Set a flag in localStorage to indicate guest access
+    localStorage.setItem('isGuest', 'true');
+    // Navigate to the home page or a restricted guest area
+    navigate('/');
+  };
 
   return (
     <div className="login__wrap">
@@ -128,6 +135,18 @@ export default function Login() {
             <Link to="/signup" className="login__cta">
               Create an account.
             </Link>
+          </div>
+
+          {/* NEW GUEST ACCESS OPTION */}
+          <div className="login__guest">
+            <span>or</span>
+            <button 
+              className="login__guest-btn" 
+              onClick={handleGuestAccess}
+              type="button"
+            >
+              Continue as Guest
+            </button>
           </div>
         </div>
       </div>
