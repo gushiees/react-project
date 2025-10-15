@@ -40,7 +40,7 @@ export default function Checkout() {
 
   // Derived chapel info
   const selectedChapel = useMemo(
-    () => chapels.find((c) => c.id === selectedChapelId) || null,
+    () => chapels.find((c) => String(c.id) === String(selectedChapelId)) || null,
     [chapels, selectedChapelId]
   );
   const chapelDays = bookingEnabled ? Math.max(1, Number(numDays) || 1) : 0;
@@ -94,7 +94,7 @@ export default function Checkout() {
   ]);
 
   const subtotal = useMemo(() => {
-    const addOns = extraLineItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+    const addOns = extraLineItems.reduce((sum, it) => sum + Number(it.price) * Number(it.quantity), 0);
     return baseSubtotal + addOns;
   }, [baseSubtotal, extraLineItems]);
 
@@ -142,7 +142,10 @@ export default function Checkout() {
   // Fetch chapels
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from("chapels").select("id,name,daily_rate").order("name");
+      const { data, error } = await supabase
+        .from("chapels")
+        .select("id,name,daily_rate")
+        .order("name");
       if (!error && Array.isArray(data)) setChapels(data);
     })();
   }, []);
@@ -150,14 +153,14 @@ export default function Checkout() {
   // Helpers: end dates
   const endDate = useMemo(() => {
     if (!startDate || chapelDays < 1) return "";
-    const d = new Date(startDate + "T00:00:00");
+    const d = new Date(`${startDate}T00:00:00`);
     d.setDate(d.getDate() + (chapelDays - 1));
     return d.toISOString().slice(0, 10);
   }, [startDate, chapelDays]);
 
   const coldEndDate = useMemo(() => {
     if (!coldStartDate || coldValidDays < 1) return "";
-    const d = new Date(coldStartDate + "T00:00:00");
+    const d = new Date(`${coldStartDate}T00:00:00`);
     d.setDate(d.getDate() + (coldValidDays - 1));
     return d.toISOString().slice(0, 10);
   }, [coldStartDate, coldValidDays]);
@@ -201,6 +204,7 @@ export default function Checkout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingEnabled, selectedChapelId, startDate, chapelDays]);
 
+  // ----- Validation -----
   const validateCadaver = () => {
     if (!isForDeceased) return true;
     const required = [
@@ -224,6 +228,7 @@ export default function Checkout() {
 
   const handlePlaceOrder = async () => {
     try {
+      if (saving) return;
       setErrorMsg("");
 
       if (items.length === 0) {
@@ -310,6 +315,7 @@ export default function Checkout() {
         })),
       ];
 
+      // Server expects integers for amount in many gateways; we still send decimals but also round in the API
       const payload = {
         items: lineItems,
         subtotal: Number(subtotal.toFixed(2)),
@@ -418,6 +424,7 @@ export default function Checkout() {
                       value="self"
                       checked={purchaseType === "self"}
                       onChange={() => setPurchaseType("self")}
+                      disabled={saving}
                     />
                     <span>Myself (pre-need)</span>
                   </label>
@@ -428,6 +435,7 @@ export default function Checkout() {
                       value="someone"
                       checked={purchaseType === "someone"}
                       onChange={() => setPurchaseType("someone")}
+                      disabled={saving}
                     />
                     <span>Someone who has passed (at-need)</span>
                   </label>
@@ -444,6 +452,7 @@ export default function Checkout() {
                     type="button"
                     className="cadaver-btn inline"
                     onClick={() => setShowCadaverModal(true)}
+                    disabled={saving}
                   >
                     Add Cadaver Details
                   </button>
@@ -459,6 +468,7 @@ export default function Checkout() {
                     type="checkbox"
                     checked={bookingEnabled}
                     onChange={(e) => setBookingEnabled(e.target.checked)}
+                    disabled={saving}
                   />
                   <span>Include chapel booking for the wake</span>
                 </label>
@@ -472,6 +482,7 @@ export default function Checkout() {
                           value={selectedChapelId}
                           onChange={(e) => setSelectedChapelId(e.target.value)}
                           required
+                          disabled={saving}
                         >
                           <option value="">Select a chapel…</option>
                           {chapels.map((c) => (
@@ -489,6 +500,7 @@ export default function Checkout() {
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
                           required
+                          disabled={saving}
                         />
                       </div>
 
@@ -500,6 +512,7 @@ export default function Checkout() {
                           value={numDays}
                           onChange={(e) => setNumDays(e.target.value)}
                           required
+                          disabled={saving}
                         />
                       </div>
                     </div>
@@ -539,6 +552,7 @@ export default function Checkout() {
                     type="checkbox"
                     checked={coldEnabled}
                     onChange={(e) => setColdEnabled(e.target.checked)}
+                    disabled={saving}
                   />
                   <span>Reserve cold storage</span>
                 </label>
@@ -553,6 +567,7 @@ export default function Checkout() {
                           value={coldStartDate}
                           onChange={(e) => setColdStartDate(e.target.value)}
                           required
+                          disabled={saving}
                         />
                       </div>
 
@@ -564,6 +579,7 @@ export default function Checkout() {
                           value={coldDays}
                           onChange={(e) => setColdDays(e.target.value)}
                           required
+                          disabled={saving}
                         />
                       </div>
 

@@ -1,178 +1,232 @@
-// Vercel Node 20 function
+// api/xendit/create-invoice.js
 export const config = { runtime: "nodejs" };
 
-import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE;
-const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
-// Your deployed site root, e.g. https://stivans.vercel.app
-const APP_URL = process.env.APP_URL || "https://stivans.vercel.app";
+// ---- Helpers ---------------------------------------------------------------
 
-const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
+function json(res, status, body) {
+  res.status(status).setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(body));
+}
+
+function requiredEnv(name) {
+  const val = process.env[name];
+  if (!val) throw new Error(`Missing env: ${name}`);
+  return val;
+}
+
+function phpToCentLike(amount) {
+  // Xendit expects integer amount; for PHP use whole pesos.
+  // Round just in case the client computed decimals.
+  return Math.round(Number(amount || 0));
+}
+
+// ---- Handler ---------------------------------------------------------------
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return json(res, 405, { error: "Method not allowed" });
   }
 
+  let step = "start";
   try {
-    const auth = req.headers.authorization || "";
-    if (!auth.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    const token = auth.replace("Bearer ", "");
-    const { data: { user }, error: userErr } = await sb.auth.getUser(token);
-    if (userErr || !user) {
-      return res.status(401).json({ error: "Invalid session" });
-    }
+    step = "env";
+    const SUPABASE_URL = requiredEnv("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+    const XENDIT_SECRET_KEY = requiredEnv("XENDIT_SECRET_KEY"); // use TEST key in test mode
+    const BASE_URL = process.env.BASE_URL || "https://stivans.vercel.app";
 
-    const payload = req.body || {};
+    step = "supabase-admin";
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    step = "auth";
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+    if (!token) {
+      return json(res, 401, { error: "No Authorization bearer token" });
+    }
+    const { data: userData, error: userErr } = await admin.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return json(res, 401, { error: "Invalid session token" });
+    }
+    const user = userData.user;
+
+    step = "parse-body";
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
     const {
       items = [],
       subtotal = 0,
       tax = 0,
       shipping = 0,
       total = 0,
+      payment_method = null,
       cadaver = null,
       chapel_booking = null,
       purchase_type = "self",
-    } = payload;
+    } = body;
 
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: "No items to invoice" });
+      return json(res, 400, { error: "No items" });
     }
 
-    // 1) Create order (pending)
-    const { data: orderRow, error: orderErr } = await sb
+    // Server-side recompute total to sanity-check client values
+    const calcSubtotal =
+      items.reduce((s, it) => s + Number(it.price || 0) * Number(it.quantity || 0), 0) +
+      (chapel_booking ? Number(chapel_booking.chapel_amount || 0) + Number(chapel_booking.cold_storage_amount || 0) : 0);
+
+    const calcTax = Number(tax || 0); // your client already applies 12%
+    const calcShipping = Number(shipping || 0);
+    const calcTotal = calcSubtotal + calcTax + calcShipping;
+
+    // If you want strict match, enforce here; otherwise just trust server calc
+    // if (phpToCentLike(calcTotal) !== phpToCentLike(total)) {
+    //   return json(res, 400, { error: "Total mismatch" });
+    // }
+
+    step = "insert-order";
+    // 1) Create order row (pending)
+    const { data: orderRow, error: orderErr } = await admin
       .from("orders")
       .insert({
         user_id: user.id,
         status: "pending",
-        subtotal,
-        tax,
-        shipping,
-        total,
-        purchase_type,
+        subtotal: calcSubtotal,
+        tax: calcTax,
+        shipping: calcShipping,
+        total: calcTotal,
+        payment_method,
       })
       .select("*")
       .single();
 
     if (orderErr) {
-      console.error(orderErr);
-      return res.status(400).json({ error: "Failed to create order" });
+      return json(res, 500, { error: "DB: create order failed", details: orderErr.message, step });
     }
 
-    const orderId = orderRow.id;
-
     // 2) Insert order items
-    const orderItemsPayload = items.map((it) => ({
-      order_id: orderId,
-      product_id: it.product_id,          // may be null for add-ons
-      quantity: Number(it.quantity) || 1,
-      unit_price: Number(it.price) || 0,
-      price: Number(it.price) || 0,
+    step = "insert-items";
+    const orderItems = items.map((it) => ({
+      order_id: orderRow.id,
+      product_id: it.product_id || it.id || null, // normal products use actual product id
+      name: it.name,
+      quantity: Number(it.quantity || 0),
+      unit_price: Number(it.price || 0),
+      price: Number(it.price || 0) * Number(it.quantity || 0),
       image_url: it.image_url || null,
     }));
 
-    const { error: itemsErr } = await sb.from("order_items").insert(orderItemsPayload);
-    if (itemsErr) {
-      console.error(itemsErr);
-      return res.status(400).json({ error: "Failed to add order items" });
-    }
-
-    // 3) If chapel booking intent → create a pending hold
-    let chapelHoldId = null;
-    if (chapel_booking?.chapel_id && chapel_booking.start_date && chapel_booking.end_date) {
-      const { data: hold, error: holdErr } = await sb
-        .from("chapel_bookings")
-        .insert({
-          user_id: user.id,
-          chapel_id: chapel_booking.chapel_id,
-          start_date: chapel_booking.start_date,
-          end_date: chapel_booking.end_date,
-          days: chapel_booking.days || 1,
-          status: "hold", // change to 'paid' on webhook success
-          order_id: orderId,
-          snapshot_daily_rate: null, // optional snapshot column
-          base_amount: chapel_booking.chapel_amount || 0,
-          cold_storage_days: chapel_booking.cold_storage_days || 0,
-          cold_storage_amount: chapel_booking.cold_storage_amount || 0,
-          amount: (chapel_booking.chapel_amount || 0) + (chapel_booking.cold_storage_amount || 0),
-        })
-        .select("id")
-        .single();
-      if (holdErr) {
-        console.error(holdErr);
-        // don't block; you can also return error if you want it strict
-      } else {
-        chapelHoldId = hold.id;
+    if (orderItems.length > 0) {
+      const { error: itemsErr } = await admin.from("order_items").insert(orderItems);
+      if (itemsErr) {
+        return json(res, 500, { error: "DB: insert order_items failed", details: itemsErr.message, step });
       }
     }
 
-    // 4) Store cadaver details if provided
+    // 3) Optional cadaver details (at-need)
     if (cadaver) {
-      const { error: cadErr } = await sb
-        .from("cadaver_details")
-        .insert({
-          order_id: orderId,
-          ...cadaver,
-        });
-      if (cadErr) console.error("cadaver insert failed", cadErr);
+      step = "insert-cadaver";
+      const cadaverRow = { ...cadaver, order_id: orderRow.id };
+      const { error: cadErr } = await admin.from("cadaver_details").insert(cadaverRow);
+      if (cadErr) {
+        return json(res, 500, { error: "DB: insert cadaver_details failed", details: cadErr.message, step });
+      }
     }
 
-    // Build Xendit items
-    const xenditItems = items.map((it) => ({
-      name: it.name,
-      quantity: Number(it.quantity) || 1,
-      price: Math.round(Number(it.price) || 0), // Xendit wants integer (IDR) but for PHP: /v2 should accept amount
-      category: "funeral",
-      url: it.image_url || undefined,
-    }));
+    // 4) Optional chapel booking hold (pending)
+    if (chapel_booking) {
+      step = "insert-booking";
+      const {
+        chapel_id,
+        start_date,
+        end_date,
+        days,
+        cold_storage_days,
+        chapel_amount,
+        cold_storage_amount,
+      } = chapel_booking;
 
-    // 5) Create Xendit invoice with success/failure redirect URLs
-    const externalId = `order_${orderId}`;
-    const successUrl = `${APP_URL}/payment/success?order_id=${orderId}`;
-    const failureUrl = `${APP_URL}/payment/failed?order_id=${orderId}`;
+      const bookingPayload = {
+        order_id: orderRow.id,
+        user_id: user.id,
+        chapel_id,
+        start_date,
+        end_date,
+        days: Number(days || 0),
+        status: "pending",
+        cold_storage_days: Number(cold_storage_days || 0),
+        snapshot_daily_rate: null, // you can store current daily_rate if you want (lookup chapels table first)
+        cold_storage_amount: Number(cold_storage_amount || 0),
+        base_amount: Number(chapel_amount || 0),
+        total_amount: Number(chapel_amount || 0) + Number(cold_storage_amount || 0),
+      };
 
-    const invRes = await fetch("https://api.xendit.co/v2/invoices", {
+      const { error: bookErr } = await admin.from("chapel_bookings").insert(bookingPayload);
+      if (bookErr) {
+        return json(res, 500, { error: "DB: insert chapel_bookings failed", details: bookErr.message, step });
+      }
+    }
+
+    // 5) Create Xendit invoice
+    step = "xendit-create";
+    const basicAuth = Buffer.from(`${XENDIT_SECRET_KEY}:`).toString("base64");
+
+    const xenditBody = {
+      external_id: String(orderRow.id),
+      amount: phpToCentLike(calcTotal),
+      currency: "PHP",
+      payer_email: user.email || undefined,
+      description: `St. Ivans Order #${String(orderRow.id).slice(0, 8)}`,
+      success_redirect_url: `${BASE_URL}/payment/success?order=${orderRow.id}`,
+      failure_redirect_url: `${BASE_URL}/payment/failed?order=${orderRow.id}`,
+    };
+
+    const xRes = await fetch("https://api.xendit.co/v2/invoices", {
       method: "POST",
       headers: {
+        Authorization: `Basic ${basicAuth}`,
         "Content-Type": "application/json",
-        Authorization: "Basic " + Buffer.from(XENDIT_API_KEY + ":").toString("base64"),
       },
-      body: JSON.stringify({
-        external_id: externalId,
-        amount: Math.round(Number(total) || 0),
-        description: `St. Ivans Order ${orderId}`,
-        currency: "PHP",
-        items: xenditItems,
-        success_redirect_url: successUrl,
-        failure_redirect_url: failureUrl,
-        // recommended: add customer email to improve experience
-        payer_email: user.email,
-      }),
+      body: JSON.stringify(xenditBody),
     });
 
-    if (!invRes.ok) {
-      const errText = await invRes.text();
-      console.error("Xendit invoice error:", errText);
-      return res.status(400).json({ error: "Failed to create invoice" });
+    if (!xRes.ok) {
+      const txt = await xRes.text();
+      return json(res, 502, { error: "Xendit invoice create failed", step, details: txt.slice(0, 2000) });
+    }
+    const xJson = await xRes.json();
+
+    // 6) Save invoice id/url to order
+    step = "update-order";
+    const { error: updErr } = await admin
+      .from("orders")
+      .update({
+        xendit_invoice_id: xJson.id,
+        xendit_invoice_url: xJson.invoice_url || xJson.url || null,
+      })
+      .eq("id", orderRow.id);
+    if (updErr) {
+      return json(res, 500, { error: "DB: update order invoice id failed", details: updErr.message, step });
     }
 
-    const invoice = await invRes.json();
-
-    // 6) save invoice id
-    await sb.from("orders").update({ xendit_invoice_id: invoice.id }).eq("id", orderId);
-
-    return res.status(200).json({
-      order_id: orderId,
-      invoice_id: invoice.id,
-      invoice_url: invoice.invoice_url,
+    // 7) Done
+    return json(res, 200, {
+      ok: true,
+      order_id: orderRow.id,
+      invoice_id: xJson.id,
+      invoice_url: xJson.invoice_url || xJson.url,
     });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Server error" });
+    // Surface step + message so you immediately see where/why it failed
+    console.error("create-invoice error", step, e);
+    return json(res, 500, {
+      error: "FUNCTION_INVOCATION_FAILED",
+      step,
+      details: e?.message || String(e),
+    });
   }
 }
