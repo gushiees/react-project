@@ -1,73 +1,60 @@
 /* src/pages/admin/AdminUsers.css */
 
-.users-section {
-    /* Inherits base section styles */
-}
+.users-section { /* Inherits base */ }
 
 /* --- Users Toolbar --- */
-.users-toolbar {
-    /* Inherits base styles */
-}
+.users-toolbar { /* Inherits base */ }
+.users-toolbar .admin-search-input { max-width: 400px; /* Inherits focus */ }
 
-.users-toolbar .admin-search-input {
-   max-width: 400px;
-   /* Inherits focus styles from admin.css */
-}
-
+/* "Search Users" Button (Bright Gold/Yellow) */
 .users-toolbar .search-users-btn {
-    padding: 0.6rem 1rem;
-    height: auto;
-    background-color: #f3f4f6;
-    color: var(--admin-text);
-    border: 1px solid #d1d5db;
-    border-radius: var(--admin-radius-md);
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 0.9rem;
-    transition: var(--admin-transition);
+    padding: 0.6rem 1rem; height: auto;
+    background-color: var(--admin-secondary); /* Bright Gold */
+    color: var(--admin-secondary-text); /* White */
+    border: none;
+    border-radius: var(--admin-radius-md); cursor: pointer; font-weight: 500;
+    font-size: 0.9rem; transition: var(--admin-transition);
 }
-.users-toolbar .search-users-btn:hover {
-    background-color: #e5e7eb;
-    border-color: #9ca3af;
-}
+.users-toolbar .search-users-btn:hover { background-color: var(--admin-secondary-hover); }
 
 /* --- Users Table --- */
-.users-table th, .users-table td {
-    /* Inherits base styles */
-    white-space: nowrap;
-}
-
-.users-table th:first-child,
-.users-table td:first-child {
-    white-space: normal;
-    word-break: break-all;
-    min-width: 180px;
-}
-
+.users-table th, .users-table td { /* Inherits base */ white-space: nowrap; }
+.users-table th:first-child, .users-table td:first-child { white-space: normal; word-break: break-all; min-width: 180px; }
 .users-table th:nth-child(2), .users-table td:nth-child(2),
-.users-table th:nth-child(3), .users-table td:nth-child(3) {
-    width: 160px;
-    color: var(--admin-text-muted);
-}
-
-.users-table th:nth-child(4), .users-table td:nth-child(4) { width: 100px; }
+.users-table th:nth-child(3), .users-table td:nth-child(3) { width: 160px; color: var(--admin-text-muted); }
+.users-table th:nth-child(4), .users-table td:nth-child(4) { width: 120px; /* Width for badge */ text-align: center; }
 .users-table th:nth-child(5), .users-table td:nth-child(5) { width: 150px; white-space: normal; word-break: break-all; }
-
 .users-table .user-id-cell { font-family: monospace; font-size: 0.8em; color: var(--admin-text-muted); }
 
+/* --- Role Select (Keep dropdown for editing, but display badge) --- */
+.users-table .role-display-cell { /* New container for badge + hidden select */
+    text-align: center;
+    position: relative; /* Context for potential future edit icon */
+}
+/* Role Select Dropdown Styling */
 .users-table .role-select {
     height: auto; padding: 0.4rem 0.6rem; font-size: 0.85rem; min-width: 80px;
-    /* Inherits focus styles from admin.css */
+    border: 1px solid #cbd5e1; border-radius: var(--admin-radius-md);
+    background-color: var(--admin-content-bg);
+    cursor: pointer;
+    transition: var(--admin-transition);
+    /* Focus styles */
+}
+.users-table .role-select:focus {
+    outline: none; border-color: var(--admin-primary); /* Gold */
+    box-shadow: 0 0 0 3px rgba(184, 146, 32, 0.2); /* Gold */
 }
 
-.users-table th:last-child,
-.users-table td:last-child { width: 140px; text-align: right; white-space: nowrap; }
 
-/* Use base action-btn styles */
+/* --- User Actions --- */
+.users-table th:last-child, .users-table td:last-child { width: 140px; text-align: right; white-space: nowrap; }
+
+/* Apply button colors */
+.users-table .action-btn.view-btn { /* Neutral Style */ }
+.users-table .action-btn.delete-btn { /* Negative Style */ }
 .users-table .action-btn + .action-btn { margin-left: 0.5rem; }
 
-
-/* --- User Inspector Styles --- */
+/* --- User Inspector --- */
 .ui-slide{
   position: fixed; top:0; right:0; height:100vh; width:min(550px, 90vw);
   background: var(--admin-content-bg); border-left: 1px solid var(--admin-border);
@@ -80,8 +67,7 @@
 .ui-head{
   display:flex; align-items:center; justify-content:space-between;
   padding: 1rem 1.2rem; border-bottom: 1px solid var(--admin-border);
-  background: var(--admin-content-bg); /* Use white for inspector header */
-  position: sticky; top: 0; z-index: 101;
+  background: var(--admin-content-bg); position: sticky; top: 0; z-index: 101;
 }
 .ui-head h3 { margin: 0; font-size: 1.15rem; font-weight: 600; color: var(--admin-text); word-break: break-all; }
 .ui-head button { background: none; border: none; font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--admin-text-muted); padding: 0.2rem; border-radius: 50%; transition: var(--admin-transition); }
@@ -89,8 +75,7 @@
 
 .ui-tabs{
   display:flex; gap: 4px; padding: 0.5rem 1rem; border-bottom: 1px solid var(--admin-border);
-  background: var(--admin-content-bg); /* White tabs background */
-  position: sticky; top: 61px; /* Adjust based on header */ z-index: 101;
+  background: var(--admin-content-bg); position: sticky; top: 61px; z-index: 101;
 }
 .ui-tabs button{
     padding: 0.5rem 1rem; border-radius: var(--admin-radius-md); border: none;
@@ -100,17 +85,13 @@
 }
 .ui-tabs button:hover { background-color: #f3f4f6; color: var(--admin-text); }
 .ui-tabs .active{
-    background: transparent;
-    border-bottom: 2px solid var(--admin-primary); /* Gold underline */
-    color: var(--admin-primary); /* Gold text */
-    font-weight: 600;
+    background: transparent; border-bottom: 2px solid var(--admin-primary); /* Gold */
+    color: var(--admin-primary); /* Gold */ font-weight: 600;
 }
 
 .ui-content { flex-grow: 1; overflow-y: auto; }
-
 .ui-section{ padding: 1.2rem; }
 .ui-section h4 { margin-top: 0; margin-bottom: 1rem; font-size: 1.05rem; font-weight: 600; color: var(--admin-text); border-bottom: 1px solid var(--admin-border); padding-bottom: 0.6rem; }
-
 .ui-card{ border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); padding: 1rem; margin-bottom: 1rem; background: var(--admin-content-bg); box-shadow: var(--admin-shadow-sm); }
 .ui-card h5 { margin: 0 0 0.5rem 0; font-size: 0.95rem; font-weight: 600; }
 .ui-card h5 small { font-weight: 400; color: var(--admin-text-muted); margin-left: 0.5rem; }
@@ -128,26 +109,23 @@
 .ui-section p { margin: 0.5rem 0; font-size: 0.95rem; line-height: 1.5; }
 .ui-section p b { color: var(--admin-text); font-weight: 500; }
 
-.ui-section textarea,
-.ui-section input[type="number"],
-.ui-section select {
+.ui-section textarea, .ui-section input[type="number"], .ui-section select {
   width:100%; border: 1px solid #cbd5e1; border-radius: var(--admin-radius-md);
   padding: 0.5rem 0.7rem; font-size: 0.9rem; background-color: var(--admin-content-bg);
   transition: var(--admin-transition);
 }
 .ui-section textarea { min-height: 60px; resize: vertical; }
 
-.ui-section input:focus,
-.ui-section select:focus,
-.ui-section textarea:focus {
-  border-color: var(--admin-primary); /* Gold focus */
-  box-shadow: 0 0 0 3px rgba(184, 146, 32, 0.2); /* Gold focus ring */
-  outline: none;
+.ui-section input:focus, .ui-section select:focus, .ui-section textarea:focus {
+  border-color: var(--admin-primary); /* Gold */
+  box-shadow: 0 0 0 3px rgba(184, 146, 32, 0.2); /* Gold */ outline: none;
 }
 
+/* Inspector table styles */
 .ui-section .admin-table { margin-top: 0.8rem; font-size: 0.85rem; }
 .ui-section .admin-table th, .ui-section .admin-table td { padding: 0.6rem 0.8rem; }
-/* Button styles inherited */
+/* Use base action button styles */
+.ui-section .admin-table .action-btn.delete-btn { /* Negative Style */ }
 
 /* Responsive Inspector */
 @media (max-width: 640px) {
@@ -156,3 +134,8 @@
     .ui-grid-2, .ui-grid-4 { grid-template-columns: 1fr; }
      .ui-section { padding: 1rem; }
 }
+
+/* Add Role Badge specific styles if needed (reuse from admin.css) */
+/* .role-badge { ... } */
+/* .role-badge.user { ... } */
+/* .role-badge.admin { ... } */
