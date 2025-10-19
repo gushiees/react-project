@@ -1,4 +1,10 @@
 /* src/components/ConfirmDeleteModal/ConfirmDeleteModal.css */
+
+/* Use variables defined in admin.css */
+:root {
+  /* Re-declare or import variables if needed, assuming admin.css is loaded globally */
+}
+
 .confirm-modal-overlay {
   position: fixed;
   inset: 0;
@@ -6,13 +12,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000; /* Ensure it's above other elements like UserInspector */
+  z-index: 1000;
   backdrop-filter: blur(3px);
   padding: 1rem;
 }
 
 .confirm-modal-content {
-  background-color: #ffffff;
+  background-color: var(--admin-content-bg, #ffffff);
   padding: 1.5rem;
   border-radius: var(--admin-radius-lg, 8px);
   box-shadow: var(--admin-shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1));
@@ -43,69 +49,37 @@
 }
 
 .confirm-modal-close {
-  background: none;
-  border: none;
-  font-size: 1.8rem;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--admin-text-muted, #6b7280);
-  padding: 0.2rem;
+  background: none; border: none; font-size: 1.8rem; line-height: 1;
+  cursor: pointer; color: var(--admin-text-muted, #6b7280); padding: 0.2rem;
 }
-.confirm-modal-close:hover {
-    color: var(--admin-text, #111827);
-}
+.confirm-modal-close:hover { color: var(--admin-text, #111827); }
 
-.confirm-modal-body p {
-  margin: 0 0 0.8rem 0;
-  color: var(--admin-text-muted, #6b7280);
-  font-size: 0.95rem;
-  line-height: 1.6;
-}
-.confirm-modal-body p strong {
-    color: var(--admin-text, #111827);
-    font-weight: 500;
-    word-break: break-all; /* Break long names/emails */
-}
+.confirm-modal-body p { margin: 0 0 0.8rem 0; color: var(--admin-text-muted, #6b7280); font-size: 0.95rem; line-height: 1.6; }
+.confirm-modal-body p strong { color: var(--admin-text, #111827); font-weight: 500; word-break: break-all; }
+.confirm-warning { color: var(--admin-danger, #ef4444) !important; font-weight: 500; }
+.confirm-countdown, .confirm-deleting { font-weight: 500; color: var(--admin-primary, #b89220); text-align: center; margin-top: 1rem; min-height: 1.5em; }
+.confirm-deleting { color: var(--admin-text-muted, #6b7280); }
 
-.confirm-warning {
-    color: var(--admin-danger, #ef4444) !important;
-    font-weight: 500;
-}
-.confirm-countdown, .confirm-deleting {
-    font-weight: 500;
-    color: var(--admin-primary, #b89220); /* Use primary color for countdown */
-    text-align: center;
-    margin-top: 1rem;
-}
+.confirm-modal-footer { display: flex; justify-content: flex-end; gap: 0.8rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--admin-border, #e5e7eb); }
 
-.confirm-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.8rem;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--admin-border, #e5e7eb);
-}
+.confirm-btn { padding: 0.6rem 1.2rem; border: none; border-radius: var(--admin-radius-md, 6px); font-weight: 500; font-size: 0.9rem; cursor: pointer; transition: var(--admin-transition, all 0.2s ease-in-out); }
 
-.confirm-btn {
-  padding: 0.6rem 1.2rem;
-  border: none;
-  border-radius: var(--admin-radius-md, 6px);
-  font-weight: 500;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: var(--admin-transition, all 0.2s ease-in-out);
-}
-
+/* --- Button Color Changes --- */
+/* Cancel Button (Yellow/Gold) */
 .confirm-btn.cancel {
-  background-color: #f3f4f6; /* Light Gray */
-  color: var(--admin-text, #111827);
-  border: 1px solid #d1d5db;
+  background-color: var(--admin-secondary, #f6b300); /* Use bright gold */
+  color: var(--admin-secondary-text, #ffffff); /* White text */
 }
 .confirm-btn.cancel:hover {
-  background-color: #e5e7eb;
+  background-color: var(--admin-secondary-hover, #e0a200); /* Darker gold */
+}
+.confirm-btn.cancel:disabled {
+   background-color: var(--admin-secondary, #f6b300);
+   opacity: 0.6;
+   cursor: not-allowed;
 }
 
+/* Confirm Button (Red) */
 .confirm-btn.confirm {
   background-color: var(--admin-danger, #ef4444);
   color: var(--admin-danger-text, #ffffff);
@@ -114,9 +88,10 @@
   background-color: var(--admin-danger-hover, #dc2626);
 }
 
-.confirm-btn.disabled {
+/* Disabled state specifically for the confirm button */
+.confirm-btn.confirm.disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background-color: #9ca3af; /* Gray when disabled */
+  background-color: #9ca3af; /* Neutral gray when disabled */
   color: #e5e7eb;
 }

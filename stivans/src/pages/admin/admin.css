@@ -45,6 +45,7 @@
   --admin-role-admin-text: #92400e; /* Amber text */
   --admin-role-admin-border: #fde68a;
 
+
   --admin-radius-sm: 4px;
   --admin-radius-md: 6px;
   --admin-radius-lg: 8px;
@@ -57,7 +58,7 @@
 /* --- Base Layout --- */
 .admin-layout {
   display: flex;
-  min-height: 100vh;
+  min-height: 100vh; /* Changed from height to min-height */
   background-color: var(--admin-bg);
 }
 
@@ -87,10 +88,7 @@
 .admin-sidebar::-webkit-scrollbar-track { background: transparent; }
 
 .admin-sidebar.loading-state { opacity: 0.8; }
-.admin-sidebar-header {
-  margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #4b5563;
-  text-align: center;
-}
+.admin-sidebar-header { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #4b5563; text-align: center; }
 .admin-sidebar-logo { display: block; max-width: 150px; height: auto; margin: 0 auto 0.8rem auto; opacity: 0.9; }
 .admin-sidebar-header h2 { color: #ffffff; font-size: 1.3rem; font-weight: 600; margin: 0; }
 
@@ -106,12 +104,13 @@
     margin-top: auto; /* Pushes to bottom */
     padding-top: 1rem; border-top: 1px solid #4b5563;
 }
+/* User Info Block */
 .admin-user-info {
     padding: 0.5rem 1rem; margin-bottom: 1rem; text-align: left;
     border-radius: var(--admin-radius-md); background-color: var(--admin-sidebar-hover-bg);
 }
 .admin-user-info p { margin: 0; font-size: 0.85rem; color: var(--admin-sidebar-text); line-height: 1.4; word-break: break-all; }
-.admin-user-info .user-label { font-weight: 600; color: #ffffff; display: block; /* Label on top */ margin-bottom: 2px;}
+.admin-user-info .user-label { font-weight: 600; color: #ffffff; display: block; margin-bottom: 2px;}
 
 .logout-button.sidebar-logout { display: flex; align-items: center; gap: 0.85rem; width: 100%; padding: 0.8rem 1rem; background-color: transparent; color: var(--admin-sidebar-text); border: none; border-radius: var(--admin-radius-md); cursor: pointer; font-size: 0.95rem; font-weight: 500; transition: var(--admin-transition); }
 .logout-button.sidebar-logout svg { width: 20px; height: 20px; flex-shrink: 0; }
@@ -122,7 +121,8 @@
   flex-grow: 1; padding: 2.5rem;
   /* Make content scroll independently */
   overflow-y: auto;
-  height: 100vh;
+  /* Removed fixed height to allow natural scrolling */
+  /* height: 100vh; */
   background-color: var(--admin-bg);
 }
 
@@ -169,14 +169,17 @@
   .admin-main-content { padding: 1.5rem; } .admin-content-header h1 { font-size: 1.5rem; } .admin-section { padding: 1rem; } .admin-section h2 { font-size: 1.3rem; }
 }
 @media (max-width: 768px) {
-  .admin-layout { flex-direction: column; } .admin-sidebar { width: 100%; height: auto; box-shadow: var(--admin-shadow-md); position: relative; /* Override sticky */ overflow-y: visible; /* Override scroll */ } .admin-main-content { height: auto; /* Allow content to determine height */ }
+  .admin-layout { flex-direction: column; }
+  /* Make sidebar non-sticky on mobile, allow natural flow */
+  .admin-sidebar { width: 100%; height: auto; position: relative; overflow-y: visible; }
+  .admin-main-content { height: auto; /* Content determines height */ overflow-y: visible; /* Prevent double scrollbar */ }
   .admin-toolbar { flex-direction: column; align-items: stretch; } .admin-search-input { max-width: none; } .admin-toolbar-right { justify-content: space-between; width: 100%; }
   .admin-table th, .admin-table td { padding: 0.6rem 0.8rem; }
 }
 @media (max-width: 480px) {
-  .admin-toolbar-right { flex-direction: column; align-items: stretch; } .admin-sort-select { margin-bottom: 0.5rem; }
-  .admin-main-content { padding: 1rem; } .admin-section { padding: 0.8rem; }
-  .admin-table th, .admin-table td { padding: 0.5rem 0.6rem; font-size: 0.85rem; } .action-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+    .admin-toolbar-right { flex-direction: column; align-items: stretch; } .admin-sort-select { margin-bottom: 0.5rem; }
+     .admin-main-content { padding: 1rem; } .admin-section { padding: 0.8rem; }
+    .admin-table th, .admin-table td { padding: 0.5rem 0.6rem; font-size: 0.85rem; } .action-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
 }
 
 /* --- Role Badges --- */
