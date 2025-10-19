@@ -1,26 +1,290 @@
-.admin-container {
+/* Add these styles to src/pages/admin/admin.css */
+
+/* --- NEW LAYOUT STYLES --- */
+.admin-layout {
+  display: flex;
+  min-height: 100vh; /* Full viewport height */
+  background-color: #f9fafb; /* Light background for the overall layout */
+}
+
+.admin-sidebar {
+  width: 240px; /* Fixed width sidebar */
+  background-color: #1f2937; /* Dark background */
+  color: #d1d5db; /* Light text */
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0; /* Prevent sidebar from shrinking */
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1); /* Subtle shadow */
+}
+
+.admin-sidebar-header h2 {
+    color: white;
+    margin-bottom: 2rem;
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+.admin-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Space between nav items */
+  flex-grow: 1; /* Take remaining vertical space */
+}
+
+.admin-sidebar-nav button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* Space between icon and text */
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  color: #d1d5db; /* Light gray text */
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.admin-sidebar-nav button:hover {
+  background-color: #374151; /* Darker gray on hover */
+  color: white;
+}
+
+.admin-sidebar-nav button.active {
+  background-color: var(--primary, #2563eb); /* Use primary color for active */
+  color: white;
+  font-weight: 600;
+}
+
+/* Style icons */
+.admin-sidebar-nav button svg {
+    width: 18px;
+    height: 18px;
+}
+
+
+.admin-sidebar-footer {
+    margin-top: auto; /* Push footer to bottom */
+}
+
+.logout-button.sidebar-logout {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background-color: #4b5563; /* Medium gray */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+.logout-button.sidebar-logout svg {
+    width: 18px;
+    height: 18px;
+}
+
+.logout-button.sidebar-logout:hover {
+    background-color: #374151; /* Darker gray */
+}
+
+
+.admin-main-content {
+  flex-grow: 1; /* Take remaining horizontal space */
   padding: 2rem;
-  max-width: 1000px;
-  margin: 2rem auto;
+  overflow-y: auto; /* Allow content scrolling */
+}
+
+.admin-content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-content-header h1 {
+    margin: 0; /* Remove default margin */
+    font-size: 1.75rem;
+}
+
+
+/* --- END NEW LAYOUT STYLES --- */
+
+
+.admin-toolbar {
+  display: flex;
+  justify-content: space-between; /* Pushes items to ends */
+  align-items: center;
+  margin-bottom: 1.5rem; /* Add some space below */
+  gap: 1rem; /* Space between items */
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+/* Specific styling for the product toolbar */
+.product-toolbar {
+  /* You can add specific overrides here if needed */
+}
+
+.admin-search-input {
+  flex-grow: 1; /* Allows search input to take available space */
+  min-width: 200px; /* Ensure it doesn't get too small */
+  max-width: 400px; /* Optional: limit search bar width */
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  height: 40px; /* Match button height */
+}
+
+/* New: Style for the right side of the toolbar (sort + add button) */
+.admin-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* Space between sort and add button */
+}
+
+.admin-sort-select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  height: 40px; /* Match button/input height */
+  background-color: white; /* Ensure background color */
+  cursor: pointer;
+}
+
+
+.add-product-btn {
+  padding: 8px 16px;
+  height: 40px; /* Match input/select height */
+  background-color: var(--primary, #2563eb); /* Use your primary color */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap; /* Prevent button text wrapping */
+}
+
+.add-product-btn:hover {
+  background-color: var(--primary-hover, #1d4ed8); /* Darker shade for hover */
+}
+
+/* Ensure user search bar uses the same class */
+.users-toolbar .admin-search-input {
+   max-width: 400px; /* Adjust if needed for user search */
+}
+
+/* Adjust users toolbar button */
+.users-toolbar button {
+    height: 40px;
+    padding: 8px 16px;
+    background-color: #e5e7eb;
+    color: #111827;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+.users-toolbar button:hover {
+    background-color: #d1d5db;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) { /* Adjust breakpoint if needed */
+  /* --- RESPONSIVE SIDEBAR (Optional: Could hide/toggle on small screens) --- */
+  .admin-layout {
+      flex-direction: column; /* Stack sidebar and content on small screens */
+  }
+  .admin-sidebar {
+      width: 100%; /* Full width */
+      height: auto; /* Auto height */
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      /* Consider adding a toggle button and hiding sidebar by default */
+  }
+  .admin-main-content {
+      padding: 1.5rem; /* Reduce padding */
+  }
+  /* --- END RESPONSIVE SIDEBAR --- */
+
+  .admin-toolbar {
+    flex-direction: column;
+    align-items: stretch; /* Make items full width */
+  }
+  .admin-search-input {
+    max-width: none; /* Allow full width */
+  }
+  .admin-toolbar-right {
+     justify-content: space-between; /* Space out sort/add on new line */
+     width: 100%; /* Take full width */
+  }
+}
+
+@media (max-width: 480px) {
+    .admin-toolbar-right {
+        flex-direction: column; /* Stack sort and add button */
+        align-items: stretch; /* Make them full width */
+    }
+    .admin-sort-select {
+        margin-bottom: 0.5rem; /* Add space below sort */
+    }
+}
+
+
+/* Keep existing styles below... */
+.admin-container { /* This might be less relevant now with admin-layout */
+  /* padding: 2rem; */
+  /* max-width: 1000px; */
+  /* margin: 2rem auto; */
 }
 
 .admin-table {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto; /* Changed from fixed for better auto-sizing */
   border-collapse: collapse;
+  margin-top: 1rem; /* Add space above table */
 }
 
+
 .admin-table th, .admin-table td {
-  width: 25%;
   text-align: left;
   padding: 12px 15px;
   border-bottom: 1px solid #e2e8f0;
   word-wrap: break-word;
+  white-space: nowrap; /* Prevent wrapping in cells initially */
+  vertical-align: middle; /* Align cell content vertically */
 }
+
+/* Allow name column to wrap if needed */
+.admin-table th:first-child,
+.admin-table td:first-child {
+    white-space: normal;
+    /* Optional: Give it a max-width if names get too long */
+    /* max-width: 300px; */
+}
+
 
 .admin-table th {
   background-color: #f7f7f7;
+  white-space: nowrap; /* Keep headers from wrapping */
+  font-weight: 600; /* Bolder headers */
+  color: #374151; /* Header text color */
 }
+
+/* Make action column narrower if needed */
+.admin-table th:last-child,
+.admin-table td:last-child {
+  width: 180px; /* Adjust as needed */
+  text-align: right;
+  white-space: nowrap; /* Keep actions on one line */
+}
+
 
 .admin-table .actions {
   display: flex;
@@ -46,27 +310,12 @@
   padding: 2rem;
   border: 1px solid #ddd;
   border-radius: 8px;
+  background-color: white; /* Add background */
 }
 
-/* Add to admin.css */
-.admin-tabs {
-  display: flex;
-  gap: 0.5rem;
-  border-bottom: 2px solid #ddd;
-  margin-bottom: 2rem;
-}
-.admin-tabs button {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 1rem;
-  border-bottom: 2px solid transparent;
-}
-.admin-tabs button.active {
-  border-bottom-color: var(--primary); /* Use your primary color */
-  font-weight: 600;
-}
+/* REMOVED: Tab styles are replaced by sidebar */
+/* .admin-tabs { ... } */
+
 
 .drop-zone {
   border: 2px dashed #ccc;
@@ -131,13 +380,27 @@
   height: 24px;
   cursor: pointer;
   font-weight: bold;
+  display: grid; /* For centering the X */
+  place-items: center; /* For centering the X */
+  line-height: 1; /* Ensure X is vertically centered */
+  padding: 0; /* Remove default padding */
 }
+/* Add simple X mark inside button if needed */
+.existing-image-item button::after {
+    content: '×';
+    font-size: 16px;
+}
+
 
 /* ---  Styles for stock --- */
 /* Style for the highlighted row */
 .admin-table tr.out-of-stock-row {
   background-color: #fff5f5; /* A very light red */
   color: #a0aec0; /* Gray out the text */
+}
+.admin-table tr.out-of-stock-row .editable-stock-value {
+    color: #ef4444; /* Make stock value red */
+    font-weight: 600;
 }
 
 /* Base style for the status badge */
@@ -165,29 +428,19 @@
   border-radius: 4px;
   transition: background-color 0.2s ease;
   display: inline-block; /* Makes padding and other box properties work */
+  border-bottom: 1px dashed #9ca3af; /* Add underline affordance */
 }
 
 .editable-stock-value:hover {
   background-color: #e2e8f0; /* A liggght gray hover effect */
+  border-bottom-style: solid;
 }
 
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
+/* REMOVED: Header is now part of main content */
+/* .admin-header { ... } */
 
-.logout-button {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 6px;
-  background: #1f2937;
-  color: #fff;
-  cursor: pointer;
-  font-weight: 600;
-}
+/* REMOVED: Logout button moved to sidebar */
+/* .logout-button { ... } */
 
 .inline-edit-stock {
   display: inline-flex;
@@ -214,59 +467,12 @@
 .save-stock { background: #2563eb; color: #fff; }
 .cancel-stock { background: #e5e7eb; color: #111827; }
 
+/* REMOVED: Redundant header/logout styles */
 
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
+/* toolbar (General utility, keep if used elsewhere, renamed admin-toolbar) */
+/* .toolbar { ... } */
 
-.logout-button {
-  padding: 8px 16px;
-  background-color: #1f2937;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.inline-edit-stock {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.inline-stock-input {
-  width: 90px;
-  padding: 6px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-}
-
-.save-stock,
-.cancel-stock {
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.save-stock { background: #2563eb; color: #fff; }
-.cancel-stock { background: #e5e7eb; color: #111827; }
-
-
-/* toolbar */
-.toolbar {
-  margin: 10px 0 16px;
-  display: flex;
-  gap: 10px;
-}
-
-/* inline edit */
+/* inline edit (Keep for general inline edits) */
 .inline-edit {
   display: inline-flex;
   gap: 6px;
@@ -276,16 +482,23 @@
   width: 90px;
 }
 
-/* stock click affordance */
-.stock-value { cursor: pointer; border-bottom: 1px dashed #aaa; }
+/* stock click affordance (Replaced by editable-stock-value) */
+/* .stock-value { ... } */
 
-/* buttons */
-button.danger { background:#e03131; color:#fff; }
+/* buttons (General utility, can be kept or specific buttons styled directly) */
+button.delete { background:#e03131; color:#fff; }
 button.ghost { background: transparent; border:1px solid #ccc; }
 
 /* Users tab */
 .role-inline { display:flex; align-items:center; gap:10px; }
 .role-select { padding:6px 8px; }
+
+/* Reusing admin-sort-select for user role dropdown */
+td .admin-sort-select {
+    height: auto; /* Override fixed height */
+    padding: 6px 8px; /* Adjust padding */
+}
+
 
 .badge {
   font-size: 12px;
@@ -300,25 +513,58 @@ button.ghost { background: transparent; border:1px solid #ccc; }
 .badge.user  { background:#eef3ff; border-color:#cdd7ff; color:#294088; }
 
 
+/* --- User Inspector Styles --- */
 .ui-slide{
   position: fixed; top:0; right:0; height:100vh; width:min(980px,100%);
   background:#fff; border-left:1px solid #eee; box-shadow: -8px 0 24px rgba(0,0,0,.08);
-  z-index: 60; overflow:auto;
+  z-index: 60; overflow-y:auto; /* Allow vertical scroll */
+  display: flex; /* Flex layout */
+  flex-direction: column; /* Stack header/tabs/content */
 }
-.ui-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #eee; }
-.ui-tabs{ display:flex; gap:8px; padding:10px 12px; border-bottom:1px solid #eee; }
-.ui-tabs button{ padding:8px 12px; border-radius:999px; }
-.ui-tabs .active{ background:#fff7e1; border:1px solid #e8d190; }
+.ui-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px; border-bottom:1px solid #eee;
+  background: #f9fafb; /* Light bg for header */
+  position: sticky; /* Make header sticky */
+  top: 0; /* Stick to top */
+  z-index: 61; /* Above content */
+}
+.ui-tabs{
+  display:flex; gap:8px; padding:10px 12px; border-bottom:1px solid #eee;
+  background: #fff; /* White bg for tabs */
+  position: sticky; /* Make tabs sticky */
+  top: 57px; /* Stick below header (adjust height based on header padding/content) */
+  z-index: 61; /* Above content */
+}
+.ui-tabs button{ padding:8px 12px; border-radius:999px; border: 1px solid transparent; background: transparent; cursor: pointer;}
+.ui-tabs button:hover { background: #f3f4f6; }
+.ui-tabs .active{ background:#fff7e1; border:1px solid #e8d190; font-weight: 600; }
 
-.ui-section{ padding:14px 16px; }
+.ui-section{
+  padding:14px 16px;
+  flex-grow: 1; /* Allow content to fill remaining space */
+}
+
+/* --- Rest of ui styles --- */
 .ui-card{ border:1px solid #eee; border-radius:12px; padding:12px; margin-bottom:14px; background:#fff; }
-.ui-row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.ui-row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px; /* Add margin */}
 .ui-inline{ display:flex; align-items:center; gap:8px; }
-.ui-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.ui-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top: 8px; /* Add margin */ }
 .ui-grid-4{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
 .ui-list{ list-style:none; padding:0; margin:8px 0; display:grid; gap:8px; }
 .ui-list li{ padding:8px 10px; border:1px solid #eee; border-radius:8px; background:#fafafa; }
 
-.ui-section label{ font-size:12px; color:#666; display:block; margin-bottom:6px; }
+.ui-section label{ font-size:12px; color:#666; display:block; margin-bottom:6px; font-weight: 600; }
 .ui-section textarea{ width:100%; min-height:72px; border:1px solid #ddd; border-radius:8px; padding:8px; }
-.ui-section input[type="number"]{ width:100%; border:1px solid #ddd; border-radius:8px; padding:6px 8px; }
+.ui-section input[type="number"],
+.ui-section select { /* Style select like input */
+  width:100%; border:1px solid #ddd; border-radius:8px; padding:6px 8px;
+}
+/* Focus styles */
+.ui-section input:focus,
+.ui-section select:focus,
+.ui-section textarea:focus {
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.3);
+  outline: none;
+}
