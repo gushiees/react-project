@@ -1,6 +1,6 @@
 /* src/pages/admin/admin.css */
 
-/* --- Enhanced Theme Variables (Gold/Brown & Action Colors) --- */
+/* --- Enhanced Theme Variables (Gold & White Palette) --- */
 :root {
   --admin-primary: #b89220; /* Gold/Brown - Primary Accent */
   --admin-primary-hover: #a07e1c; /* Darker Gold/Brown */
@@ -12,7 +12,7 @@
   --admin-secondary-text: #ffffff; /* White text for secondary buttons */
 
   --admin-bg: #f8fafc;        /* Very light gray page background */
-  --admin-sidebar-bg: #1f2937; /* Dark gray-blue sidebar */
+  --admin-sidebar-bg: #1f2937; /* Dark gray-blue sidebar (Kept for contrast) */
   --admin-sidebar-text: #d1d5db; /* Light gray sidebar text */
   --admin-sidebar-hover-bg: #374151; /* Medium gray for hover */
   --admin-sidebar-active-text: #ffffff; /* White text on active gold */
@@ -58,7 +58,7 @@
 /* --- Base Layout (Unchanged) --- */
 .admin-layout { display: flex; min-height: 100vh; background-color: var(--admin-bg); }
 
-/* --- Sidebar (Logo Added) --- */
+/* --- Sidebar --- */
 .admin-sidebar {
   width: 250px; background-color: var(--admin-sidebar-bg); color: var(--admin-sidebar-text);
   padding: 1.5rem 1rem; display: flex; flex-direction: column; flex-shrink: 0;
@@ -72,10 +72,10 @@
 }
 /* Logo Style */
 .admin-sidebar-logo {
-    display: block; /* Make it a block element */
-    max-width: 100px; /* Limit logo width */
+    display: block;
+    max-width: 150px; /* << --- Increased logo size --- */
     height: auto;
-    margin: 0 auto 0.8rem auto; /* Center logo horizontally, add margin below */
+    margin: 0 auto 0.8rem auto;
     opacity: 0.9;
 }
 .admin-sidebar-header h2 {
@@ -136,53 +136,15 @@
 .admin-table tbody tr:nth-of-type(even) { background-color: #fdfdff; }
 .admin-table tbody tr:hover { background-color: var(--admin-primary-light); }
 
-/* --- Base Action Button Styles (Updated) --- */
-.action-btn {
-  padding: 0.4rem 0.8rem;
-  border: 1px solid transparent;
-  border-radius: var(--admin-radius-md);
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  transition: var(--admin-transition);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--admin-neutral-text); /* Default: White text */
-}
+/* --- Base Action Button Styles (Unchanged) --- */
+.action-btn { padding: 0.4rem 0.8rem; border: 1px solid transparent; border-radius: var(--admin-radius-md); cursor: pointer; font-weight: 500; font-size: 0.85rem; white-space: nowrap; transition: var(--admin-transition); display: inline-flex; align-items: center; gap: 0.4rem; color: var(--admin-neutral-text); }
 .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* Positive Button (Green) */
-.action-btn.save-btn {
-    background-color: var(--admin-success);
-    color: var(--admin-success-text);
-    border: none; /* Solid fill */
-}
+.action-btn.save-btn { background-color: var(--admin-success); color: var(--admin-success-text); border: none; }
 .action-btn.save-btn:hover { background-color: var(--admin-success-hover); }
-
-/* Negative Buttons (Red) */
-.action-btn.delete-btn,
-.action-btn.cancel-btn { /* Apply red to cancel as well */
-  background-color: var(--admin-danger);
-  color: var(--admin-danger-text);
-  border: none; /* Solid fill */
-}
-.action-btn.delete-btn:hover,
-.action-btn.cancel-btn:hover { background-color: var(--admin-danger-hover); }
-
-/* Neutral Buttons (Black with Gold Border) */
-.action-btn.edit-btn,
-.action-btn.view-btn {
-  background-color: var(--admin-neutral-bg); /* Black */
-  color: var(--admin-neutral-text); /* White */
-  border: 1px solid var(--admin-neutral-border); /* Gold border */
-}
-.action-btn.edit-btn:hover,
-.action-btn.view-btn:hover {
-    background-color: var(--admin-neutral-hover-bg); /* Darker gray */
-    border-color: var(--admin-primary-hover); /* Darker Gold border */
-}
+.action-btn.delete-btn, .action-btn.cancel-btn { background-color: var(--admin-danger); color: var(--admin-danger-text); border: none; }
+.action-btn.delete-btn:hover, .action-btn.cancel-btn:hover { background-color: var(--admin-danger-hover); }
+.action-btn.edit-btn, .action-btn.view-btn { background-color: var(--admin-neutral-bg); color: var(--admin-neutral-text); border: 1px solid var(--admin-neutral-border); }
+.action-btn.edit-btn:hover, .action-btn.view-btn:hover { background-color: var(--admin-neutral-hover-bg); border-color: var(--admin-primary-hover); }
 
 /* --- General Error Message (Unchanged) --- */
 .error-message { background: var(--admin-danger-light); color: var(--admin-danger-text); border: 1px solid #fecaca; padding: 0.8rem 1rem; border-radius: var(--admin-radius-md); margin-bottom: 1rem; text-align: left; font-size: 0.9rem; }
@@ -211,26 +173,7 @@
     .action-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
 }
 
-/* --- Role Badges (New) --- */
-.role-badge {
-    display: inline-block;
-    padding: 0.2rem 0.6rem;
-    border-radius: var(--admin-radius-md);
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-transform: capitalize;
-    border: 1px solid;
-    line-height: 1.2;
-}
-
-.role-badge.user {
-    background-color: var(--admin-role-user-bg);
-    color: var(--admin-role-user-text);
-    border-color: var(--admin-role-user-border);
-}
-
-.role-badge.admin {
-    background-color: var(--admin-role-admin-bg);
-    color: var(--admin-role-admin-text);
-    border-color: var(--admin-role-admin-border);
-}
+/* --- Role Badges (Unchanged) --- */
+.role-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: var(--admin-radius-md); font-size: 0.75rem; font-weight: 500; text-transform: capitalize; border: 1px solid; line-height: 1.2; }
+.role-badge.user { background-color: var(--admin-role-user-bg); color: var(--admin-role-user-text); border-color: var(--admin-role-user-border); }
+.role-badge.admin { background-color: var(--admin-role-admin-bg); color: var(--admin-role-admin-text); border-color: var(--admin-role-admin-border); }
