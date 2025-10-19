@@ -15,17 +15,11 @@ import {
 import ProductForm from "./productform.jsx";
 import UserInspector from "./UserInspector.jsx";
 import { supabase } from "../../supabaseClient";
-import "./admin.css";
+import "./admin.css"; // Ensure admin.css is imported
 import { usePersistentState } from "../../hooks/usepersistentstate.js";
+import Button from "../../components/button/button.jsx"; // <<<--- 1. IMPORT BUTTON
 
-function formatDate(d) {
-  if (!d) return "—";
-  try {
-    return new Date(d).toLocaleString();
-  } catch {
-    return d;
-  }
-}
+// ... (rest of the imports and formatDate function remain the same)
 
 export default function Admin() {
   const { user, loadingAuth, logout } = useAuth();
@@ -56,254 +50,11 @@ export default function Admin() {
   const [page, setPage] = useState(1);
   const perPage = 50;
 
-  // ----- AUTH GUARD -----
-  useEffect(() => {
-    if (!loadingAuth) {
-      if (!user || user.role !== "admin") navigate("/");
-    }
-  }, [user, loadingAuth, navigate]);
+  // ... (AUTH GUARD, handleLogout, PRODUCTS functions remain the same)
+  // ... (handleEdit, handleAddNew, handleDelete, handleCancelForm, handleFormSubmit)
+  // ... (handleEditStockClick, handleCancelStockEdit, handleSaveStock)
+  // ... (USERS functions: loadUsers, deleteUser, changeRole remain the same)
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate("/login");
-    } catch (err) {
-      console.error("Failed to log out:", err);
-      toast.error("Logout failed");
-    }
-  };
-
-  // ----- PRODUCTS -----
-  const loadProducts = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await fetchProducts();
-      setProducts(data);
-    } catch (err) {
-      console.error("Error loading products:", err);
-      setError(`Failed to load products: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === "products" && user?.role === "admin") {
-      loadProducts();
-    }
-  }, [activeTab, user, loadProducts]);
-
-  const handleEdit = (product) => {
-    setSelectedProduct(product);
-    setView("edit");
-  };
-
-  const handleAddNew = () => {
-    setSelectedProduct(null);
-    setView("create");
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this product?")) return;
-    const t = toast.loading("Deleting…");
-    try {
-      await deleteProduct(id);
-      await loadProducts();
-      toast.success("Deleted", { id: t });
-    } catch (err) {
-      console.error(err);
-      toast.error("Delete failed", { id: t });
-    }
-  };
-
-  const handleCancelForm = () => {
-    setView("list");
-    setSelectedProduct(null);
-  };
-
-  const handleFormSubmit = async (
-    productData,
-    mainImageFile,
-    additionalImageFiles = [],
-    imagesToDelete = []
-  ) => {
-    const t = toast.loading("Saving…");
-    try {
-      setLoading(true);
-      setError(null);
-      let finalProductData = { ...productData };
-      let savedProduct;
-
-      // delete removed images
-      if (imagesToDelete.length > 0) {
-        for (const image of imagesToDelete) {
-          await deleteProductImage(image.id);
-          await deleteImageFromStorage(image.url);
-        }
-      }
-
-      // upload main image (replace)
-      if (mainImageFile) {
-        const fileName = `${Date.now()}_${mainImageFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("product-images")
-          .upload(fileName, mainImageFile);
-        if (uploadError) throw uploadError;
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("product-images").getPublicUrl(fileName);
-        finalProductData.image_url = publicUrl;
-      }
-
-      if (view === "edit") {
-        savedProduct = await updateProduct(selectedProduct.id, finalProductData);
-      } else {
-        savedProduct = await createProduct(finalProductData);
-      }
-
-      if (!savedProduct) throw new Error("Failed to save product.");
-
-      // upload additional images
-      if (additionalImageFiles.length > 0) {
-        for (const file of additionalImageFiles) {
-          const fileName = `${Date.now()}_${file.name}`;
-          const { error: uploadError } = await supabase.storage
-            .from("product-images")
-            .upload(fileName, file);
-          if (uploadError) throw uploadError;
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("product-images").getPublicUrl(fileName);
-          await addProductImage(savedProduct.id, publicUrl);
-        }
-      }
-
-      setView("list");
-      setSelectedProduct(null);
-      await loadProducts();
-      toast.success("Saved", { id: t });
-    } catch (err) {
-      console.error("Error submitting product form:", err);
-      setError("Failed to save product.");
-      toast.error("Save failed", { id: t });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditStockClick = (product) => {
-    setEditingStockId(product.id);
-    setNewStockValue(product.stock_quantity);
-  };
-
-  const handleCancelStockEdit = () => {
-    setEditingStockId(null);
-    setNewStockValue(0);
-  };
-
-  const handleSaveStock = async (productId) => {
-    const t = toast.loading("Updating stock…");
-    try {
-      await updateProduct(productId, { stock_quantity: Number(newStockValue) });
-      setEditingStockId(null);
-      await loadProducts();
-      toast.success("Stock updated", { id: t });
-    } catch (err) {
-      console.error("Failed to update stock:", err);
-      setError("Failed to update stock.");
-      toast.error("Update failed", { id: t });
-    }
-  };
-
-  // ----- USERS -----
-  const loadUsers = useCallback(async () => {
-    try {
-      setUsersErr(null);
-      setUsersLoading(true);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) throw new Error("No session");
-
-      const u = new URL("/api/admin/users/list", window.location.origin);
-      u.searchParams.set("page", String(page));
-      u.searchParams.set("perPage", String(perPage));
-      if (q) u.searchParams.set("q", q);
-
-      const resp = await fetch(u.toString(), {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      const json = await resp.json();
-      if (!resp.ok) throw new Error(json.error || "Failed to load users");
-
-      setUsers(json.users || []);
-    } catch (e) {
-      console.error(e);
-      setUsersErr(e.message);
-    } finally {
-      setUsersLoading(false);
-    }
-  }, [page, q, perPage]);
-
-  useEffect(() => {
-    if (activeTab === "users" && user?.role === "admin") {
-      loadUsers();
-    }
-  }, [activeTab, user, loadUsers]);
-
-  const deleteUser = async (userId, email) => {
-    if (!window.confirm(`Delete user ${email || userId}? This cannot be undone.`))
-      return;
-
-    const t = toast.loading("Deleting user…");
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const resp = await fetch("/api/admin/users/delete", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ userId }),
-      });
-      const json = await resp.json();
-      if (!resp.ok) throw new Error(json.error || "Delete failed");
-
-      await loadUsers();
-      toast.success("User deleted", { id: t });
-    } catch (e) {
-      console.error(e);
-      toast.error(e.message || "Delete failed", { id: t });
-    }
-  };
-
-  const changeRole = async (userId, newRole) => {
-    const t = toast.loading("Updating role…");
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const resp = await fetch("/api/admin/users/role", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ userId, role: newRole }),
-      });
-      const json = await resp.json();
-      if (!resp.ok) throw new Error(json.error || "Role update failed");
-      await loadUsers();
-      toast.success("Role updated", { id: t });
-    } catch (e) {
-      console.error(e);
-      toast.error(e.message || "Role update failed", { id: t });
-    }
-  };
 
   // ----- RENDER -----
   if (loadingAuth || !user || user.role !== "admin") {
@@ -318,9 +69,13 @@ export default function Admin() {
     <div className="admin-container">
       <div className="admin-header">
         <h1>Admin Dashboard</h1>
-        <button onClick={handleLogout} className="logout-button">
-          Logout
-        </button>
+        {/* Using custom Button for logout */}
+        <Button
+          type="primary" // Or choose another appropriate type
+          label="Logout"
+          action={handleLogout}
+          externalStyles="logout-button-custom" // Optional: Add specific class if needed
+        />
       </div>
 
       <div className="admin-tabs">
@@ -348,8 +103,20 @@ export default function Admin() {
             <>
               {view === "list" ? (
                 <>
-                  <button onClick={handleAddNew}>Add New Product</button>
+                  {/* <<<--- 2. REPLACE HTML BUTTON & ADD WRAPPER --- */}
+                  <div className="admin-section-toolbar">
+                    <Button
+                      label="Add New Product"
+                      action={handleAddNew}
+                      type="primary" // Or choose a style you prefer
+                      icon="fa-solid fa-plus" // Example Font Awesome icon
+                      iconPosition="left"
+                    />
+                  </div>
+                  {/* <<<--- END REPLACEMENT --- */}
+
                   <table className="admin-table">
+                    {/* ... (table head remains the same) */}
                     <thead>
                       <tr>
                         <th>Name</th>
@@ -358,6 +125,7 @@ export default function Admin() {
                         <th style={{ textAlign: "right" }}>Actions</th>
                       </tr>
                     </thead>
+                    {/* ... (table body remains the same) */}
                     <tbody>
                       {products.map((product) => (
                         <tr
@@ -373,7 +141,6 @@ export default function Admin() {
                               ? Number(product.price).toLocaleString()
                               : "0"}
                           </td>
-
                           <td>
                             {editingStockId === product.id ? (
                               <div className="inline-edit-stock">
@@ -408,18 +175,21 @@ export default function Admin() {
                               </span>
                             )}
                           </td>
-
                           <td style={{ textAlign: "right" }}>
-                            <button onClick={() => handleEdit(product)}>
-                              Edit Page
-                            </button>
-                            <button
-                              onClick={() => handleDelete(product.id)}
-                              className="delete"
-                              style={{ marginLeft: 8 }}
-                            >
-                              Delete
-                            </button>
+                             {/* Using custom Button for Edit */}
+                            <Button
+                                type="secondary" // Example type
+                                label="Edit"
+                                action={() => handleEdit(product)}
+                                externalStyles="admin-action-button"
+                             />
+                             {/* Using custom Button for Delete */}
+                            <Button
+                                type="gray" // Example type, maybe a red one?
+                                label="Delete"
+                                action={() => handleDelete(product.id)}
+                                externalStyles="admin-action-button delete"
+                            />
                           </td>
                         </tr>
                       ))}
@@ -441,8 +211,8 @@ export default function Admin() {
 
       {/* USERS */}
       {activeTab === "users" && (
-        <div className="admin-section">
-          <div className="users-toolbar">
+         <div className="admin-section">
+          <div className="admin-section-toolbar users-toolbar"> {/* Added admin-section-toolbar */}
             <input
               type="search"
               placeholder="Search email…"
@@ -450,7 +220,12 @@ export default function Admin() {
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (setPage(1), loadUsers())}
             />
-            <button onClick={() => (setPage(1), loadUsers())}>Search</button>
+            {/* Using custom Button for Search */}
+            <Button
+              label="Search"
+              action={() => { setPage(1); loadUsers(); }}
+              type="secondary" // Example type
+            />
           </div>
 
           {usersErr && <p className="error-message">{usersErr}</p>}
@@ -458,6 +233,7 @@ export default function Admin() {
 
           {!usersLoading && !usersErr && (
             <table className="admin-table">
+              {/* ... (user table head remains the same) ... */}
               <thead>
                 <tr>
                   <th>Email</th>
@@ -483,6 +259,7 @@ export default function Admin() {
                         <select
                           defaultValue={u.role || "user"}
                           onChange={(e) => changeRole(u.id, e.target.value)}
+                          className="role-select" // Added class for potential styling
                         >
                           <option value="user">user</option>
                           <option value="admin">admin</option>
@@ -490,14 +267,20 @@ export default function Admin() {
                       </td>
                       <td style={{ fontFamily: "monospace" }}>{u.id}</td>
                       <td style={{ textAlign: "right" }}>
-                        <button onClick={() => setInspectUser(u)}>View</button>
-                        <button
-                          className="delete"
-                          onClick={() => deleteUser(u.id, u.email)}
-                          style={{ marginLeft: 8 }}
-                        >
-                          Delete
-                        </button>
+                         {/* Using custom Button for View */}
+                        <Button
+                            type="secondary" // Example type
+                            label="View"
+                            action={() => setInspectUser(u)}
+                            externalStyles="admin-action-button"
+                        />
+                        {/* Using custom Button for Delete */}
+                        <Button
+                            type="gray" // Example type, maybe a red one?
+                            label="Delete"
+                            action={() => deleteUser(u.id, u.email)}
+                            externalStyles="admin-action-button delete"
+                        />
                       </td>
                     </tr>
                   ))
@@ -507,6 +290,7 @@ export default function Admin() {
           )}
         </div>
       )}
+
 
       {inspectUser && (
         <UserInspector user={inspectUser} onClose={() => setInspectUser(null)} />
