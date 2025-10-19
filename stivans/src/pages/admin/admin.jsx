@@ -68,8 +68,9 @@ export default function Admin() {
 
   // PRODUCTS STATE
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true); // Manages loading state for API calls
+  const [formSubmitting, setFormSubmitting] = useState(false); // Specific state for form submission process
+  const [error, setError] = useState(null); // Error state specifically for the form OR list view fetch errors
   const [view, setView] = usePersistentState("adminFormView", "list");
   const [selectedProduct, setSelectedProduct] = usePersistentState(
     "adminSelectedProduct",
@@ -109,13 +110,15 @@ export default function Admin() {
   // ----- PRODUCTS -----
   const loadProducts = useCallback(async () => {
     try {
-      setLoading(true);
+      setLoading(true); // Use general loading state for fetching
       setError(null);
       const data = await fetchProducts();
       setProducts(data);
     } catch (err) {
       console.error("Error loading products:", err);
-      setError(`Failed to load products: ${err.message}`);
+      const fetchErrorMsg = `Failed to load products: ${err.message}`;
+      setError(fetchErrorMsg); // Set general error for list view
+      toast.error(fetchErrorMsg); // Also show toast for fetch errors
     } finally {
       setLoading(false);
     }
@@ -131,6 +134,8 @@ export default function Admin() {
   // Filter and sort products
   const filteredAndSortedProducts = useMemo(() => {
     let result = products;
+
+    // Apply search filter first
     if (productSearchTerm) {
       const lowerCaseSearch = productSearchTerm.toLowerCase();
       result = result.filter(product =>
@@ -139,17 +144,22 @@ export default function Admin() {
         product.category?.toLowerCase().includes(lowerCaseSearch)
       );
     }
-    result = sortProducts(result, productSortOrder);
+
+    // Apply sorting
+    result = sortProducts(result, productSortOrder); // Use the helper function
+
     return result;
-  }, [products, productSearchTerm, productSortOrder]);
+  }, [products, productSearchTerm, productSortOrder]); // <-- Include sort order in dependencies
 
 
   const handleEdit = (product) => {
+    setError(null); // Clear error when switching to edit
     setSelectedProduct(product);
     setView("edit");
   };
 
   const handleAddNew = () => {
+    setError(null); // Clear error when switching to add
     setSelectedProduct(null);
     setView("create");
   };
@@ -158,11 +168,13 @@ export default function Admin() {
     if (!window.confirm("Delete this product?")) return;
     const t = toast.loading("Deleting…");
     try {
+      setError(null); // Clear any previous errors
       await deleteProduct(id);
-      await loadProducts();
+      await loadProducts(); // Reload products after deletion
       toast.success("Deleted", { id: t });
     } catch (err) {
       console.error(err);
+      setError("Delete failed"); // Set error for list view display if needed
       toast.error("Delete failed", { id: t });
     }
   };
@@ -171,21 +183,38 @@ export default function Admin() {
   const handleCancelForm = () => {
     setView("list");
     setSelectedProduct(null);
+    setError(null); // Clear errors when cancelling
   };
 
-    const handleFormSubmit = async (
+  const handleFormSubmit = async (
     productData,
     mainImageFile,
     additionalImageFiles = [],
     imagesToDelete = []
   ) => {
-    const t = toast.loading("Saving…");
+    let loadingToastId = null; // To potentially dismiss loading toast early
     try {
-      setLoading(true);
-      setError(null);
+      setFormSubmitting(true); // Use specific submitting state
+      setError(null); // Clear previous form errors
+      loadingToastId = toast.loading("Saving..."); // Show loading toast
+
+      // --- DUPLICATE NAME CHECK ---
+      if (view === 'create') {
+        const productNameLower = productData.name?.trim().toLowerCase();
+        const nameExists = products.some(p => p.name?.toLowerCase() === productNameLower);
+        if (nameExists) {
+           setError(`A product named "${productData.name}" already exists.`);
+           toast.dismiss(loadingToastId); // Dismiss loading toast
+           setFormSubmitting(false); // Stop submitting state
+           return; // Stop the function here
+        }
+      }
+      // --- END DUPLICATE NAME CHECK ---
+
       let finalProductData = { ...productData };
       let savedProduct;
 
+      // delete removed images
       if (imagesToDelete.length > 0) {
         for (const image of imagesToDelete) {
           await deleteProductImage(image.id);
@@ -193,6 +222,7 @@ export default function Admin() {
         }
       }
 
+      // upload main image (replace)
       if (mainImageFile) {
         const fileName = `${Date.now()}_${mainImageFile.name}`;
         const { error: uploadError } = await supabase.storage
@@ -209,32 +239,42 @@ export default function Admin() {
         savedProduct = await createProduct(finalProductData);
       }
 
-      if (!savedProduct) throw new Error("Failed to save product.");
+      if (!savedProduct) throw new Error("Failed to save product data."); // More specific error
 
+      // upload additional images (async without await for faster UI)
       if (additionalImageFiles.length > 0) {
-        for (const file of additionalImageFiles) {
-          const fileName = `${Date.now()}_${file.name}`;
-          const { error: uploadError } = await supabase.storage
-            .from("product-images")
-            .upload(fileName, file);
-          if (uploadError) throw uploadError;
-          const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(fileName);
-          await addProductImage(savedProduct.id, publicUrl);
-        }
+        additionalImageFiles.forEach(async (file) => {
+          try {
+             const fileName = `${Date.now()}_${file.name}`;
+             const { error: uploadError } = await supabase.storage
+               .from("product-images")
+               .upload(fileName, file);
+             if (uploadError) throw uploadError;
+             const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(fileName);
+             await addProductImage(savedProduct.id, publicUrl);
+          } catch (imgErr) {
+             console.error("Failed to add additional image:", imgErr);
+             toast.error(`Product saved, but failed to add image: ${file.name}`);
+          }
+        });
       }
 
       setView("list");
       setSelectedProduct(null);
-      await loadProducts();
-      toast.success("Saved", { id: t });
+      await loadProducts(); // Reload products after submit
+      toast.success("Saved", { id: loadingToastId }); // Update loading toast to success
     } catch (err) {
+      // Catch OTHER errors (API errors, image upload errors etc.)
       console.error("Error submitting product form:", err);
-      setError("Failed to save product.");
-      toast.error("Save failed", { id: t });
+      const errorMessage = err.message || "Failed to save product.";
+      setError(errorMessage); // Set error state for display IN THE FORM
+      toast.error(errorMessage, { id: loadingToastId }); // Show error TOAST
     } finally {
-      setLoading(false);
+      setFormSubmitting(false); // Stop submitting state regardless of outcome
+      // Do not dismiss toast here if it became success/error
     }
   };
+
 
   const handleEditStockClick = (product) => {
     setEditingStockId(product.id);
@@ -249,13 +289,14 @@ export default function Admin() {
   const handleSaveStock = async (productId) => {
     const t = toast.loading("Updating stock…");
     try {
+      setError(null); // Clear list error
       await updateProduct(productId, { stock_quantity: Number(newStockValue) });
       setEditingStockId(null);
-      await loadProducts();
+      await loadProducts(); // Reload products after stock update
       toast.success("Stock updated", { id: t });
     } catch (err) {
       console.error("Failed to update stock:", err);
-      setError("Failed to update stock.");
+      // setError("Failed to update stock."); // Error state is mainly for form
       toast.error("Update failed", { id: t });
     }
   };
@@ -300,6 +341,7 @@ export default function Admin() {
     if (!window.confirm(`Delete user ${email || userId}? This cannot be undone.`)) return;
     const t = toast.loading("Deleting user…");
     try {
+      setUsersErr(null); // Clear previous errors
       const { data: { session } } = await supabase.auth.getSession();
       const resp = await fetch("/api/admin/users/delete", {
         method: "POST",
@@ -312,6 +354,7 @@ export default function Admin() {
       toast.success("User deleted", { id: t });
     } catch (e) {
       console.error(e);
+      setUsersErr(e.message || "Delete failed"); // Set error state for user list
       toast.error(e.message || "Delete failed", { id: t });
     }
   };
@@ -319,6 +362,7 @@ export default function Admin() {
   const changeRole = async (userId, newRole) => {
     const t = toast.loading("Updating role…");
     try {
+      setUsersErr(null); // Clear previous errors
       const { data: { session } } = await supabase.auth.getSession();
       const resp = await fetch("/api/admin/users/role", {
         method: "POST",
@@ -331,6 +375,7 @@ export default function Admin() {
       toast.success("Role updated", { id: t });
     } catch (e) {
       console.error(e);
+      setUsersErr(e.message || "Role update failed"); // Set error state for user list
       toast.error(e.message || "Role update failed", { id: t });
     }
   };
@@ -338,15 +383,23 @@ export default function Admin() {
 
   // ----- RENDER -----
   if (loadingAuth || !user || user.role !== "admin") {
+    // Keep a simple loading state, maybe improve later
     return (
-      <div className="admin-container">
-        <p>Loading or verifying access…</p>
+      <div className="admin-layout">
+         {/* Render sidebar even during initial load for structure */}
+         <aside className="admin-sidebar">
+             <div className="admin-sidebar-header"><h2>Admin Menu</h2></div>
+             {/* Nav items could be disabled or hidden */}
+         </aside>
+         <main className="admin-main-content">
+             <div className="admin-content-header"><h1>Admin Dashboard</h1></div>
+             <p>Loading or verifying access…</p>
+         </main>
       </div>
     );
   }
 
   return (
-    // --- UPDATED LAYOUT ---
     <div className="admin-layout">
         {/* Sidebar */}
         <aside className="admin-sidebar">
@@ -379,120 +432,132 @@ export default function Admin() {
              {/* Header inside main content */}
              <div className="admin-content-header">
                  <h1>Admin Dashboard</h1>
-                 {/* Logout button can optionally be moved here instead of sidebar footer */}
-                 {/* <button onClick={handleLogout} className="logout-button">Logout</button> */}
              </div>
-
-             {/* Removed the Tab buttons div */}
 
              {/* PRODUCTS */}
              {activeSection === "products" && (
                 <div className="admin-section">
-                   {loading && <p>Loading products…</p>}
-                   {error && <p className="error-message">{error}</p>}
-                   {!loading && !error && (
+                   {/* Headers specific to the current view */}
+                   {view === 'list' && <h2>Product Management</h2>}
+                   {view === 'edit' && <h2>Edit Product</h2>}
+                   {view === 'create' && <h2>Add New Product</h2>}
+
+                   {/* General Loading state for fetching */}
+                   {loading && view === 'list' && <p>Loading products…</p>}
+
+                   {/* --- REMOVED THIS BLOCK --- */}
+                   {/* {error && view !== 'list' && <p className="error-message">{error}</p>} */}
+                   {/* --- END REMOVAL --- */}
+
+
+                   {/* Only render content when NOT loading (for list view) */}
+                   {!loading && view === 'list' && (
                      <>
-                       {view === "list" ? (
-                         <>
-                           <div className="admin-toolbar product-toolbar">
-                             <input
-                               type="search"
-                               placeholder="Search products..."
-                               value={productSearchTerm}
-                               onChange={(e) => setProductSearchTerm(e.target.value)}
-                               className="admin-search-input"
-                             />
-                             <div className="admin-toolbar-right">
-                               <select
-                                 value={productSortOrder}
-                                 onChange={(e) => setProductSortOrder(e.target.value)}
-                                 className="admin-sort-select"
-                                 aria-label="Sort products by"
-                               >
-                                 <option value="default">Sort by...</option>
-                                 <option value="name_asc">Name (A-Z)</option>
-                                 <option value="name_desc">Name (Z-A)</option>
-                                 <option value="price_asc">Price (Low-High)</option>
-                                 <option value="price_desc">Price (High-Low)</option>
-                                 <option value="stock_asc">Stock (Low-High)</option>
-                                 <option value="stock_desc">Stock (High-Low)</option>
-                               </select>
-                               <button onClick={handleAddNew} className="add-product-btn">
-                                 Add New Product
-                               </button>
-                             </div>
-                           </div>
-                           <table className="admin-table">
-                             <thead>
-                               <tr>
-                                 <th>Name</th>
-                                 <th>Price</th>
-                                 <th>Stock</th>
-                                 <th style={{ textAlign: "right" }}>Actions</th>
-                               </tr>
-                             </thead>
-                             <tbody>
-                               {filteredAndSortedProducts.length > 0 ? (
-                                 filteredAndSortedProducts.map((product) => (
-                                   <tr
-                                     key={product.id}
-                                     className={
-                                       product.stock_quantity === 0 ? "out-of-stock-row" : ""
-                                     }
-                                   >
-                                     <td>{product.name}</td>
-                                     <td>₱{product.price ? Number(product.price).toLocaleString() : "0"}</td>
-                                     <td>
-                                       {editingStockId === product.id ? (
-                                         <div className="inline-edit-stock">
-                                           <input
-                                             type="number"
-                                             value={newStockValue}
-                                             onChange={(e) => setNewStockValue(e.target.value)}
-                                             className="inline-stock-input"
-                                             autoFocus
-                                           />
-                                           <button onClick={() => handleSaveStock(product.id)} className="save-stock">Save</button>
-                                           <button onClick={handleCancelStockEdit} className="cancel-stock">Cancel</button>
-                                         </div>
-                                       ) : (
-                                         <span className="editable-stock-value" onClick={() => handleEditStockClick(product)}>
-                                           {product.stock_quantity}
-                                         </span>
-                                       )}
-                                     </td>
-                                     <td style={{ textAlign: "right" }}>
-                                       <button onClick={() => handleEdit(product)}>Edit Page</button>
-                                       <button onClick={() => handleDelete(product.id)} className="delete" style={{ marginLeft: 8 }}>Delete</button>
-                                     </td>
-                                   </tr>
-                                 ))
-                               ) : (
-                                 <tr>
-                                   <td colSpan="4" style={{ textAlign: 'center' }}>
-                                     {productSearchTerm ? `No products found matching "${productSearchTerm}".` : "No products available."}
-                                   </td>
-                                 </tr>
-                               )}
-                             </tbody>
-                           </table>
-                         </>
-                       ) : (
-                         <ProductForm
-                           onSubmit={handleFormSubmit}
-                           onCancel={handleCancelForm}
-                           initialData={selectedProduct}
-                           loading={loading}
+                       {/* List view specific error */}
+                       {error && <p className="error-message">{error}</p>}
+                       <div className="admin-toolbar product-toolbar">
+                         <input
+                           type="search"
+                           placeholder="Search products..."
+                           value={productSearchTerm}
+                           onChange={(e) => setProductSearchTerm(e.target.value)}
+                           className="admin-search-input"
                          />
-                       )}
+                         <div className="admin-toolbar-right">
+                           <select
+                             value={productSortOrder}
+                             onChange={(e) => setProductSortOrder(e.target.value)}
+                             className="admin-sort-select"
+                             aria-label="Sort products by"
+                           >
+                             <option value="default">Sort by...</option>
+                             <option value="name_asc">Name (A-Z)</option>
+                             <option value="name_desc">Name (Z-A)</option>
+                             <option value="price_asc">Price (Low-High)</option>
+                             <option value="price_desc">Price (High-Low)</option>
+                             <option value="stock_asc">Stock (Low-High)</option>
+                             <option value="stock_desc">Stock (High-Low)</option>
+                           </select>
+                           <button onClick={handleAddNew} className="add-product-btn">
+                             Add New Product
+                           </button>
+                         </div>
+                       </div>
+                       <table className="admin-table">
+                         <thead>
+                           <tr>
+                             <th>Name</th>
+                             <th>Price</th>
+                             <th>Stock</th>
+                             <th style={{ textAlign: "right" }}>Actions</th>
+                           </tr>
+                         </thead>
+                         <tbody>
+                           {filteredAndSortedProducts.length > 0 ? (
+                             filteredAndSortedProducts.map((product) => (
+                               <tr
+                                 key={product.id}
+                                 className={
+                                   product.stock_quantity === 0 ? "out-of-stock-row" : ""
+                                 }
+                               >
+                                 <td>{product.name}</td>
+                                 <td>₱{product.price ? Number(product.price).toLocaleString() : "0"}</td>
+                                 <td>
+                                   {editingStockId === product.id ? (
+                                     <div className="inline-edit-stock">
+                                       <input
+                                         type="number"
+                                         value={newStockValue}
+                                         onChange={(e) => setNewStockValue(e.target.value)}
+                                         className="inline-stock-input"
+                                         autoFocus
+                                       />
+                                       <button onClick={() => handleSaveStock(product.id)} className="save-stock">Save</button>
+                                       <button onClick={handleCancelStockEdit} className="cancel-stock">Cancel</button>
+                                     </div>
+                                   ) : (
+                                     <span className="editable-stock-value" onClick={() => handleEditStockClick(product)}>
+                                       {product.stock_quantity}
+                                     </span>
+                                   )}
+                                 </td>
+                                 <td style={{ textAlign: "right" }}>
+                                   <button onClick={() => handleEdit(product)}>Edit Page</button>
+                                   <button onClick={() => handleDelete(product.id)} className="delete" style={{ marginLeft: 8 }}>Delete</button>
+                                 </td>
+                               </tr>
+                             ))
+                           ) : (
+                             <tr>
+                               <td colSpan="4" style={{ textAlign: 'center' }}>
+                                 {productSearchTerm ? `No products found matching "${productSearchTerm}".` : "No products available."}
+                               </td>
+                             </tr>
+                           )}
+                         </tbody>
+                       </table>
                      </>
+                   )}
+
+                   {/* Render Form when view is 'edit' or 'create' */}
+                   {(view === 'edit' || view === 'create') && (
+                     <ProductForm
+                       onSubmit={handleFormSubmit}
+                       onCancel={handleCancelForm}
+                       initialData={selectedProduct}
+                       loading={formSubmitting} // Use formSubmitting state here
+                       apiError={error} // Pass form-specific error
+                     />
                    )}
                 </div>
              )}
 
+
              {/* USERS */}
              {activeSection === "users" && (
                 <div className="admin-section">
+                   <h2>User Management</h2> {/* Add section header */}
                    <div className="admin-toolbar users-toolbar">
                      <input
                        type="search"
@@ -520,7 +585,7 @@ export default function Admin() {
                        </thead>
                        <tbody>
                          {users.length === 0 ? (
-                           <tr><td colSpan="6">No users found.</td></tr>
+                           <tr><td colSpan="6" style={{textAlign: 'center'}}>No users found.</td></tr>
                          ) : (
                            users.map((u) => (
                              <tr key={u.id}>
@@ -556,6 +621,5 @@ export default function Admin() {
              )}
         </main>
     </div>
-    // --- END UPDATED LAYOUT ---
   );
 }

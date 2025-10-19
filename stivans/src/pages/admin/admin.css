@@ -1,6 +1,6 @@
-/* Add these styles to src/pages/admin/admin.css */
+/* Add/Modify these styles in src/pages/admin/admin.css */
 
-/* --- NEW LAYOUT STYLES --- */
+/* --- LAYOUT STYLES --- */
 .admin-layout {
   display: flex;
   min-height: 100vh; /* Full viewport height */
@@ -115,7 +115,7 @@
 }
 
 
-/* --- END NEW LAYOUT STYLES --- */
+/* --- END LAYOUT STYLES --- */
 
 
 .admin-toolbar {
@@ -305,6 +305,8 @@
   background-color: #e53e3e;
   color: white;
 }
+
+/* --- PRODUCT FORM STYLES --- */
 .product-form {
   margin-top: 2rem;
   padding: 2rem;
@@ -313,18 +315,124 @@
   background-color: white; /* Add background */
 }
 
-/* REMOVED: Tab styles are replaced by sidebar */
-/* .admin-tabs { ... } */
+/* Grid layout for form fields */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns */
+    gap: 1rem 1.5rem; /* Row gap, Column gap */
+    margin-bottom: 1.5rem;
+}
+.form-group.span-2 {
+    grid-column: span 2; /* Make element span both columns */
+}
+.image-uploads {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem; /* Reduce bottom margin */
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+}
+.form-group label[required]::after,
+.form-group label:contains(*) { /* Basic required indicator */
+    content: ' *';
+    color: #ef4444;
+}
+
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea,
+.form-group select {
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary, #2563eb);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.form-group textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb; /* Separator line */
+}
+
+.form-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.form-actions .save-button {
+    background-color: var(--primary, #2563eb);
+    color: white;
+}
+.form-actions .save-button:disabled {
+    opacity: 0.6; cursor: not-allowed;
+}
+
+.form-actions .cancel-button {
+    background-color: #e5e7eb;
+    color: #111827;
+}
+.form-actions .cancel-button:disabled {
+    opacity: 0.6; cursor: not-allowed;
+}
+
+/* Style for error message inside the form */
+.product-form .error-message {
+    grid-column: span 2; /* Span across columns if using grid */
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    padding: 8px 10px;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    text-align: left;
+    font-size: 0.9rem;
+}
+
+
+/* --- END PRODUCT FORM STYLES --- */
 
 
 .drop-zone {
   border: 2px dashed #ccc;
   border-radius: 8px;
-  padding: 2rem;
+  padding: 1rem; /* Reduced padding */
+  min-height: 100px; /* Ensure a minimum height */
   text-align: center;
   cursor: pointer;
   transition: background-color 0.2s, border-color 0.2s;
   position: relative; /* Needed for the input overlay */
+  display: flex; /* Center content */
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .drop-zone.dragging {
@@ -335,6 +443,7 @@
 .drop-zone p {
   margin: 0;
   color: #666;
+  font-size: 0.9rem; /* Slightly smaller text */
 }
 
 .drop-zone input[type="file"] {
@@ -347,11 +456,12 @@
   cursor: pointer;
 }
 
-/* --- NEW: Styles for the existing image grid --- */
+/* Styles for the existing image grid */
 .existing-images-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 1rem;
+  margin-top: 0.5rem; /* Add some space above */
 }
 
 .existing-image-item {
@@ -359,6 +469,7 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   overflow: hidden;
+  background-color: #f9fafb; /* Light background */
 }
 
 .existing-image-item img {
@@ -366,6 +477,19 @@
   height: 100px;
   object-fit: cover;
   display: block;
+}
+
+/* Style for primary image tag */
+.primary-tag {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background-color: rgba(37, 99, 235, 0.8); /* Semi-transparent primary */
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
 }
 
 .existing-image-item button {
@@ -384,12 +508,25 @@
   place-items: center; /* For centering the X */
   line-height: 1; /* Ensure X is vertically centered */
   padding: 0; /* Remove default padding */
+  transition: background-color 0.2s;
 }
-/* Add simple X mark inside button if needed */
+.existing-image-item button:hover {
+    background-color: rgba(220, 38, 38, 1); /* Solid red on hover */
+}
+
+/* Add simple X mark inside button */
 .existing-image-item button::after {
     content: '×';
     font-size: 16px;
 }
+
+/* Image preview styles */
+.image-preview {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: #4b5563;
+}
+.image-preview p { margin: 2px 0; }
 
 
 /* ---  Styles for stock --- */
@@ -436,12 +573,6 @@
   border-bottom-style: solid;
 }
 
-/* REMOVED: Header is now part of main content */
-/* .admin-header { ... } */
-
-/* REMOVED: Logout button moved to sidebar */
-/* .logout-button { ... } */
-
 .inline-edit-stock {
   display: inline-flex;
   gap: 8px;
@@ -467,29 +598,11 @@
 .save-stock { background: #2563eb; color: #fff; }
 .cancel-stock { background: #e5e7eb; color: #111827; }
 
-/* REMOVED: Redundant header/logout styles */
-
-/* toolbar (General utility, keep if used elsewhere, renamed admin-toolbar) */
-/* .toolbar { ... } */
-
-/* inline edit (Keep for general inline edits) */
-.inline-edit {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-}
-.inline-edit input {
-  width: 90px;
-}
-
-/* stock click affordance (Replaced by editable-stock-value) */
-/* .stock-value { ... } */
-
-/* buttons (General utility, can be kept or specific buttons styled directly) */
+/* General utility button styles */
 button.delete { background:#e03131; color:#fff; }
 button.ghost { background: transparent; border:1px solid #ccc; }
 
-/* Users tab */
+/* Users tab specific */
 .role-inline { display:flex; align-items:center; gap:10px; }
 .role-select { padding:6px 8px; }
 
