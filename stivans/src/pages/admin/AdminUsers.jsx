@@ -1,124 +1,182 @@
 // src/pages/admin/AdminUsers.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from '../../supabaseClient';
+import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useAuth } from "../../AuthContext.jsx"; // Import useAuth
+// import { supabase } from '../../supabaseClient'; // No longer needed directly here
 import UserInspector from './UserInspector.jsx';
+import { fetchAdminAPI } from "../../utils/adminApi.js"; // Import the helper
 import './AdminUsers.css'; // Import the specific CSS
 
 function formatDate(d) {
-  if (!d) return "—";
-  try {
-    return new Date(d).toLocaleString();
-  } catch {
-    return d;
-  }
+    if (!d) return "—";
+    try {
+        return new Date(d).toLocaleString();
+    } catch {
+        return String(d); // Return as string if formatting fails
+    }
 }
 
 export default function AdminUsers() {
+  const { user, logout } = useAuth(); // Get user and logout function
+  const navigate = useNavigate(); // Get navigate function
+
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Changed initial state to true
   const [error, setError] = useState(null);
   const [inspectUser, setInspectUser] = useState(null);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const perPage = 50;
 
-  const loadUsers = useCallback(async () => {
+  // --- Define the logout and redirect function ---
+  const handleAuthError = useCallback(() => {
+    // Check if logout exists to prevent errors during initial renders
+     if (logout) {
+       logout();
+     }
+    // Use replace to prevent going back to the admin page via browser history
+    navigate('/admin/login', { replace: true });
+  }, [logout, navigate]);
+
+  // --- UPDATED loadUsers ---
+  const loadUsers = useCallback(async (resetPage = false) => {
+    // Determine the page number to fetch
+    const targetPage = resetPage ? 1 : page;
+
     try {
       setError(null);
       setLoading(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No session");
+      const endpoint = new URL("/api/admin/users/list", window.location.origin);
+      endpoint.searchParams.set("page", String(targetPage));
+      endpoint.searchParams.set("perPage", String(perPage));
+      if (q) endpoint.searchParams.set("q", q);
 
-      const u = new URL("/api/admin/users/list", window.location.origin);
-      u.searchParams.set("page", String(page));
-      u.searchParams.set("perPage", String(perPage));
-      if (q) u.searchParams.set("q", q);
+      // Make API call using the helper
+      const json = await fetchAdminAPI(endpoint.toString(), { method: 'GET' }, handleAuthError);
 
-      const resp = await fetch(u.toString(), {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      const json = await resp.json();
-      if (!resp.ok) throw new Error(json.error || "Failed to load users");
+      setUsers(json.users || []); // Ensure users is always an array
+      if (resetPage) setPage(1); // Reset page state if requested
 
-      setUsers(json.users || []);
     } catch (e) {
-      console.error(e);
-      setError(e.message);
-      toast.error(e.message || "Failed to load users");
+      // fetchAdminAPI throws errors, including the specific auth error
+      if (e.message !== 'Authentication required') {
+        // Only handle non-auth errors here; auth errors trigger redirect
+        console.error("Load users error:", e);
+        const errMsg = e.message || "Failed to load users";
+        setError(errMsg);
+        toast.error(errMsg);
+      }
+      // If it was an auth error, handleAuthError was already called by fetchAdminAPI
     } finally {
       setLoading(false);
     }
-  }, [page, q, perPage]);
+    // Add user dependency to ensure it runs if user context changes
+  }, [page, q, perPage, handleAuthError, user]);
 
-  useEffect(() => {
-    loadUsers();
-  }, [loadUsers]); // Initial load and on page/query change
+  // Initial load effect
+   useEffect(() => {
+       // Only load if the user is definitely an admin
+       if (user?.role === 'admin') {
+           loadUsers();
+       } else if (!user && logout) {
+           // If somehow user becomes null while in admin, redirect
+            handleAuthError();
+       }
+       // Depend on user role to reload if it changes (e.g., after login)
+   }, [user, loadUsers, handleAuthError, logout]);
 
+  // Function to handle search initiation
+   const handleSearch = () => {
+       loadUsers(true); // Call loadUsers and reset page to 1
+   };
+
+
+  // --- UPDATED deleteUser ---
   const deleteUser = async (userId, email) => {
     if (!window.confirm(`Delete user ${email || userId}? This cannot be undone.`)) return;
     const t = toast.loading("Deleting user…");
     try {
       setError(null);
-      const { data: { session } } = await supabase.auth.getSession();
-      const resp = await fetch("/api/admin/users/delete", {
+
+      // Use the helper for the API call
+      await fetchAdminAPI("/api/admin/users/delete", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ userId }),
-      });
-      const json = await resp.json();
-      if (!resp.ok) throw new Error(json.error || "Delete failed");
+        body: { userId } // fetchAdminAPI handles stringify
+      }, handleAuthError);
+
       await loadUsers(); // Refresh the list
       toast.success("User deleted", { id: t });
     } catch (e) {
-      console.error(e);
-      setError(e.message || "Delete failed");
-      toast.error(e.message || "Delete failed", { id: t });
+      // Only handle non-auth errors here
+      if (e.message !== 'Authentication required') {
+          console.error("Delete user error:", e);
+          const errMsg = e.message || "Delete failed";
+          setError(errMsg);
+          toast.error(errMsg, { id: t });
+      } else {
+           toast.dismiss(t); // Dismiss loading if auth error occurred
+      }
     }
   };
 
+  // --- UPDATED changeRole ---
   const changeRole = async (userId, newRole) => {
     const t = toast.loading("Updating role…");
     try {
       setError(null);
-      const { data: { session } } = await supabase.auth.getSession();
-      const resp = await fetch("/api/admin/users/role", {
+
+       // Use the helper for the API call
+      await fetchAdminAPI("/api/admin/users/role", { // Ensure this endpoint exists and works
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ userId, role: newRole }),
-      });
-      const json = await resp.json();
-      if (!resp.ok) throw new Error(json.error || "Role update failed");
-      // Update role locally immediately for better UX before full refresh
+        body: { userId, role: newRole } // fetchAdminAPI handles stringify
+      }, handleAuthError);
+
+      // Optimistic UI update (update local state immediately)
       setUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, role: newRole } : u));
-      // await loadUsers(); // Optional: uncomment if immediate consistency needed
       toast.success("Role updated", { id: t });
+      // Optionally await loadUsers() if strict consistency is needed over optimistic update
+      // await loadUsers();
     } catch (e) {
-      console.error(e);
-      setError(e.message || "Role update failed");
-      toast.error(e.message || "Role update failed", { id: t });
+       // Only handle non-auth errors here
+       if (e.message !== 'Authentication required') {
+          console.error("Change role error:", e);
+          const errMsg = e.message || "Role update failed";
+          setError(errMsg);
+          toast.error(errMsg, { id: t });
+          // Revert optimistic update on failure by reloading
+          loadUsers();
+       } else {
+            toast.dismiss(t); // Dismiss loading if auth error occurred
+       }
     }
   };
 
+  // --- JSX ---
   return (
-    <div className="admin-section users-section"> {/* Added users-section class */}
+    <div className="admin-section users-section">
       <h2>User Management</h2>
       <div className="admin-toolbar users-toolbar">
-        <input
+         <input
           type="search"
           placeholder="Search user email..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && (setPage(1), loadUsers())}
+          // Trigger search on Enter
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           className="admin-search-input"
         />
-        <button onClick={() => (setPage(1), loadUsers())} className="search-users-btn">Search Users</button> {/* Added class */}
+        {/* Trigger search on button click */}
+        <button onClick={handleSearch} className="search-users-btn">Search Users</button>
       </div>
+      {/* Display error message if exists */}
       {error && <p className="error-message">{error}</p>}
+      {/* Show loading indicator */}
       {loading && <p>Loading users…</p>}
-      {!loading && !error && (
-        <table className="admin-table users-table"> {/* Added users-table class */}
+      {/* Show table only when not loading and no critical error occurred */}
+      {!loading && ( // Removed !error check here to potentially show stale data even if last fetch failed
+        <table className="admin-table users-table">
           <thead>
             <tr>
               <th>Email</th>
@@ -131,7 +189,7 @@ export default function AdminUsers() {
           </thead>
           <tbody>
             {users.length === 0 ? (
-              <tr><td colSpan="6" style={{textAlign: 'center'}}>No users found.</td></tr>
+              <tr><td colSpan="6" style={{textAlign: 'center'}}>{ q ? `No users found matching "${q}".` : "No users found." }</td></tr>
             ) : (
               users.map((u) => (
                 <tr key={u.id}>
@@ -142,16 +200,20 @@ export default function AdminUsers() {
                     <select
                       value={u.role || "user"} // Controlled component
                       onChange={(e) => changeRole(u.id, e.target.value)}
-                      className="admin-sort-select role-select" // Reusing sort style + new class
+                      className="admin-sort-select role-select"
+                      aria-label={`Role for ${u.email || u.id}`}
                     >
                       <option value="user">user</option>
                       <option value="admin">admin</option>
                     </select>
                   </td>
-                  <td className="user-id-cell">{u.id}</td> {/* Added class */}
+                  <td className="user-id-cell">{u.id}</td>
                   <td style={{ textAlign: "right" }}>
-                    <button onClick={() => setInspectUser(u)} className="action-btn view-btn">View</button> {/* Added classes */}
-                    <button className="action-btn delete-btn" onClick={() => deleteUser(u.id, u.email)} style={{ marginLeft: 8 }}>Delete</button> {/* Added classes */}
+                    <button onClick={() => setInspectUser(u)} className="action-btn view-btn">View</button>
+                    {/* Prevent admin from deleting themselves */}
+                    {user?.id !== u.id && (
+                         <button className="action-btn delete-btn" onClick={() => deleteUser(u.id, u.email)} style={{ marginLeft: 8 }}>Delete</button>
+                    )}
                   </td>
                 </tr>
               ))
@@ -160,8 +222,14 @@ export default function AdminUsers() {
         </table>
       )}
 
+      {/* Pagination Controls could go here */}
+      {/* ... */}
+
+
+      {/* User Inspector Modal */}
       {inspectUser && (
-        <UserInspector user={inspectUser} onClose={() => setInspectUser(null)} />
+        // Pass handleAuthError down to UserInspector
+        <UserInspector user={inspectUser} onClose={() => setInspectUser(null)} handleAuthError={handleAuthError} />
       )}
     </div>
   );
