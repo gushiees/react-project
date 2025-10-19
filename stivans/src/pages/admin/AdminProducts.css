@@ -1,94 +1,80 @@
 /* src/pages/admin/AdminProducts.css */
 
-/* Toolbar specific to products */
+/* --- Product Toolbar --- */
 .product-toolbar {
-  /* Add specific overrides here if needed, inherits from admin.css */
+  /* Inherits base styles from admin.css */
 }
 
 .add-product-btn {
-  padding: 8px 16px;
-  height: 40px; /* Match input/select height */
-  background-color: var(--primary, #2563eb); /* Use your primary color */
-  color: white;
+  padding: 0.6rem 1rem;
+  height: auto;
+  background-color: var(--admin-primary); /* Gold */
+  color: var(--admin-primary-text); /* Dark text on gold */
   border: none;
-  border-radius: 6px;
+  border-radius: var(--admin-radius-md);
   cursor: pointer;
-  font-weight: 600;
-  white-space: nowrap; /* Prevent button text wrapping */
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  transition: var(--admin-transition);
 }
-
 .add-product-btn:hover {
-  background-color: var(--primary-hover, #1d4ed8); /* Darker shade for hover */
+  background-color: var(--admin-primary-hover); /* Darker gold */
 }
 
-/* Table styles specific to products */
+/* --- Product Table --- */
 .products-table th, .products-table td {
   /* Inherits base styles from admin.css */
 }
 
-/* Allow name column to wrap if needed */
 .products-table th:first-child,
 .products-table td:first-child {
     white-space: normal;
+    min-width: 150px;
 }
 
-/* Action column */
+.products-table th:nth-child(2),
+.products-table td:nth-child(2) {
+    width: 120px;
+    text-align: right;
+}
+
+.products-table th:nth-child(3),
+.products-table td:nth-child(3) {
+    width: 150px;
+    text-align: center;
+}
+
 .products-table th:last-child,
 .products-table td:last-child {
-  width: 180px; /* Adjust as needed */
+  width: 160px;
   text-align: right;
-  white-space: nowrap; /* Keep actions on one line */
-}
-
-.products-table .action-btn { /* Changed from .actions button */
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
   white-space: nowrap;
 }
 
-.products-table .edit-btn { /* New class for Edit */
-  background-color: #f0f0f0; /* Example: light gray */
-  color: #333;
-}
-.products-table .edit-btn:hover {
-    background-color: #e0e0e0;
+/* Inherit base .action-btn styles */
+.products-table .action-btn + .action-btn {
+    margin-left: 0.5rem;
 }
 
-
-.products-table .delete-btn { /* Changed from .delete */
-  background-color: #e53e3e;
-  color: white;
-}
-.products-table .delete-btn:hover {
-    background-color: #c53030;
-}
-
-
-/* --- PRODUCT FORM STYLES --- */
+/* --- Product Form --- */
 .product-form {
   margin-top: 2rem;
-  padding: 2rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: white; /* Add background */
+  padding: 1.5rem;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  background-color: var(--admin-content-bg);
+  box-shadow: var(--admin-shadow-sm);
 }
 
-/* Grid layout for form fields */
 .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Two columns */
-    gap: 1rem 1.5rem; /* Row gap, Column gap */
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.5rem;
     margin-bottom: 1.5rem;
 }
 .form-group.span-2 {
-    grid-column: span 2; /* Make element span both columns */
-}
-.image-uploads {
-    margin-top: 1rem;
-    margin-bottom: 0.5rem; /* Reduce bottom margin */
+    grid-column: span 2;
 }
 
 .form-group {
@@ -97,258 +83,221 @@
 }
 
 .form-group label {
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: #374151;
-    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+    color: var(--admin-text-muted);
+    font-size: 0.85rem;
 }
-.form-group label[required]::after { /* Basic required indicator */
+.form-group label[required]::after {
     content: ' *';
-    color: #ef4444;
+    color: var(--admin-danger);
 }
 
 .form-group input[type="text"],
 .form-group input[type="number"],
 .form-group textarea,
 .form-group select {
-    padding: 10px 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--admin-radius-md);
     font-size: 0.95rem;
+    background-color: var(--admin-content-bg);
+    color: var(--admin-text);
+    transition: var(--admin-transition);
 }
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {
     outline: none;
-    border-color: var(--primary, #2563eb);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    border-color: var(--admin-primary); /* Gold focus */
+    box-shadow: 0 0 0 3px rgba(184, 146, 32, 0.2); /* Gold focus ring */
 }
 
 .form-group textarea {
-    min-height: 80px;
+    min-height: 100px;
     resize: vertical;
 }
 
 .form-actions {
     display: flex;
-    justify-content: flex-end; /* Align buttons to the right */
+    justify-content: flex-end;
     gap: 0.75rem;
     margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid #e5e7eb; /* Separator line */
+    border-top: 1px solid var(--admin-border);
 }
 
-.form-actions button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-}
-
+/* Use base action-btn styles + specific overrides */
 .form-actions .save-button {
-    background-color: var(--primary, #2563eb);
-    color: white;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    background-color: var(--admin-primary); /* Gold */
+    color: var(--admin-primary-text); /* Dark text on gold */
+    border: none; /* Remove border */
+}
+.form-actions .save-button:hover {
+    background-color: var(--admin-primary-hover); /* Darker gold */
 }
 .form-actions .save-button:disabled {
     opacity: 0.6; cursor: not-allowed;
+    background-color: var(--admin-primary);
 }
 
 .form-actions .cancel-button {
-    background-color: #e5e7eb;
-    color: #111827;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    background-color: var(--admin-content-bg);
+    color: var(--admin-text-muted);
+    border: 1px solid var(--admin-border);
+}
+.form-actions .cancel-button:hover {
+     background-color: #f1f5f9;
+     border-color: #cbd5e1;
 }
 .form-actions .cancel-button:disabled {
     opacity: 0.6; cursor: not-allowed;
 }
 
-/* Style for error message inside the form */
 .product-form .error-message {
-    grid-column: span 2; /* Span across columns if using grid */
-    background: #fef2f2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
-    padding: 8px 10px;
-    border-radius: 6px;
-    margin-bottom: 1rem;
-    text-align: left;
-    font-size: 0.9rem;
+    /* Inherits base error style from admin.css */
+    grid-column: span 2;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
 }
 
-/* --- IMAGE UPLOAD & PREVIEW STYLES --- */
+/* --- Image Upload & Preview --- */
+.image-uploads {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
 .drop-zone {
-  border: 2px dashed #ccc;
-  border-radius: 8px;
-  padding: 1rem; /* Reduced padding */
-  min-height: 100px; /* Ensure a minimum height */
+  border: 2px dashed var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  padding: 1.5rem;
+  min-height: 120px;
   text-align: center;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
-  position: relative; /* Needed for the input overlay */
-  display: flex; /* Center content */
+  transition: var(--admin-transition);
+  position: relative;
+  display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  background-color: #fdfdff;
 }
 
 .drop-zone.dragging {
-  background-color: #f0f8ff;
-  border-color: #007bff;
+  background-color: var(--admin-primary-light); /* Pale yellow */
+  border-color: var(--admin-primary); /* Gold */
 }
 
 .drop-zone p {
   margin: 0;
-  color: #666;
-  font-size: 0.9rem; /* Slightly smaller text */
+  color: var(--admin-text-muted);
+  font-size: 0.9rem;
+}
+.drop-zone p::after {
+    content: ", or click to select";
+    color: var(--admin-primary); /* Gold */
+    font-weight: 500;
+    text-decoration: underline;
+    margin-left: 4px;
 }
 
 .drop-zone input[type="file"] {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0; /* Make the default input invisible */
-  cursor: pointer;
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
 }
 
-/* Styles for the existing image grid */
 .existing-images-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 1rem;
-  margin-top: 0.5rem; /* Add some space above */
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .existing-image-item {
   position: relative;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-md);
   overflow: hidden;
-  background-color: #f9fafb; /* Light background */
+  background-color: var(--admin-bg);
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .existing-image-item img {
-  width: 100%;
-  height: 100px;
-  object-fit: cover;
-  display: block;
+  max-width: 100%; max-height: 100%; width: auto; height: auto;
+  object-fit: contain; display: block;
 }
 
-/* Style for primary image tag */
 .primary-tag {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    background-color: rgba(37, 99, 235, 0.8); /* Semi-transparent primary */
-    color: white;
-    font-size: 0.7rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: 600;
+    position: absolute; top: 6px; left: 6px;
+    background-color: var(--admin-primary); /* Gold */
+    color: var(--admin-primary-text); /* Dark text */
+    font-size: 0.7rem; padding: 2px 6px; border-radius: var(--admin-radius-sm);
+    font-weight: 600; z-index: 1;
 }
 
-.existing-image-item button {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  background-color: rgba(229, 62, 62, 0.8);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  font-weight: bold;
-  display: grid; /* For centering the X */
-  place-items: center; /* For centering the X */
-  line-height: 1; /* Ensure X is vertically centered */
-  padding: 0; /* Remove default padding */
-  transition: background-color 0.2s;
+.existing-image-item button { /* Remove button */
+  position: absolute; top: 6px; right: 6px;
+  background-color: var(--admin-danger); color: #ffffff; border: none;
+  border-radius: 50%; width: 24px; height: 24px; cursor: pointer;
+  font-weight: bold; display: flex; align-items: center; justify-content: center;
+  line-height: 1; padding: 0; box-shadow: var(--admin-shadow-sm);
+  transition: var(--admin-transition); z-index: 1;
 }
 .existing-image-item button:hover {
-    background-color: rgba(220, 38, 38, 1); /* Solid red on hover */
+    background-color: var(--admin-danger-hover); transform: scale(1.1);
 }
+.existing-image-item button::after { content: '×'; font-size: 16px; }
 
-/* Add simple X mark inside button */
-.existing-image-item button::after {
-    content: '×';
-    font-size: 16px;
-}
-
-/* Image preview styles */
 .image-preview {
-    margin-top: 0.75rem;
-    font-size: 0.85rem;
-    color: #4b5563;
+    margin-top: 0.75rem; font-size: 0.8rem; color: var(--admin-text-muted);
 }
 .image-preview p { margin: 2px 0; }
+.image-preview p small { font-weight: 500; color: var(--admin-text); }
 
-/* ---  Styles for stock --- */
-/* Style for the highlighted row */
+
+/* --- Stock Editing --- */
 .products-table tr.out-of-stock-row {
-  background-color: #fff5f5; /* A very light red */
-  color: #a0aec0; /* Gray out the text */
+  background-color: var(--admin-danger-light); /* Light red */
+}
+.products-table tr.out-of-stock-row:hover {
+    background-color: #fecaca; /* Darker light red */
 }
 .products-table tr.out-of-stock-row .editable-stock-value {
-    color: #ef4444; /* Make stock value red */
+    color: var(--admin-danger);
     font-weight: 600;
 }
 
-/* Base style for the status badge */
-.stock-status {
-  padding: 4px 10px;
-  border-radius: 9999px; /* Pill shape */
-  font-size: 12px;
-  font-weight: bold;
-  color: white;
-  text-transform: uppercase;
-}
-
-/* Green badge for "In Stock" */
-.in-stock {
-  background-color: #38a169;
-}
-
-/* Red badge for "Out of Stock" */
-.out-of-stock-badge {
-  background-color: #e53e3e;
-}
 .editable-stock-value {
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-  display: inline-block; /* Makes padding and other box properties work */
-  border-bottom: 1px dashed #9ca3af; /* Add underline affordance */
+  cursor: pointer; padding: 4px 8px; border-radius: var(--admin-radius-sm);
+  transition: var(--admin-transition); display: inline-block;
+  border-bottom: 1px dashed var(--admin-text-muted);
 }
-
 .editable-stock-value:hover {
-  background-color: #e2e8f0; /* A liggght gray hover effect */
+  background-color: var(--admin-primary-light); /* Pale yellow hover */
   border-bottom-style: solid;
+  border-bottom-color: var(--admin-primary); /* Gold */
 }
 
-.inline-edit-stock {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-}
+.inline-edit-stock { display: inline-flex; gap: 8px; align-items: center; }
 
 .inline-stock-input {
-  width: 90px;
-  padding: 6px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  width: 70px; padding: 0.4rem 0.6rem; border: 1px solid #cbd5e1;
+  border-radius: var(--admin-radius-md); font-size: 0.9rem;
+}
+.inline-stock-input:focus {
+    outline: none; border-color: var(--admin-primary); /* Gold focus */
+    box-shadow: 0 0 0 3px rgba(184, 146, 32, 0.2); /* Gold focus ring */
 }
 
-.save-stock,
-.cancel-stock {
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.save-stock { background: #2563eb; color: #fff; }
-.cancel-stock { background: #e5e7eb; color: #111827; }
+/* Use base action-btn styles for save/cancel */
+.save-stock { /* Inherits .action-btn.save-btn */ }
+.cancel-stock { /* Inherits .action-btn.cancel-btn */ }
