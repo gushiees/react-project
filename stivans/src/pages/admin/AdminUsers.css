@@ -1,0 +1,93 @@
+/* src/pages/admin/AdminUsers.css */
+
+.users-section { /* Inherits base */ }
+
+/* --- Users Toolbar --- */
+.users-toolbar { /* Inherits base */ }
+.users-toolbar .admin-search-input { max-width: 400px; /* Inherits focus */ }
+.users-toolbar .search-users-btn { padding: 0.6rem 1rem; height: auto; background-color: var(--admin-secondary); color: var(--admin-secondary-text); border: none; border-radius: var(--admin-radius-md); cursor: pointer; font-weight: 500; font-size: 0.9rem; transition: var(--admin-transition); }
+.users-toolbar .search-users-btn:hover { background-color: var(--admin-secondary-hover); }
+
+/* --- Users Table --- */
+.users-table th, .users-table td { /* Inherits base */ white-space: nowrap; }
+.users-table th:first-child, .users-table td:first-child { white-space: normal; word-break: break-all; min-width: 180px; }
+.users-table th:nth-child(2), .users-table td:nth-child(2),
+.users-table th:nth-child(3), .users-table td:nth-child(3) { width: 160px; color: var(--admin-text-muted); }
+.users-table th:nth-child(4), .users-table td:nth-child(4) { width: 120px; text-align: center; }
+.users-table th:nth-child(5), .users-table td:nth-child(5) { width: 150px; white-space: normal; word-break: break-all; }
+.users-table .user-id-cell { font-family: monospace; font-size: 0.8em; color: var(--admin-text-muted); }
+
+/* Role Cell */
+.users-table .role-display-cell {
+    text-align: center;
+    position: relative; /* For potential absolute positioning of edit controls */
+}
+
+/* Style the Select Dropdown */
+.users-table .role-select {
+    /* Basic appearance - adjust as needed */
+    display: block; /* Make it take width */
+    margin: 4px auto 0; /* Space it below badge */
+    height: auto;
+    padding: 0.3rem 0.5rem; /* Smaller padding */
+    font-size: 0.8rem; /* Smaller font */
+    min-width: 70px;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--admin-radius-sm); /* Small radius */
+    background-color: var(--admin-content-bg);
+    cursor: pointer;
+    transition: var(--admin-transition);
+    /* Make it less visually prominent initially if desired */
+    /* opacity: 0.7; */
+}
+/* Focus styles */
+.users-table .role-select:focus {
+    outline: none; border-color: var(--admin-primary); /* Gold */
+    box-shadow: 0 0 0 2px rgba(184, 146, 32, 0.2); /* Gold */
+    /* opacity: 1; */
+}
+/* Hover styles */
+.users-table tr:hover .role-select {
+    /* opacity: 1; Show more clearly on row hover */
+    border-color: #9ca3af;
+}
+
+/* User Actions */
+.users-table th:last-child, .users-table td:last-child { width: 140px; text-align: right; white-space: nowrap; }
+.users-table .action-btn + .action-btn { margin-left: 0.5rem; }
+/* Button colors inherited from admin.css */
+
+/* --- User Inspector (Unchanged from previous update) --- */
+.ui-slide{ position: fixed; top:0; right:0; height:100vh; width:min(550px, 90vw); background: var(--admin-content-bg); border-left: 1px solid var(--admin-border); box-shadow: var(--admin-shadow-lg); z-index: 100; overflow-y:auto; display: flex; flex-direction: column; animation: slideIn 0.3s ease-out forwards; }
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.ui-head{ display:flex; align-items:center; justify-content:space-between; padding: 1rem 1.2rem; border-bottom: 1px solid var(--admin-border); background: var(--admin-content-bg); position: sticky; top: 0; z-index: 101; }
+.ui-head h3 { margin: 0; font-size: 1.15rem; font-weight: 600; color: var(--admin-text); word-break: break-all; }
+.ui-head button { background: none; border: none; font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--admin-text-muted); padding: 0.2rem; border-radius: 50%; transition: var(--admin-transition); }
+.ui-head button:hover { background-color: #e5e7eb; color: var(--admin-text); }
+.ui-tabs{ display:flex; gap: 4px; padding: 0.5rem 1rem; border-bottom: 1px solid var(--admin-border); background: var(--admin-content-bg); position: sticky; top: 61px; z-index: 101; }
+.ui-tabs button{ padding: 0.5rem 1rem; border-radius: var(--admin-radius-md); border: none; background: transparent; cursor: pointer; font-weight: 500; font-size: 0.9rem; color: var(--admin-text-muted); transition: var(--admin-transition); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.ui-tabs button:hover { background-color: #f3f4f6; color: var(--admin-text); }
+.ui-tabs .active{ background: transparent; border-bottom: 2px solid var(--admin-primary); color: var(--admin-primary); font-weight: 600; }
+.ui-content { flex-grow: 1; overflow-y: auto; }
+.ui-section{ padding: 1.2rem; }
+.ui-section h4 { margin-top: 0; margin-bottom: 1rem; font-size: 1.05rem; font-weight: 600; color: var(--admin-text); border-bottom: 1px solid var(--admin-border); padding-bottom: 0.6rem; }
+.ui-card{ border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); padding: 1rem; margin-bottom: 1rem; background: var(--admin-content-bg); box-shadow: var(--admin-shadow-sm); }
+.ui-card h5 { margin: 0 0 0.5rem 0; font-size: 0.95rem; font-weight: 600; }
+.ui-card h5 small { font-weight: 400; color: var(--admin-text-muted); margin-left: 0.5rem; }
+.ui-row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 1rem; }
+.ui-inline{ display:flex; align-items:center; gap:8px; }
+.ui-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top: 1rem; }
+.ui-grid-4{ display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:0.8rem; }
+.ui-list{ list-style:none; padding:0; margin: 1rem 0; display:grid; gap:0.8rem; }
+.ui-list li{ padding: 0.8rem 1rem; border: 1px solid var(--admin-border); border-radius:var(--admin-radius-md); background:#f9fafb; font-size: 0.9rem; }
+.ui-list li em { font-style: normal; font-weight: 500; color: var(--admin-primary); margin-left: 0.5rem; }
+.ui-section label{ font-size: 0.75rem; color: var(--admin-text-muted); display:block; margin-bottom: 0.3rem; font-weight: 500; text-transform: uppercase; }
+.ui-section p { margin: 0.5rem 0; font-size: 0.95rem; line-height: 1.5; }
+.ui-section p b { color: var(--admin-text); font-weight: 500; }
+.ui-section textarea, .ui-section input[type="number"], .ui-section select { width:100%; border: 1px solid #cbd5e1; border-radius: var(--admin-radius-md); padding: 0.5rem 0.7rem; font-size: 0.9rem; background-color: var(--admin-content-bg); transition: var(--admin-transition); }
+.ui-section textarea { min-height: 60px; resize: vertical; }
+.ui-section input:focus, .ui-section select:focus, .ui-section textarea:focus { border-color: var(--admin-primary); box-shadow: 0 0 0 3px rgba(184, 146, 32, 0.2); outline: none; }
+.ui-section .admin-table { margin-top: 0.8rem; font-size: 0.85rem; }
+.ui-section .admin-table th, .ui-section .admin-table td { padding: 0.6rem 0.8rem; }
+@media (max-width: 640px) { .ui-slide { width: 100vw; height: 100vh; max-height: 100vh; border-left: none; border-radius: 0; animation: none; } .ui-tabs button { font-size: 0.85rem; padding: 0.4rem 0.8rem; } .ui-grid-2, .ui-grid-4 { grid-template-columns: 1fr; } .ui-section { padding: 1rem; } }
+/* Role Badges inherited from admin.css */

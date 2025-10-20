@@ -1,0 +1,141 @@
+/* src/components/ConfirmDeleteModal/ConfirmDeleteModal.css */
+
+.confirm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* Ensure it's above other elements like UserInspector */
+  backdrop-filter: blur(3px);
+  padding: 1rem;
+}
+
+.confirm-modal-content {
+  background-color: #ffffff; /* Hard-coded white */
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 450px;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.confirm-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb; /* Hard-coded light gray */
+  padding-bottom: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.confirm-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827; /* Hard-coded dark text */
+}
+
+.confirm-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280; /* Hard-coded muted text */
+  padding: 0.2rem;
+}
+.confirm-modal-close:hover {
+  color: #111827;
+}
+
+.confirm-modal-body p {
+  margin: 0 0 0.8rem 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.confirm-modal-body p strong {
+  color: #111827;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.confirm-warning {
+  color: #e53e3e !important; /* Hard-coded red */
+  font-weight: 500;
+}
+.confirm-countdown, .confirm-deleting {
+  font-weight: 500;
+  color: #b89220; /* Hard-coded gold */
+  text-align: center;
+  margin-top: 1rem;
+  min-height: 1.5em; /* Reserve space */
+}
+.confirm-deleting {
+  color: #6b7280;
+}
+
+.confirm-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Base style for modal buttons */
+.confirm-modal-footer .confirm-btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  color: #ffffff; /* Default text white */
+}
+
+/* --- FORCED BUTTON COLORS --- */
+/* Cancel Button (Yellow/Gold) */
+.confirm-modal-footer .confirm-btn.cancel {
+  background-color: #f6b300 !important; /* Bright gold (Secondary) */
+  color: #ffffff !important; /* White text */
+}
+.confirm-modal-footer .confirm-btn.cancel:hover {
+  background-color: #e0a200 !important; /* Darker gold */
+}
+.confirm-modal-footer .confirm-btn.cancel:disabled {
+   background-color: #f6b300 !important;
+   opacity: 0.6;
+   cursor: not-allowed;
+}
+
+/* Confirm Button (Red) */
+.confirm-modal-footer .confirm-btn.confirm {
+  background-color: #e53e3e !important; /* Red (Danger) */
+  color: #ffffff !important; /* White text */
+}
+.confirm-modal-footer .confirm-btn.confirm:hover {
+  background-color: #c53030 !important; /* Darker red */
+}
+
+/* Disabled state specifically for the confirm button */
+.confirm-modal-footer .confirm-btn.confirm.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #9ca3af !important; /* Neutral gray when disabled */
+  color: #e5e7eb !important;
+}
+/* Ensure hover doesn't override disabled style */
+.confirm-modal-footer .confirm-btn.confirm.disabled:hover {
+    background-color: #9ca3af !important;
+}

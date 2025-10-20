@@ -1,683 +1,188 @@
-/* Add/Modify these styles in src/pages/admin/admin.css */
+/* src/pages/admin/admin.css */
 
-/* --- LAYOUT STYLES --- */
-.admin-layout {
-  display: flex;
-  min-height: 100vh; /* Full viewport height */
-  background-color: #f9fafb; /* Light background for the overall layout */
+/* --- Enhanced Theme Variables (Gold/Brown & Action Colors) --- */
+:root {
+  --admin-primary: #b89220; /* Gold/Brown - Primary Accent */
+  --admin-primary-hover: #a07e1c; /* Darker Gold/Brown */
+  --admin-primary-light: #fffaf0; /* Pale Yellow/Off-white */
+  --admin-primary-text: #ffffff; /* White text for primary buttons */
+
+  --admin-secondary: #f6b300; /* Bright Gold/Yellow for specific buttons */
+  --admin-secondary-hover: #e0a200; /* Darker Bright Gold */
+  --admin-secondary-text: #ffffff; /* White text for secondary buttons */
+
+  --admin-bg: #f8fafc;        /* Very light gray page background */
+  --admin-sidebar-bg: #1f2937; /* Dark gray-blue sidebar (Kept for contrast) */
+  --admin-sidebar-text: #d1d5db; /* Light gray sidebar text */
+  --admin-sidebar-hover-bg: #374151; /* Medium gray for hover */
+  --admin-sidebar-active-text: #ffffff; /* White text on active gold */
+
+  --admin-content-bg: #ffffff; /* White content area background */
+  --admin-text: #111827;      /* Dark text */
+  --admin-text-muted: #6b7280; /* Muted text */
+  --admin-border: #e5e7eb;    /* Light border */
+  --admin-header-bg: #ffffff; /* White header background */
+
+  /* Action Colors */
+  --admin-danger: #e53e3e;    /* Red - Negative actions */
+  --admin-danger-hover: #c53030; /* Darker Red */
+  --admin-danger-text: #ffffff;  /* White text on red */
+
+  --admin-success: #16a34a;   /* Green - Positive actions */
+  --admin-success-hover: #15803d; /* Darker Green */
+  --admin-success-text: #ffffff; /* White text on green */
+
+  --admin-neutral-bg: #000000; /* Black for Neutral buttons */
+  --admin-neutral-text: #ffffff; /* White text for neutral buttons */
+  --admin-neutral-border: #b89220; /* Gold/Brown border */
+  --admin-neutral-hover-bg: #374151; /* Darker gray hover */
+
+  /* Role Colors */
+  --admin-role-user-bg: #e0e7ff; /* Light Indigo */
+  --admin-role-user-text: #3730a3; /* Indigo text */
+  --admin-role-user-border: #c7d2fe;
+  --admin-role-admin-bg: #fef3c7; /* Light Amber */
+  --admin-role-admin-text: #92400e; /* Amber text */
+  --admin-role-admin-border: #fde68a;
+
+
+  --admin-radius-sm: 4px;
+  --admin-radius-md: 6px;
+  --admin-radius-lg: 8px;
+  --admin-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --admin-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --admin-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --admin-transition: all 0.2s ease-in-out;
 }
 
+/* --- Base Layout --- */
+.admin-layout {
+  display: flex;
+  min-height: 100vh; /* Changed from height to min-height */
+  background-color: var(--admin-bg);
+}
+
+/* --- Sidebar (Sticky) --- */
 .admin-sidebar {
-  width: 240px; /* Fixed width sidebar */
-  background-color: #1f2937; /* Dark background */
-  color: #d1d5db; /* Light text */
+  width: 250px;
+  background-color: var(--admin-sidebar-bg);
+  color: var(--admin-sidebar-text);
   padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0; /* Prevent sidebar from shrinking */
-  box-shadow: 2px 0 5px rgba(0,0,0,0.1); /* Subtle shadow */
+  flex-shrink: 0;
+  box-shadow: var(--admin-shadow-md);
+  transition: width 0.3s ease;
+
+  /* --- Sticky Sidebar Styles --- */
+  position: sticky; /* Make sidebar sticky */
+  top: 0; /* Stick to the top */
+  height: 100vh; /* Full viewport height */
+  overflow-y: auto; /* Allow sidebar itself to scroll if content overflows */
+  /* --- End Sticky Styles --- */
 }
 
-.admin-sidebar-header h2 {
-    color: white;
-    margin-bottom: 2rem;
-    font-size: 1.25rem;
-    text-align: center;
-}
+/* Sidebar Scrollbar Styling */
+.admin-sidebar::-webkit-scrollbar { width: 6px; }
+.admin-sidebar::-webkit-scrollbar-thumb { background-color: #4b5563; border-radius: 3px; }
+.admin-sidebar::-webkit-scrollbar-track { background: transparent; }
 
-.admin-sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem; /* Space between nav items */
-  flex-grow: 1; /* Take remaining vertical space */
-}
+.admin-sidebar.loading-state { opacity: 0.8; }
+.admin-sidebar-header { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #4b5563; text-align: center; }
+.admin-sidebar-logo { display: block; max-width: 150px; height: auto; margin: 0 auto 0.8rem auto; opacity: 0.9; }
+.admin-sidebar-header h2 { color: #ffffff; font-size: 1.3rem; font-weight: 600; margin: 0; }
 
-.admin-sidebar-nav button {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem; /* Space between icon and text */
-  padding: 0.75rem 1rem;
-  border: none;
-  background: transparent;
-  color: #d1d5db; /* Light gray text */
-  text-align: left;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 500;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
+/* Sidebar Navigation */
+.admin-sidebar-nav { display: flex; flex-direction: column; gap: 0.5rem; flex-grow: 1; }
+.admin-sidebar-nav button { display: flex; align-items: center; gap: 0.85rem; padding: 0.8rem 1rem; border: none; background: transparent; color: var(--admin-sidebar-text); text-align: left; border-radius: var(--admin-radius-md); cursor: pointer; font-size: 0.95rem; font-weight: 500; transition: var(--admin-transition); white-space: nowrap; }
+.admin-sidebar-nav button:hover { background-color: var(--admin-sidebar-hover-bg); color: #ffffff; }
+.admin-sidebar-nav button.active { background-color: var(--admin-primary); color: var(--admin-sidebar-active-text); font-weight: 600; box-shadow: var(--admin-shadow-sm); }
+.admin-sidebar-nav button svg { width: 20px; height: 20px; flex-shrink: 0; }
 
-.admin-sidebar-nav button:hover {
-  background-color: #374151; /* Darker gray on hover */
-  color: white;
-}
-
-.admin-sidebar-nav button.active {
-  background-color: var(--primary, #2563eb); /* Use primary color for active */
-  color: white;
-  font-weight: 600;
-}
-
-/* Style icons */
-.admin-sidebar-nav button svg {
-    width: 18px;
-    height: 18px;
-}
-
-
+/* Sidebar Footer (User Info & Logout) */
 .admin-sidebar-footer {
-    margin-top: auto; /* Push footer to bottom */
+    margin-top: auto; /* Pushes to bottom */
+    padding-top: 1rem; border-top: 1px solid #4b5563;
 }
-
-.logout-button.sidebar-logout {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background-color: #4b5563; /* Medium gray */
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s ease;
+/* User Info Block */
+.admin-user-info {
+    padding: 0.5rem 1rem; margin-bottom: 1rem; text-align: left;
+    border-radius: var(--admin-radius-md); background-color: var(--admin-sidebar-hover-bg);
 }
-.logout-button.sidebar-logout svg {
-    width: 18px;
-    height: 18px;
-}
+.admin-user-info p { margin: 0; font-size: 0.85rem; color: var(--admin-sidebar-text); line-height: 1.4; word-break: break-all; }
+.admin-user-info .user-label { font-weight: 600; color: #ffffff; display: block; margin-bottom: 2px;}
 
-.logout-button.sidebar-logout:hover {
-    background-color: #374151; /* Darker gray */
-}
+.logout-button.sidebar-logout { display: flex; align-items: center; gap: 0.85rem; width: 100%; padding: 0.8rem 1rem; background-color: transparent; color: var(--admin-sidebar-text); border: none; border-radius: var(--admin-radius-md); cursor: pointer; font-size: 0.95rem; font-weight: 500; transition: var(--admin-transition); }
+.logout-button.sidebar-logout svg { width: 20px; height: 20px; flex-shrink: 0; }
+.logout-button.sidebar-logout:hover { background-color: var(--admin-sidebar-hover-bg); color: #ffffff; }
 
-
+/* --- Main Content Area --- */
 .admin-main-content {
-  flex-grow: 1; /* Take remaining horizontal space */
-  padding: 2rem;
-  overflow-y: auto; /* Allow content scrolling */
+  flex-grow: 1; padding: 2.5rem;
+  /* Make content scroll independently */
+  overflow-y: auto;
+  /* Removed fixed height to allow natural scrolling */
+  /* height: 100vh; */
+  background-color: var(--admin-bg);
 }
 
-.admin-content-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+.admin-content-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--admin-border); }
+.admin-content-header h1 { margin: 0; font-size: 1.85rem; font-weight: 700; color: var(--admin-text); }
+
+/* --- Shared Section Styling --- */
+.admin-section { background-color: var(--admin-content-bg); padding: 1.5rem; border-radius: var(--admin-radius-lg); box-shadow: var(--admin-shadow-md); margin-bottom: 2rem; }
+.admin-section h2 { margin-top: 0; margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 600; color: var(--admin-text); border-bottom: 1px solid var(--admin-border); padding-bottom: 0.8rem; }
+
+/* --- Shared Toolbar Styling --- */
+.admin-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; }
+.admin-search-input { flex-grow: 1; min-width: 220px; max-width: 450px; padding: 0.6rem 0.8rem; border: 1px solid #cbd5e1; border-radius: var(--admin-radius-md); height: auto; font-size: 0.95rem; transition: var(--admin-transition); background-color: var(--admin-content-bg); }
+.admin-search-input:focus { outline: none; border-color: var(--admin-primary); box-shadow: 0 0 0 3px rgba(184, 146, 32, 0.2); }
+.admin-toolbar-right { display: flex; align-items: center; gap: 1rem; }
+.admin-sort-select { padding: 0.6rem 0.8rem; border: 1px solid #cbd5e1; border-radius: var(--admin-radius-md); height: auto; background-color: var(--admin-content-bg); cursor: pointer; font-size: 0.95rem; transition: var(--admin-transition); }
+.admin-sort-select:focus { outline: none; border-color: var(--admin-primary); box-shadow: 0 0 0 3px rgba(184, 146, 32, 0.2); }
+
+/* --- Base Table Styling --- */
+.admin-table { width: 100%; border-collapse: collapse; margin-top: 1rem; background-color: var(--admin-content-bg); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg); overflow: hidden; box-shadow: var(--admin-shadow-sm); font-size: 0.9rem; }
+.admin-table th, .admin-table td { text-align: left; padding: 0.8rem 1rem; border-bottom: 1px solid var(--admin-border); vertical-align: middle; }
+.admin-table th { background-color: #f9fafb; white-space: nowrap; font-weight: 600; color: var(--admin-text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+.admin-table tbody tr:nth-of-type(even) { background-color: #fdfdff; }
+.admin-table tbody tr:hover { background-color: var(--admin-primary-light); }
+
+/* --- Base Action Button Styles --- */
+.action-btn { padding: 0.4rem 0.8rem; border: 1px solid transparent; border-radius: var(--admin-radius-md); cursor: pointer; font-weight: 500; font-size: 0.85rem; white-space: nowrap; transition: var(--admin-transition); display: inline-flex; align-items: center; gap: 0.4rem; }
+.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.action-btn.save-btn { background-color: var(--admin-success); color: var(--admin-success-text); border: none; }
+.action-btn.save-btn:hover { background-color: var(--admin-success-hover); }
+
+.action-btn.delete-btn, .action-btn.cancel-btn { background-color: var(--admin-danger); color: var(--admin-danger-text); border: none; }
+.action-btn.delete-btn:hover, .action-btn.cancel-btn:hover { background-color: var(--admin-danger-hover); }
+
+.action-btn.edit-btn, .action-btn.view-btn { background-color: var(--admin-neutral-bg); color: var(--admin-neutral-text); border: 1px solid var(--admin-neutral-border); }
+.action-btn.edit-btn:hover, .action-btn.view-btn:hover { background-color: var(--admin-neutral-hover-bg); border-color: var(--admin-primary-hover); }
+
+/* --- General Error Message --- */
+.error-message { background: var(--admin-danger-light); color: var(--admin-danger-text); border: 1px solid #fecaca; padding: 0.8rem 1rem; border-radius: var(--admin-radius-md); margin-bottom: 1rem; text-align: left; font-size: 0.9rem; }
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 900px) {
+  .admin-main-content { padding: 1.5rem; } .admin-content-header h1 { font-size: 1.5rem; } .admin-section { padding: 1rem; } .admin-section h2 { font-size: 1.3rem; }
 }
-
-.admin-content-header h1 {
-    margin: 0; /* Remove default margin */
-    font-size: 1.75rem;
+@media (max-width: 768px) {
+  .admin-layout { flex-direction: column; }
+  /* Make sidebar non-sticky on mobile, allow natural flow */
+  .admin-sidebar { width: 100%; height: auto; position: relative; overflow-y: visible; }
+  .admin-main-content { height: auto; /* Content determines height */ overflow-y: visible; /* Prevent double scrollbar */ }
+  .admin-toolbar { flex-direction: column; align-items: stretch; } .admin-search-input { max-width: none; } .admin-toolbar-right { justify-content: space-between; width: 100%; }
+  .admin-table th, .admin-table td { padding: 0.6rem 0.8rem; }
 }
-
-
-/* --- END LAYOUT STYLES --- */
-
-
-.admin-toolbar {
-  display: flex;
-  justify-content: space-between; /* Pushes items to ends */
-  align-items: center;
-  margin-bottom: 1.5rem; /* Add some space below */
-  gap: 1rem; /* Space between items */
-  flex-wrap: wrap; /* Allow wrapping on smaller screens */
-}
-
-/* Specific styling for the product toolbar */
-.product-toolbar {
-  /* You can add specific overrides here if needed */
-}
-
-.admin-search-input {
-  flex-grow: 1; /* Allows search input to take available space */
-  min-width: 200px; /* Ensure it doesn't get too small */
-  max-width: 400px; /* Optional: limit search bar width */
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  height: 40px; /* Match button height */
-}
-
-/* New: Style for the right side of the toolbar (sort + add button) */
-.admin-toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 1rem; /* Space between sort and add button */
-}
-
-.admin-sort-select {
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  height: 40px; /* Match button/input height */
-  background-color: white; /* Ensure background color */
-  cursor: pointer;
-}
-
-
-.add-product-btn {
-  padding: 8px 16px;
-  height: 40px; /* Match input/select height */
-  background-color: var(--primary, #2563eb); /* Use your primary color */
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  white-space: nowrap; /* Prevent button text wrapping */
-}
-
-.add-product-btn:hover {
-  background-color: var(--primary-hover, #1d4ed8); /* Darker shade for hover */
-}
-
-/* Ensure user search bar uses the same class */
-.users-toolbar .admin-search-input {
-   max-width: 400px; /* Adjust if needed for user search */
-}
-
-/* Adjust users toolbar button */
-.users-toolbar button {
-    height: 40px;
-    padding: 8px 16px;
-    background-color: #e5e7eb;
-    color: #111827;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-}
-.users-toolbar button:hover {
-    background-color: #d1d5db;
-}
-
-
-/* Responsive adjustments */
-@media (max-width: 768px) { /* Adjust breakpoint if needed */
-  /* --- RESPONSIVE SIDEBAR (Optional: Could hide/toggle on small screens) --- */
-  .admin-layout {
-      flex-direction: column; /* Stack sidebar and content on small screens */
-  }
-  .admin-sidebar {
-      width: 100%; /* Full width */
-      height: auto; /* Auto height */
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      /* Consider adding a toggle button and hiding sidebar by default */
-  }
-  .admin-main-content {
-      padding: 1.5rem; /* Reduce padding */
-  }
-  /* --- END RESPONSIVE SIDEBAR --- */
-
-  .admin-toolbar {
-    flex-direction: column;
-    align-items: stretch; /* Make items full width */
-  }
-  .admin-search-input {
-    max-width: none; /* Allow full width */
-  }
-  .admin-toolbar-right {
-     justify-content: space-between; /* Space out sort/add on new line */
-     width: 100%; /* Take full width */
-  }
-}
-
 @media (max-width: 480px) {
-    .admin-toolbar-right {
-        flex-direction: column; /* Stack sort and add button */
-        align-items: stretch; /* Make them full width */
-    }
-    .admin-sort-select {
-        margin-bottom: 0.5rem; /* Add space below sort */
-    }
+    .admin-toolbar-right { flex-direction: column; align-items: stretch; } .admin-sort-select { margin-bottom: 0.5rem; }
+     .admin-main-content { padding: 1rem; } .admin-section { padding: 0.8rem; }
+    .admin-table th, .admin-table td { padding: 0.5rem 0.6rem; font-size: 0.85rem; } .action-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
 }
 
-
-/* Keep existing styles below... */
-.admin-container { /* This might be less relevant now with admin-layout */
-  /* padding: 2rem; */
-  /* max-width: 1000px; */
-  /* margin: 2rem auto; */
-}
-
-.admin-table {
-  width: 100%;
-  table-layout: auto; /* Changed from fixed for better auto-sizing */
-  border-collapse: collapse;
-  margin-top: 1rem; /* Add space above table */
-}
-
-
-.admin-table th, .admin-table td {
-  text-align: left;
-  padding: 12px 15px;
-  border-bottom: 1px solid #e2e8f0;
-  word-wrap: break-word;
-  white-space: nowrap; /* Prevent wrapping in cells initially */
-  vertical-align: middle; /* Align cell content vertically */
-}
-
-/* Allow name column to wrap if needed */
-.admin-table th:first-child,
-.admin-table td:first-child {
-    white-space: normal;
-    /* Optional: Give it a max-width if names get too long */
-    /* max-width: 300px; */
-}
-
-
-.admin-table th {
-  background-color: #f7f7f7;
-  white-space: nowrap; /* Keep headers from wrapping */
-  font-weight: 600; /* Bolder headers */
-  color: #374151; /* Header text color */
-}
-
-/* Make action column narrower if needed */
-.admin-table th:last-child,
-.admin-table td:last-child {
-  width: 180px; /* Adjust as needed */
-  text-align: right;
-  white-space: nowrap; /* Keep actions on one line */
-}
-
-
-.admin-table .actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.admin-table .actions button {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-  white-space: nowrap;
-}
-
-.admin-table .actions button.delete {
-  background-color: #e53e3e;
-  color: white;
-}
-
-/* --- PRODUCT FORM STYLES --- */
-.product-form {
-  margin-top: 2rem;
-  padding: 2rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: white; /* Add background */
-}
-
-/* Grid layout for form fields */
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Two columns */
-    gap: 1rem 1.5rem; /* Row gap, Column gap */
-    margin-bottom: 1.5rem;
-}
-.form-group.span-2 {
-    grid-column: span 2; /* Make element span both columns */
-}
-.image-uploads {
-    margin-top: 1rem;
-    margin-bottom: 0.5rem; /* Reduce bottom margin */
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-}
-
-.form-group label {
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: #374151;
-    font-size: 0.9rem;
-}
-.form-group label[required]::after,
-.form-group label:contains(*) { /* Basic required indicator */
-    content: ' *';
-    color: #ef4444;
-}
-
-
-.form-group input[type="text"],
-.form-group input[type="number"],
-.form-group textarea,
-.form-group select {
-    padding: 10px 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 0.95rem;
-}
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: var(--primary, #2563eb);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
-.form-group textarea {
-    min-height: 80px;
-    resize: vertical;
-}
-
-.form-actions {
-    display: flex;
-    justify-content: flex-end; /* Align buttons to the right */
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #e5e7eb; /* Separator line */
-}
-
-.form-actions button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.form-actions .save-button {
-    background-color: var(--primary, #2563eb);
-    color: white;
-}
-.form-actions .save-button:disabled {
-    opacity: 0.6; cursor: not-allowed;
-}
-
-.form-actions .cancel-button {
-    background-color: #e5e7eb;
-    color: #111827;
-}
-.form-actions .cancel-button:disabled {
-    opacity: 0.6; cursor: not-allowed;
-}
-
-/* Style for error message inside the form */
-.product-form .error-message {
-    grid-column: span 2; /* Span across columns if using grid */
-    background: #fef2f2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
-    padding: 8px 10px;
-    border-radius: 6px;
-    margin-bottom: 1rem;
-    text-align: left;
-    font-size: 0.9rem;
-}
-
-
-/* --- END PRODUCT FORM STYLES --- */
-
-
-.drop-zone {
-  border: 2px dashed #ccc;
-  border-radius: 8px;
-  padding: 1rem; /* Reduced padding */
-  min-height: 100px; /* Ensure a minimum height */
-  text-align: center;
-  cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
-  position: relative; /* Needed for the input overlay */
-  display: flex; /* Center content */
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-.drop-zone.dragging {
-  background-color: #f0f8ff;
-  border-color: #007bff;
-}
-
-.drop-zone p {
-  margin: 0;
-  color: #666;
-  font-size: 0.9rem; /* Slightly smaller text */
-}
-
-.drop-zone input[type="file"] {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0; /* Make the default input invisible */
-  cursor: pointer;
-}
-
-/* Styles for the existing image grid */
-.existing-images-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 1rem;
-  margin-top: 0.5rem; /* Add some space above */
-}
-
-.existing-image-item {
-  position: relative;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  overflow: hidden;
-  background-color: #f9fafb; /* Light background */
-}
-
-.existing-image-item img {
-  width: 100%;
-  height: 100px;
-  object-fit: cover;
-  display: block;
-}
-
-/* Style for primary image tag */
-.primary-tag {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    background-color: rgba(37, 99, 235, 0.8); /* Semi-transparent primary */
-    color: white;
-    font-size: 0.7rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-.existing-image-item button {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  background-color: rgba(229, 62, 62, 0.8);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  font-weight: bold;
-  display: grid; /* For centering the X */
-  place-items: center; /* For centering the X */
-  line-height: 1; /* Ensure X is vertically centered */
-  padding: 0; /* Remove default padding */
-  transition: background-color 0.2s;
-}
-.existing-image-item button:hover {
-    background-color: rgba(220, 38, 38, 1); /* Solid red on hover */
-}
-
-/* Add simple X mark inside button */
-.existing-image-item button::after {
-    content: '×';
-    font-size: 16px;
-}
-
-/* Image preview styles */
-.image-preview {
-    margin-top: 0.75rem;
-    font-size: 0.85rem;
-    color: #4b5563;
-}
-.image-preview p { margin: 2px 0; }
-
-
-/* ---  Styles for stock --- */
-/* Style for the highlighted row */
-.admin-table tr.out-of-stock-row {
-  background-color: #fff5f5; /* A very light red */
-  color: #a0aec0; /* Gray out the text */
-}
-.admin-table tr.out-of-stock-row .editable-stock-value {
-    color: #ef4444; /* Make stock value red */
-    font-weight: 600;
-}
-
-/* Base style for the status badge */
-.stock-status {
-  padding: 4px 10px;
-  border-radius: 9999px; /* Pill shape */
-  font-size: 12px;
-  font-weight: bold;
-  color: white;
-  text-transform: uppercase;
-}
-
-/* Green badge for "In Stock" */
-.in-stock {
-  background-color: #38a169;
-}
-
-/* Red badge for "Out of Stock" */
-.out-of-stock-badge {
-  background-color: #e53e3e;
-}
-.editable-stock-value {
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-  display: inline-block; /* Makes padding and other box properties work */
-  border-bottom: 1px dashed #9ca3af; /* Add underline affordance */
-}
-
-.editable-stock-value:hover {
-  background-color: #e2e8f0; /* A liggght gray hover effect */
-  border-bottom-style: solid;
-}
-
-.inline-edit-stock {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.inline-stock-input {
-  width: 90px;
-  padding: 6px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-}
-
-.save-stock,
-.cancel-stock {
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.save-stock { background: #2563eb; color: #fff; }
-.cancel-stock { background: #e5e7eb; color: #111827; }
-
-/* General utility button styles */
-button.delete { background:#e03131; color:#fff; }
-button.ghost { background: transparent; border:1px solid #ccc; }
-
-/* Users tab specific */
-.role-inline { display:flex; align-items:center; gap:10px; }
-.role-select { padding:6px 8px; }
-
-/* Reusing admin-sort-select for user role dropdown */
-td .admin-sort-select {
-    height: auto; /* Override fixed height */
-    padding: 6px 8px; /* Adjust padding */
-}
-
-
-.badge {
-  font-size: 12px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border:1px solid #ddd;
-  background:#f7f7f7;
-  text-transform: uppercase;
-  letter-spacing: .2px;
-}
-.badge.admin { background:#fff7e1; border-color:#e8d190; color:#7a5d00; }
-.badge.user  { background:#eef3ff; border-color:#cdd7ff; color:#294088; }
-
-
-/* --- User Inspector Styles --- */
-.ui-slide{
-  position: fixed; top:0; right:0; height:100vh; width:min(980px,100%);
-  background:#fff; border-left:1px solid #eee; box-shadow: -8px 0 24px rgba(0,0,0,.08);
-  z-index: 60; overflow-y:auto; /* Allow vertical scroll */
-  display: flex; /* Flex layout */
-  flex-direction: column; /* Stack header/tabs/content */
-}
-.ui-head{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:14px 16px; border-bottom:1px solid #eee;
-  background: #f9fafb; /* Light bg for header */
-  position: sticky; /* Make header sticky */
-  top: 0; /* Stick to top */
-  z-index: 61; /* Above content */
-}
-.ui-tabs{
-  display:flex; gap:8px; padding:10px 12px; border-bottom:1px solid #eee;
-  background: #fff; /* White bg for tabs */
-  position: sticky; /* Make tabs sticky */
-  top: 57px; /* Stick below header (adjust height based on header padding/content) */
-  z-index: 61; /* Above content */
-}
-.ui-tabs button{ padding:8px 12px; border-radius:999px; border: 1px solid transparent; background: transparent; cursor: pointer;}
-.ui-tabs button:hover { background: #f3f4f6; }
-.ui-tabs .active{ background:#fff7e1; border:1px solid #e8d190; font-weight: 600; }
-
-.ui-section{
-  padding:14px 16px;
-  flex-grow: 1; /* Allow content to fill remaining space */
-}
-
-/* --- Rest of ui styles --- */
-.ui-card{ border:1px solid #eee; border-radius:12px; padding:12px; margin-bottom:14px; background:#fff; }
-.ui-row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px; /* Add margin */}
-.ui-inline{ display:flex; align-items:center; gap:8px; }
-.ui-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top: 8px; /* Add margin */ }
-.ui-grid-4{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
-.ui-list{ list-style:none; padding:0; margin:8px 0; display:grid; gap:8px; }
-.ui-list li{ padding:8px 10px; border:1px solid #eee; border-radius:8px; background:#fafafa; }
-
-.ui-section label{ font-size:12px; color:#666; display:block; margin-bottom:6px; font-weight: 600; }
-.ui-section textarea{ width:100%; min-height:72px; border:1px solid #ddd; border-radius:8px; padding:8px; }
-.ui-section input[type="number"],
-.ui-section select { /* Style select like input */
-  width:100%; border:1px solid #ddd; border-radius:8px; padding:6px 8px;
-}
-/* Focus styles */
-.ui-section input:focus,
-.ui-section select:focus,
-.ui-section textarea:focus {
-  border-color: #a5b4fc;
-  box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.3);
-  outline: none;
-}
+/* --- Role Badges --- */
+.role-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: var(--admin-radius-md); font-size: 0.75rem; font-weight: 500; text-transform: capitalize; border: 1px solid; line-height: 1.2; }
+.role-badge.user { background-color: var(--admin-role-user-bg); color: var(--admin-role-user-text); border-color: var(--admin-role-user-border); }
+.role-badge.admin { background-color: var(--admin-role-admin-bg); color: var(--admin-role-admin-text); border-color: var(--admin-role-admin-border); }
