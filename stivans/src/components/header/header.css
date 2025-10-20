@@ -1,3 +1,4 @@
+/* src/components/header/header.css */
 .site-header {
   background: #fff;
   border-bottom: 1px solid #eee;
@@ -76,4 +77,18 @@
   margin-left: 5px;
     font-size: 1rem;
     color: #333;
+}
+
+/* Admin button styling */
+.admin-btn {
+  padding: 6px 12px;
+  background: #f6b300;
+  color: #000;
+  border-radius: 6px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.admin-btn:hover {
+  background: #e0a200;
 }
