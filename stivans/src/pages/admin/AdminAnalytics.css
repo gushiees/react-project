@@ -1,0 +1,125 @@
+/* src/pages/admin/AdminAnalytics.css */
+
+.analytics-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.analytics-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.analytics-controls select {
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--admin-radius-md);
+  border: 1px solid var(--admin-border);
+  background-color: var(--admin-content-bg);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--admin-border);
+  background-color: var(--admin-content-bg);
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--admin-text-muted);
+  transition: var(--admin-transition);
+}
+
+.refresh-btn:hover {
+  background-color: #f3f4f6;
+  color: var(--admin-text);
+}
+
+.refresh-btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background-color: #f9fafb;
+  padding: 1.5rem;
+  border-radius: var(--admin-radius-lg);
+  border: 1px solid var(--admin-border);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.stat-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--admin-primary-light);
+  color: var(--admin-primary);
+  flex-shrink: 0;
+}
+
+.stat-card-info p {
+  margin: 0;
+  font-weight: 500;
+  color: var(--admin-text-muted);
+  font-size: 0.9rem;
+}
+
+.stat-card-info h3 {
+  margin: 0.25rem 0;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.stat-card-info span {
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+}
+
+.analytics-note {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: var(--admin-primary-light);
+  border: 1px solid #fde68a;
+  border-radius: var(--admin-radius-md);
+  font-size: 0.9rem;
+  color: #92400e;
+}
+.analytics-note p {
+  margin: 0;
+}
+.analytics-note strong {
+  font-weight: 600;
+}
