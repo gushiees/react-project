@@ -1,8 +1,8 @@
 // src/pages/admin/admin.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom"; // Import Link
+import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { FaBoxOpen, FaUsers, FaSignOutAlt, FaHome } from "react-icons/fa"; // Import FaHome
+import { FaBoxOpen, FaUsers, FaSignOutAlt, FaHome } from "react-icons/fa";
 import { useAuth } from "../../AuthContext.jsx";
 import AdminProducts from "./AdminProducts.jsx";
 import AdminUsers from "./AdminUsers.jsx";
@@ -33,6 +33,10 @@ export default function Admin() {
       toast.error("Logout failed: " + err.message);
     }
   };
+  
+  const handleViewAsUser = () => {
+    toast.success("Switching to user view...");
+  }
 
   if (loadingAuth) {
     return null; 
@@ -60,8 +64,7 @@ export default function Admin() {
               <p>{user.email}</p>
             </div>
           )}
-          {/* View as User Button */}
-          <Link to="/" className="view-as-user-btn">
+          <Link to="/" className="view-as-user-btn" onClick={handleViewAsUser}>
             <FaHome aria-hidden="true" /> View as User
           </Link>
           <button onClick={handleLogout} className="logout-button sidebar-logout">
@@ -78,3 +81,4 @@ export default function Admin() {
     </div>
   );
 }
+
