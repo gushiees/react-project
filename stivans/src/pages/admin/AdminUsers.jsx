@@ -1,17 +1,26 @@
 // src/pages/admin/AdminUsers.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import toast from 'react-hot-toast'; // Ensure import
+import toast from 'react-hot-toast';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext.jsx";
 import UserInspector from './UserInspector.jsx';
 import { fetchAdminAPI } from "../../utils/adminApi.js";
-import ConfirmDeleteModal from "../../components/ConfirmDeleteModal/ConfirmDeleteModal.jsx";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal/ConfirmDeleteModal.jsx"; // Import the modal
 import './AdminUsers.css'; // Import the specific CSS
 
 function formatDate(d) {
     if (!d) return "—";
-    try { return new Date(d).toLocaleString(); } catch { return String(d); }
+    try {
+        // Format to show Date and Time (e.g., 10/20/2025, 10:44:25 AM)
+        return new Date(d).toLocaleString('en-US', {
+            year: 'numeric', month: 'numeric', day: 'numeric',
+            hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true
+        });
+    } catch {
+        return String(d); // Fallback if formatting fails
+    }
 }
+
 
 export default function AdminUsers() {
   const { user, logout } = useAuth();
@@ -21,16 +30,17 @@ export default function AdminUsers() {
   const [error, setError] = useState(null);
   const [inspectUser, setInspectUser] = useState(null);
   const [q, setQ] = useState("");
-  const [page, setPage] = useState(1); // Consider adding pagination controls later
-  const perPage = 50; // Or make this configurable
+  const [page, setPage] = useState(1);
+  const perPage = 50;
 
+  // --- State for Delete Confirmation ---
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
+  const [itemToDelete, setItemToDelete] = useState(null); // { id: string, email: string }
   const [isDeleting, setIsDeleting] = useState(false);
 
   // --- Auth Error Handler ---
   const handleAuthError = useCallback(() => {
-    toast.error('Session expired or invalid. Redirecting to login.', { id: 'auth-error-redirect' }); // Added ID
+     toast.error('Session expired or invalid. Redirecting to login.', { id: 'auth-error-redirect' });
      if (logout) { logout(); }
     navigate('/admin/login', { replace: true });
   }, [logout, navigate]);
@@ -44,24 +54,17 @@ export default function AdminUsers() {
       endpoint.searchParams.set("page", String(targetPage));
       endpoint.searchParams.set("perPage", String(perPage));
       if (q) endpoint.searchParams.set("q", q);
-
-      // Make API call using the helper
       const json = await fetchAdminAPI(endpoint.toString(), { method: 'GET' }, handleAuthError);
-
-      setUsers(json.users || []); // Ensure users is always an array
-      if (resetPage) setPage(1); // Reset page state if requested
-
+      setUsers(json.users || []);
+      if (resetPage) setPage(1);
     } catch (e) {
-      // fetchAdminAPI throws errors, including the specific auth error
       if (e.message !== 'Authentication required') {
-        // Only handle non-auth errors here; auth errors trigger redirect
         console.error("Load users error:", e);
         const errMsg = e.message || "Failed to load users";
-        setError(errMsg);
-        toast.error(errMsg); // Use toast for error
+        setError(errMsg); toast.error(errMsg);
       }
     } finally { setLoading(false); }
-  }, [page, q, perPage, handleAuthError]); // Add handleAuthError
+  }, [page, q, perPage, handleAuthError]);
 
   // --- Effect to Load Users ---
    useEffect(() => {
@@ -70,7 +73,7 @@ export default function AdminUsers() {
    }, [loadUsers, user, handleAuthError, logout]);
 
    // --- Search Handler ---
-   const handleSearch = () => { loadUsers(true); }; // Call loadUsers and reset page to 1
+   const handleSearch = () => { loadUsers(true); };
 
   // --- Delete Logic ---
   const deleteUserInitiate = (userToDelete) => {
@@ -83,7 +86,6 @@ export default function AdminUsers() {
   const confirmDeleteUser = async () => {
     if (!itemToDelete) return;
     setIsDeleting(true);
-    // Use toast.promise
     const deletePromise = fetchAdminAPI("/api/admin/users/delete", {
         method: "POST", body: { userId: itemToDelete.id }
     }, handleAuthError).then(() => {
@@ -95,7 +97,6 @@ export default function AdminUsers() {
         success: 'User Deleted!',
         error: (err) => {
             console.error("Delete user error:", err);
-            // Auth error is handled by fetchAdminAPI redirect
             return err.message || 'Delete failed';
         }
     }).finally(() => setIsDeleting(false));
@@ -106,7 +107,6 @@ export default function AdminUsers() {
   // --- Change Role Logic ---
   const changeRole = async (userId, newRole) => {
     setError(null);
-    // Use toast.promise
     const changePromise = fetchAdminAPI("/api/admin/users/role", {
         method: "POST", body: { userId, role: newRole }
     }, handleAuthError).then(() => {
@@ -117,9 +117,7 @@ export default function AdminUsers() {
         loading: 'Updating role...',
         success: 'Role Updated!',
         error: (err) => {
-            console.error("Change role error:", err);
-            loadUsers(); // Revert optimistic update on failure
-            // Auth error is handled by fetchAdminAPI redirect
+            console.error("Change role error:", err); loadUsers(); // Revert
             return err.message || 'Role update failed';
         }
     });
@@ -142,27 +140,46 @@ export default function AdminUsers() {
       {!loading && (
         <table className="admin-table users-table">
           <thead>
-            <tr><th>Email</th><th>Created</th><th>Last sign-in</th><th style={{ textAlign: 'center'}}>Role</th><th>User ID</th><th style={{ textAlign: "right" }}>Actions</th></tr>
+            <tr>
+              <th>Email</th>
+              <th>Time In</th> {/* Changed from Created */}
+              <th>Time Out</th> {/* Changed from Last sign-in */}
+              <th style={{ textAlign: 'center'}}>Role</th>
+              <th>User ID</th>
+              <th style={{ textAlign: "right" }}>Actions</th>
+            </tr>
           </thead>
           <tbody>
-            {users.length === 0 ? ( <tr><td colSpan="6" style={{textAlign: 'center'}}>{ q ? `No users found matching "${q}".` : "No users found." }</td></tr> )
-             : (
+            {users.length === 0 ? (
+              <tr><td colSpan="6" style={{textAlign: 'center'}}>{ q ? `No users found matching "${q}".` : "No users found." }</td></tr>
+            ) : (
               users.map((u) => (
                 <tr key={u.id}>
                   <td>{u.email || "—"}</td>
-                  <td>{formatDate(u.created_at)}</td>
-                  <td>{formatDate(u.last_sign_in_at)}</td>
+                  <td>{formatDate(u.created_at)}</td> {/* Display created_at under Time In */}
+                  <td>{formatDate(u.last_sign_in_at)}</td> {/* Display last_sign_in_at under Time Out */}
                   <td className="role-display-cell">
                     <span className={`role-badge ${u.role || 'user'}`}>{u.role || 'user'}</span>
-                     <select value={u.role || "user"} onChange={(e) => changeRole(u.id, e.target.value)} className="role-select" aria-label={`Change role for ${u.email || u.id}`} >
-                       <option value="user">user</option> <option value="admin">admin</option>
+                     <select
+                       value={u.role || "user"}
+                       onChange={(e) => changeRole(u.id, e.target.value)}
+                       className="role-select"
+                       aria-label={`Change role for ${u.email || u.id}`}
+                     >
+                       <option value="user">user</option>
+                       <option value="admin">admin</option>
                      </select>
                   </td>
                   <td className="user-id-cell">{u.id}</td>
                   <td style={{ textAlign: "right" }}>
                     <button onClick={() => setInspectUser(u)} className="action-btn view-btn">View</button>
                     {user?.id !== u.id && (
-                         <button className="action-btn delete-btn" onClick={() => deleteUserInitiate(u)} style={{ marginLeft: 8 }} disabled={isDeleting && itemToDelete?.id === u.id} > Delete </button>
+                         <button
+                            className="action-btn delete-btn"
+                            onClick={() => deleteUserInitiate(u)}
+                            style={{ marginLeft: 8 }}
+                            disabled={isDeleting && itemToDelete?.id === u.id}
+                         > Delete </button>
                     )}
                   </td>
                 </tr>
@@ -174,7 +191,14 @@ export default function AdminUsers() {
 
       {inspectUser && ( <UserInspector user={inspectUser} onClose={() => setInspectUser(null)} handleAuthError={handleAuthError} /> )}
 
-      <ConfirmDeleteModal isOpen={showDeleteModal} itemName={itemToDelete?.email || itemToDelete?.id} itemType="user" onConfirm={confirmDeleteUser} onCancel={handleCancelDelete} isDeleting={isDeleting} />
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        itemName={itemToDelete?.email || itemToDelete?.id}
+        itemType="user"
+        onConfirm={confirmDeleteUser}
+        onCancel={handleCancelDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
