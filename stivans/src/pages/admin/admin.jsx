@@ -2,17 +2,18 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { FaBoxOpen, FaUsers, FaSignOutAlt, FaHome } from "react-icons/fa";
+import { FaBoxOpen, FaUsers, FaSignOutAlt, FaHome, FaChartBar } from "react-icons/fa"; // Import FaChartBar
 import { useAuth } from "../../AuthContext.jsx";
 import AdminProducts from "./AdminProducts.jsx";
 import AdminUsers from "./AdminUsers.jsx";
+import AdminAnalytics from "./AdminAnalytics.jsx"; // Import the new component
 import adminLogo from "../../assets/stivanlogolight.png";
 import "./admin.css";
 
 export default function Admin() {
   const { user, loadingAuth, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState("products");
+  const [activeSection, setActiveSection] = useState("analytics"); // Default to analytics
 
   useEffect(() => {
     if (!loadingAuth) {
@@ -33,10 +34,6 @@ export default function Admin() {
       toast.error("Logout failed: " + err.message);
     }
   };
-  
-  const handleViewAsUser = () => {
-    toast.success("Switching to user view...");
-  }
 
   if (loadingAuth) {
     return null; 
@@ -54,6 +51,8 @@ export default function Admin() {
           <h2>Admin Menu</h2>
         </div>
         <nav className="admin-sidebar-nav" aria-label="Admin Sections">
+          {/* Analytics Button */}
+          <button onClick={() => setActiveSection("analytics")} className={activeSection === "analytics" ? "active" : ""} aria-current={activeSection === 'analytics' ? 'page' : undefined} > <FaChartBar aria-hidden="true" /> Analytics </button>
           <button onClick={() => setActiveSection("products")} className={activeSection === "products" ? "active" : ""} aria-current={activeSection === 'products' ? 'page' : undefined} > <FaBoxOpen aria-hidden="true" /> Products </button>
           <button onClick={() => setActiveSection("users")} className={activeSection === "users" ? "active" : ""} aria-current={activeSection === 'users' ? 'page' : undefined} > <FaUsers aria-hidden="true" /> Users </button>
         </nav>
@@ -64,7 +63,7 @@ export default function Admin() {
               <p>{user.email}</p>
             </div>
           )}
-          <Link to="/" className="view-as-user-btn" onClick={handleViewAsUser}>
+          <Link to="/" className="view-as-user-btn" onClick={() => toast.success("Switched to User View")}>
             <FaHome aria-hidden="true" /> View as User
           </Link>
           <button onClick={handleLogout} className="logout-button sidebar-logout">
@@ -75,6 +74,7 @@ export default function Admin() {
 
       <main className="admin-main-content">
         <div className="admin-content-header"> <h1>Admin Dashboard</h1> </div>
+        {activeSection === "analytics" && <AdminAnalytics />}
         {activeSection === "products" && <AdminProducts />}
         {activeSection === "users" && <AdminUsers />}
       </main>
