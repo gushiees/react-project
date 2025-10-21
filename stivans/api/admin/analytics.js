@@ -5,87 +5,92 @@ const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supa = createClient(url, serviceKey, { auth: { persistSession: false } });
 
-// Helper to assert admin privileges
 async function assertAdmin(req) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  if (!token) throw new Error('No auth token');
+  if (!token) throw new Error('No auth');
 
-  const { data: { user }, error } = await supa.auth.getUser(token);
-  if (error || !user) throw new Error('Invalid auth token');
+  const { data: uData, error: uErr } = await supa.auth.getUser(token);
+  if (uErr || !uData?.user?.id) throw new Error('Bad auth');
+  const uid = uData.user.id;
 
-  const { data: profile } = await supa.from('profiles').select('role').eq('id', user.id).single();
-  if (profile?.role !== 'admin') throw new Error('Admin privileges required');
+  const { data: prof, error: pErr } = await supa
+    .from('profiles').select('role').eq('id', uid).maybeSingle();
+  if (pErr) throw pErr;
+  if (!prof || prof.role !== 'admin') throw new Error('Not admin');
+  return true;
 }
 
-// Helper to calculate start date based on period
-function getStartDate(period) {
+// Helper to get date range
+const getTimeRange = (timeframe) => {
     const now = new Date();
-    switch (period) {
-        case 'today':
-            now.setHours(0, 0, 0, 0);
-            return now;
+    const start = new Date();
+    switch (timeframe) {
+        case '1d': // Today
+            start.setHours(0, 0, 0, 0);
+            break;
+        case '7d': // Last 7 days
+            start.setDate(now.getDate() - 7);
+            start.setHours(0, 0, 0, 0);
+            break;
         case 'yesterday':
+            start.setDate(now.getDate() - 1);
+            start.setHours(0, 0, 0, 0);
             now.setDate(now.getDate() - 1);
-            now.setHours(0, 0, 0, 0);
-            return now;
-        case '7days':
-            now.setDate(now.getDate() - 7);
-            return now;
-        case '30days':
+            now.setHours(23, 59, 59, 999);
+            break;
+        case '30d': // Last 30 days
         default:
-            now.setDate(now.getDate() - 30);
-            return now;
+            start.setDate(now.getDate() - 30);
+            start.setHours(0, 0, 0, 0);
+            break;
     }
-}
+    return { start: start.toISOString(), end: now.toISOString() };
+};
 
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
   try {
+    if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
     await assertAdmin(req);
 
-    const { period = '30days' } = req.query;
-    const startDate = getStartDate(period);
+    const timeframe = req.query.timeframe || '30d';
+    const { start, end } = getTimeRange(timeframe);
 
-    // 1. Total orders in the period
-    const { count: ordersCount, error: ordersError } = await supa
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', startDate.toISOString());
+    // 1. Get Order Count and Total Revenue in the timeframe for PAID orders
+    const { data: ordersData, error: ordersError, count: ordersCount } = await supa
+        .from('orders')
+        .select('total', { count: 'exact' })
+        .eq('status', 'paid') 
+        .gte('created_at', start)
+        .lte('created_at', end);
 
     if (ordersError) throw ordersError;
+    
+    const totalRevenue = ordersData.reduce((sum, order) => sum + (order.total || 0), 0);
 
-    // 2. Total user sign-ins (logins) in the period
-    // Supabase auth logs are not directly queryable via API for this.
-    // A common workaround is to track logins in a separate table using triggers.
-    // For this example, we will return a placeholder value.
-    // In a real scenario, you would query your 'user_logins' table.
-    const userLogins = 'N/A'; // Placeholder
-
-    // 3. Unshipped orders (assuming 'paid' status means it needs shipping)
-    const { count: unshippedCount, error: unshippedError } = await supa
+    // 2. Get Unshipped Orders (this is not time-based)
+    // Considered 'unshipped' if paid but not yet 'shipped' or 'completed'
+    const { count: unshippedOrdersCount, error: unshippedError } = await supa
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'paid') // Assuming 'paid' orders are the ones to be shipped
-      .gte('created_at', startDate.toISOString());
+      .in('status', ['paid', 'processing']); 
 
     if (unshippedError) throw unshippedError;
     
-    // You could also add other stats like total revenue here if needed
+    // Site visits would be implemented with a third-party service.
+    // We return a placeholder value.
 
     res.status(200).json({
       ordersCount: ordersCount ?? 0,
-      userLogins: userLogins, // Placeholder
-      unshippedOrders: unshippedCount ?? 0,
+      totalRevenue: totalRevenue,
+      unshippedOrdersCount: unshippedOrdersCount ?? 0,
+      siteVisits: null, // Placeholder
     });
 
-  } catch (error) {
-    console.error('Analytics API Error:', error);
-    res.status(400).json({ error: error.message || 'An error occurred.' });
+  } catch (e) {
+    console.error('[analytics API] error:', e);
+    res.status(400).json({ error: e.message || 'Failed to fetch analytics data' });
   }
 }
 
