@@ -3,6 +3,7 @@ import { FaUsers, FaChartBar, FaBox, FaSignInAlt, FaShippingFast, FaRedo } from 
 import toast from 'react-hot-toast';
 import { fetchAdminAPI } from '../../utils/adminApi.js';
 import { useAuth } from '../../AuthContext.jsx';
+import { useNavigate } from 'react-router-dom'; // FIX: Added the missing import here
 import './AdminAnalytics.css';
 
 const StatCard = ({ icon, title, value, change, isLoading }) => (
