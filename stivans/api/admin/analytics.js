@@ -21,15 +21,14 @@ async function assertAdmin(req) {
   return true;
 }
 
-// Helper to get date range
 const getTimeRange = (timeframe) => {
     const now = new Date();
     const start = new Date();
     switch (timeframe) {
-        case '1d': // Today
+        case '1d':
             start.setHours(0, 0, 0, 0);
             break;
-        case '7d': // Last 7 days
+        case '7d':
             start.setDate(now.getDate() - 7);
             start.setHours(0, 0, 0, 0);
             break;
@@ -39,7 +38,7 @@ const getTimeRange = (timeframe) => {
             now.setDate(now.getDate() - 1);
             now.setHours(23, 59, 59, 999);
             break;
-        case '30d': // Last 30 days
+        case '30d':
         default:
             start.setDate(now.getDate() - 30);
             start.setHours(0, 0, 0, 0);
@@ -47,7 +46,6 @@ const getTimeRange = (timeframe) => {
     }
     return { start: start.toISOString(), end: now.toISOString() };
 };
-
 
 export default async function handler(req, res) {
   try {
@@ -57,20 +55,37 @@ export default async function handler(req, res) {
     const timeframe = req.query.timeframe || '30d';
     const { start, end } = getTimeRange(timeframe);
 
-    // 1. Get Order Count and Total Revenue in the timeframe for PAID orders
-    const { data: ordersData, error: ordersError, count: ordersCount } = await supa
+    // 1. Get All Paid Orders in the timeframe for stats and graphs
+    const { data: ordersData, error: ordersError } = await supa
         .from('orders')
-        .select('total', { count: 'exact' })
+        .select('total, created_at')
         .eq('status', 'paid') 
         .gte('created_at', start)
         .lte('created_at', end);
 
     if (ordersError) throw ordersError;
     
+    // --- Calculate Aggregates and Graph Data ---
+    const ordersCount = ordersData.length;
     const totalRevenue = ordersData.reduce((sum, order) => sum + (order.total || 0), 0);
 
+    // Group by day for the graph
+    const dailyData = ordersData.reduce((acc, order) => {
+        const date = new Date(order.created_at).toISOString().split('T')[0];
+        if (!acc[date]) {
+            acc[date] = { orders: 0, revenue: 0 };
+        }
+        acc[date].orders += 1;
+        acc[date].revenue += order.total || 0;
+        return acc;
+    }, {});
+
+    const graphData = {
+      orders: Object.entries(dailyData).map(([date, values]) => ({ date, value: values.orders })),
+      revenue: Object.entries(dailyData).map(([date, values]) => ({ date, value: values.revenue })),
+    };
+
     // 2. Get Unshipped Orders (this is not time-based)
-    // Considered 'unshipped' if paid but not yet 'shipped' or 'completed'
     const { count: unshippedOrdersCount, error: unshippedError } = await supa
       .from('orders')
       .select('*', { count: 'exact', head: true })
@@ -78,14 +93,12 @@ export default async function handler(req, res) {
 
     if (unshippedError) throw unshippedError;
     
-    // Site visits would be implemented with a third-party service.
-    // We return a placeholder value.
-
     res.status(200).json({
       ordersCount: ordersCount ?? 0,
       totalRevenue: totalRevenue,
       unshippedOrdersCount: unshippedOrdersCount ?? 0,
       siteVisits: null, // Placeholder
+      graphData: graphData, // Add graph data to response
     });
 
   } catch (e) {
