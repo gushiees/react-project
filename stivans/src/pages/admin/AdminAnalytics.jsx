@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FaUsers, FaChartBar, FaBox, FaSignInAlt, FaShippingFast, FaRedo } from 'react-icons/fa';
+import { FaShoppingCart, FaDollarSign, FaEye, FaShippingFast, FaRedo } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { fetchAdminAPI } from '../../utils/adminApi.js';
 import { useAuth } from '../../AuthContext.jsx';
-import { useNavigate } from 'react-router-dom'; // FIX: Added the missing import here
+import { useNavigate } from 'react-router-dom';
 import './AdminAnalytics.css';
 
-const StatCard = ({ icon, title, value, change, isLoading }) => (
+const StatCard = ({ icon, title, value, isLoading }) => (
   <div className={`stat-card ${isLoading ? 'loading' : ''}`}>
     <div className="stat-icon">{icon}</div>
     <div className="stat-content">
@@ -14,7 +14,11 @@ const StatCard = ({ icon, title, value, change, isLoading }) => (
       {isLoading ? (
         <div className="stat-value-loading" />
       ) : (
-        <p className="stat-value">{value}</p>
+        <p className="stat-value">
+          {title.toLowerCase().includes('revenue')
+            ? `₱${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : Number(value || 0).toLocaleString('en-US')}
+        </p>
       )}
     </div>
   </div>
@@ -34,7 +38,7 @@ export default function AdminAnalytics() {
   }, [logout, navigate]);
 
   const fetchAnalytics = useCallback(async (currentFrame) => {
-    const toastId = toast.loading(`Fetching analytics data for '${currentFrame}'...`);
+    const toastId = toast.loading(`Fetching analytics data...`);
     setLoading(true);
     try {
       const endpoint = new URL("/api/admin/analytics", window.location.origin);
@@ -70,7 +74,7 @@ export default function AdminAnalytics() {
   const handleRefresh = () => {
     fetchAnalytics(timeframe);
   };
-  
+
   const timeframeLabel = {
     '1d': 'Today',
     '7d': 'Last 7 Days',
@@ -78,11 +82,10 @@ export default function AdminAnalytics() {
     'yesterday': 'Yesterday'
   }[timeframe];
 
-
   return (
     <div className="admin-section analytics-section">
       <div className="analytics-header">
-        <h2>Analytics Overview</h2>
+        <h2>Response Stats</h2>
         <div className="analytics-controls">
           <select value={timeframe} onChange={handleTimeframeChange}>
             <option value="30d">Last 30 Days</option>
@@ -91,36 +94,39 @@ export default function AdminAnalytics() {
             <option value="yesterday">Yesterday</option>
           </select>
           <button onClick={handleRefresh} className="refresh-btn" aria-label="Refresh data">
-            <FaRedo />
+            <FaRedo className={loading ? 'spinning' : ''} />
           </button>
         </div>
       </div>
 
       <div className="stats-grid">
         <StatCard
-          icon={<FaChartBar />}
+          icon={<FaShoppingCart />}
           title={`Orders (${timeframeLabel})`}
-          value={stats?.ordersCount ?? 0}
+          value={stats?.ordersCount ?? '0'}
           isLoading={loading}
         />
         <StatCard
-          icon={<FaUsers />}
-          title="New Users"
-          value={stats?.newUsersCount ?? 0}
+          icon={<FaDollarSign />}
+          title={`Revenue (${timeframeLabel})`}
+          value={stats?.totalRevenue ?? '0'}
           isLoading={loading}
         />
         <StatCard
-          icon={<FaSignInAlt />}
-          title="User Logins"
-          value={stats?.loginsCount ?? 0}
-          isLoading={loading}
+          icon={<FaEye />}
+          title="Site Visits (Users)"
+          value={"N/A"}
+          isLoading={false}
         />
         <StatCard
           icon={<FaShippingFast />}
           title="Unshipped Orders"
-          value={stats?.unshippedOrdersCount ?? 0}
+          value={stats?.unshippedOrdersCount ?? '0'}
           isLoading={loading}
         />
+      </div>
+      <div className="analytics-note">
+        <p><strong>Note:</strong> "Site Visits" requires a third-party analytics tool (like Vercel Analytics or Google Analytics) and is not tracked by default.</p>
       </div>
     </div>
   );
