@@ -13,7 +13,7 @@ const API_BASE =
   (typeof process !== "undefined" && process.env && process.env.VITE_API_BASE) ||
   "";
 
-// ----------------- Helpers -----------------
+// -------- Helpers --------
 function php(amount) {
   const n = Number(amount) || 0;
   return "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -33,7 +33,7 @@ function computeAge(dobStr, asOf = new Date()) {
   return age >= 0 ? String(age) : "";
 }
 
-// ----------------- Dropdowns -----------------
+// -------- Dropdowns --------
 const COMMON_CAUSES = [
   "Cardiac arrest",
   "Myocardial infarction (heart attack)",
@@ -82,7 +82,92 @@ const RELIGION_OPTIONS = [
   "Other",
 ];
 
-// Required fields for at-need flow
+// -------- Toasts (local) --------
+function useToasts() {
+  const [toasts, setToasts] = useState([]);
+  const notify = useCallback((message, type = "error", timeout = 4000) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setToasts((t) => [...t, { id, type, message }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), timeout);
+  }, []);
+  const Toasts = () => (
+    <div className="toast-container">
+      {toasts.map((t) => (
+        <div key={t.id} className={`toast ${t.type}`}>{t.message}</div>
+      ))}
+    </div>
+  );
+  return { notify, Toasts };
+}
+
+// -------- Storage upload (bucket: cadaver-docs) --------
+async function uploadDocToStorage(file, userId, orderTag, docType) {
+  if (!file) return null;
+  const safeName = file.name?.replace(/\s+/g, "_") || `${docType}-${Date.now()}`;
+  const path = `${userId}/${orderTag}/${docType}-${Date.now()}-${safeName}`;
+  const { data, error } = await supabase.storage
+    .from("cadaver-docs")
+    .upload(path, file, { upsert: true, contentType: file.type || "application/octet-stream" });
+  if (error) throw new Error(`${docType} upload failed: ${error.message}`);
+  return data?.path || path;
+}
+
+// -------- Persist cadaver (user-based ownership) --------
+async function saveCadaverDetails(userId, orderTag, cadaver, urls) {
+  const religion_text = cadaver.religion === "Other" ? (cadaver.religion_other || "Other") : cadaver.religion;
+  const cause_of_death_text =
+    cadaver.cause_of_death === "Other" ? (cadaver.cause_of_death_other || "Other") : cadaver.cause_of_death;
+  const kin_relation_text =
+    cadaver.kin_relation === "Other" ? (cadaver.kin_relation_other || "Other") : cadaver.kin_relation;
+
+  const record = {
+    user_id: userId,               // <- key change: user-based ownership
+    order_tag: orderTag,           // optional stitching; order may not exist yet
+    full_name: cadaver.full_name,
+    dob: cadaver.dob || null,
+    age: cadaver.age ? Number(cadaver.age) : null,
+    sex: cadaver.sex,
+    civil_status: cadaver.civil_status,
+    religion: cadaver.religion,
+    religion_text,
+    death_datetime: cadaver.death_datetime,
+    place_of_death: cadaver.place_of_death,
+    cause_of_death: cadaver.cause_of_death,
+    cause_of_death_text,
+    kin_name: cadaver.kin_name,
+    kin_relation: cadaver.kin_relation,
+    kin_relation_text,
+    kin_mobile: cadaver.kin_mobile,
+    kin_email: cadaver.kin_email,
+    kin_address: cadaver.kin_address,
+    remains_location: cadaver.remains_location,
+    pickup_datetime: cadaver.pickup_datetime,
+    special_handling: !!cadaver.special_handling,
+    special_handling_reason: cadaver.special_handling_reason || null,
+    special_handling_reason_text:
+      cadaver.special_handling_reason === "Other"
+        ? (cadaver.special_handling_other || "Other")
+        : cadaver.special_handling_reason || null,
+    special_instructions: cadaver.special_instructions || null,
+    occupation: cadaver.occupation || null,
+    nationality: cadaver.nationality || null,
+    residence: cadaver.residence || null,
+    death_certificate_url: urls.death_certificate_url || null,
+    claimant_id_url: urls.claimant_id_url || null,
+    permit_url: urls.permit_url || null,
+  };
+
+  const { data, error } = await supabase
+    .from("cadaver_details")
+    .insert(record)
+    .select("id")
+    .single();
+
+  if (error) throw new Error(`Saving cadaver_details failed: ${error.message}`);
+  return data.id;
+}
+
+// -------- Required fields --------
 const cadaverRequiredFields = [
   "full_name",
   "sex",
@@ -100,87 +185,14 @@ const cadaverRequiredFields = [
   "pickup_datetime",
 ];
 
-// Storage upload helper (bucket: cadaver-docs)
-async function uploadDocToStorage(file, userId, orderTag, docType) {
-  if (!file) return null;
-  const safeName = file.name?.replace(/\s+/g, "_") || `${docType}-${Date.now()}`;
-  const path = `${userId}/${orderTag}/${docType}-${Date.now()}-${safeName}`;
-  const { data, error } = await supabase.storage
-    .from("cadaver-docs")
-    .upload(path, file, { upsert: true, contentType: file.type || "application/octet-stream" });
-  if (error) throw new Error(`${docType} upload failed: ${error.message}`);
-  return data?.path || path;
-}
-
-// Persist full cadaver record so Admins can review later
-async function saveCadaverDetails(userId, orderTag, cadaver, urls) {
-  const religion_text =
-    cadaver.religion === "Other" ? (cadaver.religion_other || "Other") : cadaver.religion;
-  const cause_of_death_text =
-    cadaver.cause_of_death === "Other" ? (cadaver.cause_of_death_other || "Other") : cadaver.cause_of_death;
-  const kin_relation_text =
-    cadaver.kin_relation === "Other" ? (cadaver.kin_relation_other || "Other") : cadaver.kin_relation;
-
-  const record = {
-    user_id: userId,
-    order_tag: orderTag,
-    // identity
-    full_name: cadaver.full_name,
-    dob: cadaver.dob || null,
-    age: cadaver.age ? Number(cadaver.age) : null,
-    sex: cadaver.sex,
-    civil_status: cadaver.civil_status,
-    religion: cadaver.religion,
-    religion_text,
-    // death
-    death_datetime: cadaver.death_datetime,
-    place_of_death: cadaver.place_of_death,
-    cause_of_death: cadaver.cause_of_death,
-    cause_of_death_text,
-    // kin
-    kin_name: cadaver.kin_name,
-    kin_relation: cadaver.kin_relation,
-    kin_relation_text,
-    kin_mobile: cadaver.kin_mobile,
-    kin_email: cadaver.kin_email,
-    kin_address: cadaver.kin_address,
-    // logistics
-    remains_location: cadaver.remains_location,
-    pickup_datetime: cadaver.pickup_datetime,
-    special_handling: !!cadaver.special_handling,
-    special_handling_reason: cadaver.special_handling_reason || null,
-    special_handling_reason_text:
-      cadaver.special_handling_reason === "Other"
-        ? (cadaver.special_handling_other || "Other")
-        : cadaver.special_handling_reason || null,
-    special_instructions: cadaver.special_instructions || null,
-    // optional
-    occupation: cadaver.occupation || null,
-    nationality: cadaver.nationality || null,
-    residence: cadaver.residence || null,
-    // docs
-    death_certificate_url: urls.death_certificate_url || null,
-    claimant_id_url: urls.claimant_id_url || null,
-    permit_url: urls.permit_url || null,
-  };
-
-  const { data, error } = await supabase
-    .from("cadaver_details")
-    .insert(record)
-    .select("id")
-    .single();
-
-  if (error) throw new Error(`Saving cadaver_details failed: ${error.message}`);
-  return data.id;
-}
-
 export default function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { clearCart } = useCart();
+  const { notify, Toasts } = useToasts();
 
-  // --- Payment Status Handling ---
+  // Payment status
   const [paymentStatus, setPaymentStatus] = useState(null);
   useEffect(() => {
     const paidParam = searchParams.get("paid");
@@ -189,7 +201,7 @@ export default function Checkout() {
     if (paidParam) sessionStorage.removeItem("checkout.items");
   }, [searchParams]);
 
-  // --- Items from cart / session ---
+  // Items
   const stateItems = Array.isArray(location.state?.items) ? location.state.items : null;
   const storedItems =
     !stateItems && !paymentStatus ? JSON.parse(sessionStorage.getItem("checkout.items") || "[]") : null;
@@ -197,16 +209,15 @@ export default function Checkout() {
 
   useEffect(() => {
     if (items.length === 0 && !paymentStatus && location.pathname === "/checkout") {
-      console.warn("Checkout: No items, redirecting.");
       navigate("/cart", { replace: true });
     }
   }, [items, paymentStatus, navigate, location.pathname]);
 
-  // --- Who is this for? ---
+  // Who is this for?
   const [purchaseType, setPurchaseType] = useState("self");
   const isForDeceased = purchaseType === "someone";
 
-  // --- Chapel booking ---
+  // Chapel booking
   const [chapels, setChapels] = useState([]);
   const [bookingEnabled, setBookingEnabled] = useState(false);
   const [selectedChapelId, setSelectedChapelId] = useState("");
@@ -224,7 +235,7 @@ export default function Checkout() {
   const chapelDailyRate = Number(selectedChapel?.daily_rate || 0);
   const chapelBookingTotal = chapelDays * chapelDailyRate;
 
-  // --- Cold storage ---
+  // Cold storage
   const COLD_STORAGE_PER_DAY = 5000;
   const [coldEnabled, setColdEnabled] = useState(false);
   const [coldStartDate, setColdStartDate] = useState("");
@@ -232,7 +243,7 @@ export default function Checkout() {
   const coldValidDays = coldEnabled ? Math.max(1, Number(coldDays) || 1) : 0;
   const coldStorageTotal = coldValidDays * COLD_STORAGE_PER_DAY;
 
-  // --- Totals ---
+  // Totals
   const baseSubtotal = useMemo(
     () => items.reduce((acc, it) => acc + Number(it.price || 0) * Number(it.quantity || 1), 0),
     [items]
@@ -268,15 +279,13 @@ export default function Checkout() {
   const shipping = useMemo(() => (subtotal > 2000 ? 0 : 150), [subtotal]);
   const total = useMemo(() => subtotal + tax + shipping, [subtotal, tax, shipping]);
 
-  // --- Cadaver state ---
+  // Cadaver state
   const [showCadaverModal, setShowCadaverModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
   const [modalErrorMsg, setModalErrorMsg] = useState("");
   const [cadaverDetailsComplete, setCadaverDetailsComplete] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [cadaver, setCadaver] = useState({
-    // Identity
     full_name: "",
     dob: "",
     age: "",
@@ -284,26 +293,22 @@ export default function Checkout() {
     civil_status: "",
     religion: "",
     religion_other: "",
-    // Death
     death_datetime: "",
     place_of_death: "",
     cause_of_death: "",
     cause_of_death_other: "",
-    // Kin
     kin_name: "",
     kin_relation: "",
     kin_relation_other: "",
     kin_mobile: "",
     kin_email: "",
     kin_address: "",
-    // Logistics
     remains_location: "",
     pickup_datetime: "",
     special_handling: false,
     special_handling_reason: "",
     special_handling_other: "",
     special_instructions: "",
-    // Optional info
     occupation: "",
     nationality: "",
     residence: "",
@@ -313,33 +318,27 @@ export default function Checkout() {
   const [claimantIdFile, setClaimantIdFile] = useState(null);
   const [permitFile, setPermitFile] = useState(null);
 
-  // Reset completion flag on toggle
   useEffect(() => {
     if (purchaseType === "self") setCadaverDetailsComplete(false);
   }, [purchaseType]);
 
-  // --- Field handlers + smart constraints ---
   const onChangeField = (e) => {
     const { name, value, type, checked } = e.target;
     const v = type === "checkbox" ? checked : value;
 
-    // DOB: clamp to today + recompute age
     if (name === "dob") {
       const max = todayYMD();
       let nextDob = v;
       if (nextDob && nextDob > max) {
         setModalErrorMsg("Date of birth cannot be in the future.");
         nextDob = max;
-      } else {
-        setModalErrorMsg("");
-      }
+      } else setModalErrorMsg("");
       const newAge = computeAge(nextDob);
       setCadaver((prev) => ({ ...prev, dob: nextDob, age: newAge }));
       setCadaverDetailsComplete(false);
       return;
     }
 
-    // Religion => "Other" toggle
     if (name === "religion") {
       setCadaver((prev) => ({
         ...prev,
@@ -350,26 +349,18 @@ export default function Checkout() {
       return;
     }
 
-    // Death >= DOB (equal allowed)
     if (name === "death_datetime" && cadaver.dob) {
       const death = new Date(v);
       const dob = new Date(cadaver.dob + "T00:00:00");
-      if (!Number.isNaN(death) && death < dob) {
-        setModalErrorMsg("Date & time of death cannot be before the date of birth.");
-      } else {
-        setModalErrorMsg("");
-      }
+      if (!Number.isNaN(death) && death < dob) setModalErrorMsg("Death cannot be before date of birth.");
+      else setModalErrorMsg("");
     }
 
-    // Pickup >= Death (equal allowed)
     if (name === "pickup_datetime" && cadaver.death_datetime) {
       const pick = new Date(v);
       const death = new Date(cadaver.death_datetime);
-      if (!Number.isNaN(pick) && pick < death) {
-        setModalErrorMsg("Pickup cannot be earlier than the date & time of death.");
-      } else {
-        setModalErrorMsg("");
-      }
+      if (!Number.isNaN(pick) && pick < death) setModalErrorMsg("Pickup cannot be earlier than death.");
+      else setModalErrorMsg("");
     }
 
     setCadaver((prev) => ({ ...prev, [name]: v }));
@@ -382,7 +373,7 @@ export default function Checkout() {
     setCadaverDetailsComplete(false);
   };
 
-  // --- Fetch chapels ---
+  // Chapels
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase.from("chapels").select("id,name,daily_rate").order("name");
@@ -390,7 +381,7 @@ export default function Checkout() {
     })();
   }, []);
 
-  // --- Derived dates ---
+  // Derived dates
   const endDate = useMemo(() => {
     if (!startDate || chapelDays < 1) return "";
     const d = new Date(startDate + "T00:00:00");
@@ -405,7 +396,7 @@ export default function Checkout() {
     return d.toISOString().slice(0, 10);
   }, [coldStartDate, coldValidDays]);
 
-  // --- Availability (stub; wire later if needed) ---
+  // Availability (stub)
   const checkAvailability = useCallback(async () => {
     if (!bookingEnabled || !selectedChapelId || !startDate || chapelDays < 1 || !endDate) {
       setIsAvailable(null);
@@ -415,7 +406,6 @@ export default function Checkout() {
     try {
       setCheckingAvailability(true);
       setAvailabilityErr("");
-      // TODO: call chapel availability API here
       setIsAvailable(true);
     } catch {
       setAvailabilityErr("Unable to check availability.");
@@ -430,14 +420,13 @@ export default function Checkout() {
     return () => clearTimeout(t);
   }, [checkAvailability]);
 
-  // --- Validation ---
+  // Validation
   const validateCadaver = useCallback(
     (showErrorInModal = false) => {
       if (showErrorInModal) setModalErrorMsg("");
 
       if (!isForDeceased) return { isValid: true, message: "" };
 
-      // Required fields
       for (const k of cadaverRequiredFields) {
         if (!String(cadaver[k] || "").trim()) {
           const message = `Missing: ${k.replace(/_/g, " ")}`;
@@ -446,28 +435,22 @@ export default function Checkout() {
         }
       }
 
-      // Religion "Other"
       if (cadaver.religion === "Other" && !String(cadaver.religion_other || "").trim()) {
         const message = "Missing: specify 'Other' religion";
         if (showErrorInModal) setModalErrorMsg(message);
         return { isValid: false, message };
       }
-
-      // Cause "Other"
       if (cadaver.cause_of_death === "Other" && !String(cadaver.cause_of_death_other || "").trim()) {
         const message = "Missing: specify 'Other' cause of death";
         if (showErrorInModal) setModalErrorMsg(message);
         return { isValid: false, message };
       }
-
-      // Kin "Other"
       if (cadaver.kin_relation === "Other" && !String(cadaver.kin_relation_other || "").trim()) {
         const message = "Missing: specify 'Other' relationship";
         if (showErrorInModal) setModalErrorMsg(message);
         return { isValid: false, message };
       }
 
-      // DOB <= today
       if (cadaver.dob) {
         const dob = new Date(cadaver.dob + "T00:00:00");
         const now = new Date(todayYMD() + "T00:00:00");
@@ -477,30 +460,24 @@ export default function Checkout() {
           return { isValid: false, message };
         }
       }
-
-      // Death >= DOB
       if (cadaver.dob && cadaver.death_datetime) {
         const dob = new Date(cadaver.dob + "T00:00:00");
         const death = new Date(cadaver.death_datetime);
         if (death < dob) {
-          const message = "Date & time of death cannot be before the date of birth.";
+          const message = "Death cannot be before date of birth.";
           if (showErrorInModal) setModalErrorMsg(message);
           return { isValid: false, message };
         }
       }
-
-      // Pickup >= Death
       if (cadaver.death_datetime && cadaver.pickup_datetime) {
         const death = new Date(cadaver.death_datetime);
         const pick = new Date(cadaver.pickup_datetime);
         if (pick < death) {
-          const message = "Pickup cannot be earlier than the date & time of death.";
+          const message = "Pickup cannot be earlier than death.";
           if (showErrorInModal) setModalErrorMsg(message);
           return { isValid: false, message };
         }
       }
-
-      // Documents
       if (!deathCertFile) {
         const message = "Death certificate file required.";
         if (showErrorInModal) setModalErrorMsg(message);
@@ -517,27 +494,22 @@ export default function Checkout() {
     if (validation.isValid) {
       setCadaverDetailsComplete(true);
       setShowCadaverModal(false);
-      setErrorMsg("");
+      notify("Cadaver details saved locally. Proceed to payment when ready.", "success");
+    } else {
+      notify(validation.message, "error");
     }
   };
 
-  // --- Place order flow ---
+  // Place order
   const handlePlaceOrder = async () => {
-    setErrorMsg("");
-
-    // If at-need and not confirmed, validate before opening modal
+    // Validate inline first
     let validationResult = { isValid: true, message: "" };
     if (isForDeceased && !cadaverDetailsComplete) {
       validationResult = validateCadaver(false);
     }
     if (!validationResult.isValid) {
-      setTimeout(() => {
-        setErrorMsg(
-          (validationResult.message || "Cadaver details incomplete.") +
-            " Click 'Add Details', fill form, then click 'Done'."
-        );
-        setShowCadaverModal(true);
-      }, 0);
+      notify((validationResult.message || "Cadaver details incomplete.") + " Click ‘Add Details’ and complete the form.", "error");
+      setShowCadaverModal(true);
       return;
     }
 
@@ -548,7 +520,6 @@ export default function Checkout() {
 
       setSaving(true);
 
-      // Session
       const {
         data: { session },
         error: sessErr,
@@ -556,7 +527,6 @@ export default function Checkout() {
       if (sessErr || !session) throw new Error("Authentication required.");
       const user = session.user;
 
-      // Upload docs
       const orderTag = `order_pending_${Date.now()}`;
       let death_certificate_url = null;
       let claimant_id_url = null;
@@ -564,7 +534,7 @@ export default function Checkout() {
 
       if (isForDeceased && deathCertFile) {
         death_certificate_url = await uploadDocToStorage(deathCertFile, user.id, orderTag, "death-certificate");
-      } else if (isForDeceased && !deathCertFile) {
+      } else if (isForDeceased) {
         throw new Error("Death certificate required.");
       }
       if (claimantIdFile) {
@@ -574,14 +544,16 @@ export default function Checkout() {
         permit_url = await uploadDocToStorage(permitFile, user.id, orderTag, "permit");
       }
 
-      // Persist cadaver details (for Admin view)
-      const urls = { death_certificate_url, claimant_id_url, permit_url };
+      // Persist cadaver first (user-based; no order_id required)
       let cadaver_details_id = null;
       if (isForDeceased) {
-        cadaver_details_id = await saveCadaverDetails(user.id, orderTag, cadaver, urls);
+        cadaver_details_id = await saveCadaverDetails(user.id, orderTag, cadaver, {
+          death_certificate_url,
+          claimant_id_url,
+          permit_url,
+        });
       }
 
-      // Build line items
       const lineItems = items.map((it) => ({
         product_id: it.id ?? it.product_id ?? null,
         name: it.name,
@@ -590,7 +562,6 @@ export default function Checkout() {
         image_url: it.image_url || null,
       }));
 
-      // Payload to invoice API
       const payload = {
         items: [
           ...lineItems,
@@ -608,12 +579,8 @@ export default function Checkout() {
         total: Number(total.toFixed(2)),
         payment_method: null,
         purchase_type: purchaseType,
-
-        // Linkage fields for admin/backoffice
         order_tag: orderTag,
         cadaver_details_id,
-
-        // Optional echo of cadaver if back-end wants it too
         cadaver: isForDeceased
           ? {
               ...cadaver,
@@ -625,7 +592,6 @@ export default function Checkout() {
               permit_url,
             }
           : null,
-
         chapel_booking:
           bookingEnabled && selectedChapel
             ? {
@@ -636,7 +602,6 @@ export default function Checkout() {
                 chapel_amount: chapelBookingTotal,
               }
             : null,
-
         cold_storage_booking: coldEnabled
           ? { start_date: coldStartDate, end_date: coldEndDate, days: coldValidDays, amount: coldStorageTotal }
           : null,
@@ -659,12 +624,12 @@ export default function Checkout() {
       window.location.href = data.invoice_url;
     } catch (err) {
       console.error("Order placement failed:", err);
-      setErrorMsg(`Error: ${err.message || "Checkout failed."}`);
+      notify(err.message || "Checkout failed.", "error");
       setSaving(false);
     }
   };
 
-  // --- Payment status views ---
+  // Payment status pages
   if (paymentStatus === "success") {
     return (
       <>
@@ -703,7 +668,7 @@ export default function Checkout() {
     );
   }
 
-  // --- View ---
+  // View
   const maxDob = todayYMD();
   const deathMin = cadaver.dob ? `${cadaver.dob}T00:00` : undefined;
 
@@ -866,8 +831,6 @@ export default function Checkout() {
             )}
             <div className="total"><strong>Total</strong><strong>{php(total)}</strong></div>
 
-            {errorMsg && <p className="error">{errorMsg}</p>}
-
             <button className="place-order" onClick={handlePlaceOrder} disabled={saving}>
               {saving ? "Processing..." : "Proceed to Payment"}
             </button>
@@ -897,7 +860,7 @@ export default function Checkout() {
                 </div>
                 <div className="field">
                   <label>Date of Birth</label>
-                  <input type="date" name="dob" max={maxDob} value={cadaver.dob} onChange={onChangeField} />
+                  <input type="date" name="dob" max={todayYMD()} value={cadaver.dob} onChange={onChangeField} />
                 </div>
                 <div className="field">
                   <label>Age</label>
@@ -926,9 +889,7 @@ export default function Checkout() {
                   <label>Religion</label>
                   <select name="religion" value={cadaver.religion} onChange={onChangeField}>
                     <option value="">Select</option>
-                    {RELIGION_OPTIONS.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
+                    {RELIGION_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
                 {cadaver.religion === "Other" && (
@@ -948,7 +909,7 @@ export default function Checkout() {
                     type="datetime-local"
                     name="death_datetime"
                     value={cadaver.death_datetime}
-                    min={deathMin}
+                    min={cadaver.dob ? `${cadaver.dob}T00:00` : undefined}
                     onChange={onChangeField}
                   />
                 </div>
@@ -960,9 +921,7 @@ export default function Checkout() {
                   <label>Cause of Death</label>
                   <select name="cause_of_death" value={cadaver.cause_of_death} onChange={onChangeField}>
                     <option value="">Select cause</option>
-                    {COMMON_CAUSES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                    {COMMON_CAUSES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 {cadaver.cause_of_death === "Other" && (
@@ -984,9 +943,7 @@ export default function Checkout() {
                   <label>Relationship</label>
                   <select name="kin_relation" value={cadaver.kin_relation} onChange={onChangeField}>
                     <option value="">Select relationship</option>
-                    {KIN_RELATION_OPTIONS.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
+                    {KIN_RELATION_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
                 {cadaver.kin_relation === "Other" && (
@@ -1049,9 +1006,7 @@ export default function Checkout() {
                         onChange={onChangeField}
                       >
                         <option value="">Select reason</option>
-                        {SPECIAL_HANDLING_REASONS.map((r) => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
+                        {SPECIAL_HANDLING_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
                       </select>
                     </div>
                     {cadaver.special_handling_reason === "Other" && (
@@ -1101,12 +1056,13 @@ export default function Checkout() {
             </div>
 
             <div className="modal-footer">
-              <button onClick={handleModalDone} className="secondary">Done</button>
+              <button type="button" onClick={handleModalDone} className="secondary">Done</button>
             </div>
           </div>
         </div>
       )}
       <Footer />
+      <Toasts />
     </>
   );
 }
