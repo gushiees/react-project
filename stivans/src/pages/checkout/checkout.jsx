@@ -7,6 +7,11 @@ import { useCart } from "../../contexts/cartContext.jsx";
 import { supabase } from "../../supabaseClient.js";
 import "./checkout.css";
 
+// 🔔 Use your existing toast
+// If your project wraps Toastify or a custom lib, make sure this import matches your setup.
+// Example (Toastify): import { toast } from "react-toastify";
+import { toast } from "react-toastify";
+
 // Resolve API base (Vite + Node envs)
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE) ||
@@ -82,24 +87,6 @@ const RELIGION_OPTIONS = [
   "Other",
 ];
 
-// -------- Toasts (local) --------
-function useToasts() {
-  const [toasts, setToasts] = useState([]);
-  const notify = useCallback((message, type = "error", timeout = 4000) => {
-    const id = `${Date.now()}-${Math.random()}`;
-    setToasts((t) => [...t, { id, type, message }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), timeout);
-  }, []);
-  const Toasts = () => (
-    <div className="toast-container">
-      {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.type}`}>{t.message}</div>
-      ))}
-    </div>
-  );
-  return { notify, Toasts };
-}
-
 // -------- Storage upload (bucket: cadaver-docs) --------
 async function uploadDocToStorage(file, userId, orderTag, docType) {
   if (!file) return null;
@@ -109,7 +96,7 @@ async function uploadDocToStorage(file, userId, orderTag, docType) {
     .from("cadaver-docs")
     .upload(path, file, { upsert: true, contentType: file.type || "application/octet-stream" });
   if (error) throw new Error(`${docType} upload failed: ${error.message}`);
-  return data?.path || path;
+  return data?.path || path; // store path in DB; backend can generate public URL if needed
 }
 
 // -------- Persist cadaver (user-based ownership) --------
@@ -121,8 +108,8 @@ async function saveCadaverDetails(userId, orderTag, cadaver, urls) {
     cadaver.kin_relation === "Other" ? (cadaver.kin_relation_other || "Other") : cadaver.kin_relation;
 
   const record = {
-    user_id: userId,               // <- key change: user-based ownership
-    order_tag: orderTag,           // optional stitching; order may not exist yet
+    user_id: userId,               // user ownership (RLS)
+    order_tag: orderTag,           // stitch later to order if needed
     full_name: cadaver.full_name,
     dob: cadaver.dob || null,
     age: cadaver.age ? Number(cadaver.age) : null,
@@ -190,7 +177,6 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { clearCart } = useCart();
-  const { notify, Toasts } = useToasts();
 
   // Payment status
   const [paymentStatus, setPaymentStatus] = useState(null);
@@ -332,6 +318,7 @@ export default function Checkout() {
       if (nextDob && nextDob > max) {
         setModalErrorMsg("Date of birth cannot be in the future.");
         nextDob = max;
+        toast.error("Date of birth adjusted to today (cannot be in the future).");
       } else setModalErrorMsg("");
       const newAge = computeAge(nextDob);
       setCadaver((prev) => ({ ...prev, dob: nextDob, age: newAge }));
@@ -406,7 +393,7 @@ export default function Checkout() {
     try {
       setCheckingAvailability(true);
       setAvailabilityErr("");
-      setIsAvailable(true);
+      setIsAvailable(true); // TODO: wire to your availability API
     } catch {
       setAvailabilityErr("Unable to check availability.");
       setIsAvailable(null);
@@ -494,9 +481,9 @@ export default function Checkout() {
     if (validation.isValid) {
       setCadaverDetailsComplete(true);
       setShowCadaverModal(false);
-      notify("Cadaver details saved locally. Proceed to payment when ready.", "success");
+      toast.success("Cadaver details saved locally. Proceed to payment when ready.");
     } else {
-      notify(validation.message, "error");
+      toast.error(validation.message);
     }
   };
 
@@ -508,7 +495,7 @@ export default function Checkout() {
       validationResult = validateCadaver(false);
     }
     if (!validationResult.isValid) {
-      notify((validationResult.message || "Cadaver details incomplete.") + " Click ‘Add Details’ and complete the form.", "error");
+      toast.error((validationResult.message || "Cadaver details incomplete.") + " Click ‘Add Details’ and complete the form.");
       setShowCadaverModal(true);
       return;
     }
@@ -526,6 +513,7 @@ export default function Checkout() {
       } = await supabase.auth.getSession();
       if (sessErr || !session) throw new Error("Authentication required.");
       const user = session.user;
+      const accessToken = session?.access_token;
 
       const orderTag = `order_pending_${Date.now()}`;
       let death_certificate_url = null;
@@ -562,6 +550,7 @@ export default function Checkout() {
         image_url: it.image_url || null,
       }));
 
+      // 🔐 Include Authorization header (fixes 401 "No auth token")
       const payload = {
         items: [
           ...lineItems,
@@ -580,38 +569,19 @@ export default function Checkout() {
         payment_method: null,
         purchase_type: purchaseType,
         order_tag: orderTag,
-        cadaver_details_id,
-        cadaver: isForDeceased
-          ? {
-              ...cadaver,
-              age: cadaver.age ? Number(cadaver.age) : null,
-              death_datetime: cadaver.death_datetime,
-              pickup_datetime: cadaver.pickup_datetime,
-              death_certificate_url,
-              claimant_id_url,
-              permit_url,
-            }
-          : null,
-        chapel_booking:
-          bookingEnabled && selectedChapel
-            ? {
-                chapel_id: selectedChapel.id,
-                start_date: startDate,
-                end_date: endDate,
-                days: chapelDays,
-                chapel_amount: chapelBookingTotal,
-              }
-            : null,
-        cold_storage_booking: coldEnabled
-          ? { start_date: coldStartDate, end_date: coldEndDate, days: coldValidDays, amount: coldStorageTotal }
-          : null,
+        cadaver_details_id, // 👉 modern way (backend should use this)
+        // cadaver: {...} // optional legacy support: backend can ignore this now
       };
 
       const res = await fetch(`${API_BASE}/api/xendit/create-invoice`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
+
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(`Invoice API error: ${res.status} ${txt}`);
@@ -624,7 +594,7 @@ export default function Checkout() {
       window.location.href = data.invoice_url;
     } catch (err) {
       console.error("Order placement failed:", err);
-      notify(err.message || "Checkout failed.", "error");
+      toast.error(err.message || "Checkout failed.");
       setSaving(false);
     }
   };
@@ -669,9 +639,6 @@ export default function Checkout() {
   }
 
   // View
-  const maxDob = todayYMD();
-  const deathMin = cadaver.dob ? `${cadaver.dob}T00:00` : undefined;
-
   return (
     <>
       <Header />
@@ -849,6 +816,7 @@ export default function Checkout() {
             </div>
 
             <div className="modal-body">
+              {/* Keep minimal inline error for the modal itself (primary notifications via toasts) */}
               {modalErrorMsg && <p className="error" style={{ marginBottom: "0.75rem" }}>{modalErrorMsg}</p>}
 
               {/* Identity */}
@@ -1062,7 +1030,6 @@ export default function Checkout() {
         </div>
       )}
       <Footer />
-      <Toasts />
     </>
   );
 }
