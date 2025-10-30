@@ -1,567 +1,28 @@
-/* ================================
-   Checkout Page
-   ================================ */
-
-.checkout-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: clamp(16px, 2.5vw, 28px);
-}
-
-.checkout-page h1 {
-  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
-  font-weight: 800;
-  margin-bottom: 18px;
-}
-
-/* Empty state */
-.empty-checkout {
-  background: #f8fafc;
-  border: 1px solid #e5eaf1;
-  border-radius: 12px;
-  padding: 28px;
-  text-align: center;
-}
-.empty-checkout button {
-  margin-top: 10px;
-}
-
-/* ================================
-   Grid
-   ================================ */
-
-.checkout-grid {
-  display: grid;
-  grid-template-columns: 1.8fr 1fr;
-  gap: clamp(16px, 2.5vw, 24px);
-  align-items: start;
-}
-
-@media (max-width: 960px) {
-  .checkout-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ================================
-   Left: Items ONLY
-   ================================ */
-
-.co-items {
-  background: #ffffff;
-  border: 1px solid #e6eaf1;
-  border-radius: 12px;
-  padding: clamp(14px, 2vw, 20px);
-}
-
-.co-item {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: 14px;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f2f7;
-}
-.co-item:last-child {
-  border-bottom: none;
-}
-
-.co-item img {
-  width: 92px;
-  height: 92px;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid #e8eef7;
-  background: #fafbfc;
-}
-
-.co-item-info h3 {
-  font-size: 0.98rem;
-  font-weight: 700;
-  margin: 0 0 4px;
-}
-.co-item-info .price {
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 2px;
-}
-.co-item-info .qty {
-  color: #6b7280;
-  font-size: 0.92rem;
-  margin: 0;
-}
-
-/* ================================
-   Right: Summary + Choices
-   ================================ */
-
-.co-summary {
-  position: sticky;
-  top: 16px;
-  background: #ffffff;
-  border: 1px solid #e6eaf1;
-  border-radius: 12px;
-  padding: clamp(14px, 2vw, 20px);
-  box-shadow: 0 2px 12px rgba(17, 24, 39, 0.04);
-}
-
-.co-summary h2 {
-  font-size: 1.1rem;
-  font-weight: 800;
-  margin: 2px 0 12px;
-}
-
-/* Card blocks inside summary (who-for, chapel, etc.) */
-.card-block {
-  border: 1px solid #eef1f6;
-  background: #fbfcff;
-  border-radius: 10px;
-  padding: 12px;
-  margin: 0 0 12px;
-}
-
-.block-title {
-  font-size: 0.92rem;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-
-/* Radios */
-.who-options {
-  display: grid;
-  gap: 8px;
-}
-.radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
-  cursor: pointer;
-}
-.radio input {
-  width: 16px;
-  height: 16px;
-}
-
-/* Inline cadaver button */
-.cadaver-btn.inline {
-  margin-top: 10px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid #c7d2fe;
-  background: #eef2ff;
-  color: #4338ca;
-  font-weight: 700;
-  cursor: pointer;
-}
-.cadaver-btn.inline:hover { background: #e0e7ff; }
-
-/* Switch row */
-.switch-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.95rem;
-  margin-bottom: 10px;
-}
-
-/* Tight grid for summary form controls */
-.row-grid.tight {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-@media (max-width: 820px) {
-  .row-grid.tight { grid-template-columns: 1fr; }
-}
-
-/* Fields */
-.field label {
-  display: block;
-  font-size: 0.88rem;
-  color: #374151;
-  margin-bottom: 6px;
-  font-weight: 600;
-}
-.field input,
-.field select,
-.field textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #dfe4ec;
-  border-radius: 10px;
-  background: #fff;
-  font-size: 0.95rem;
-  outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
-}
-.field input:focus,
-.field select:focus,
-.field textarea:focus {
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 4px rgba(147, 197, 253, 0.25);
-}
-
-/* Chapel availability */
-.availability {
-  min-height: 22px;
-  font-size: 0.92rem;
-  margin: 6px 0 8px;
-}
-.availability .error {
-  display: inline-block;
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fee2e2;
-  border-radius: 8px;
-  padding: 4px 8px;
-}
-.availability .ok {
-  display: inline-block;
-  background: #ecfeff;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
-  border-radius: 8px;
-  padding: 4px 8px;
-}
-
-/* Add-on totals (inside summary) */
-.addon-totals .row,
-.co-summary .row,
-.co-summary .total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  font-size: 0.98rem;
-}
-.co-summary .row span:first-child { color: #6b7280; }
-
-.co-summary .total {
-  margin-top: 6px;
-  border-top: 1px dashed #e6eaf1;
-  padding-top: 12px;
-  font-size: 1.05rem;
-}
-
-/* Error under totals */
-.error {
-  margin-top: 10px;
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 1px solid #fee2e2;
-  border-radius: 10px;
-  padding: 8px 10px;
-}
-
-/* CTA Buttons */
-.place-order {
-  width: 100%;
-  margin-top: 12px;
-  padding: 12px 16px;
-  border: none;
-  border-radius: 12px;
-  background: #111827;
-  color: #fff;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform .05s ease, opacity .2s ease;
-}
-.place-order:hover { opacity: .92; }
-.place-order:active { transform: translateY(1px); }
-
-.back-cart {
-  display: inline-block;
-  margin-top: 10px;
-  text-decoration: none;
-  color: #6b7280;
-}
-.back-cart:hover { text-decoration: underline; }
-
-/* ================================
-   Cadaver Modal - Professional Design
-   ================================ */
-
+/* ===== Cadaver Modal (Revised) ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  display: grid;
-  place-items: center;
-  z-index: 60;
-  padding: 16px;
-}
-
-.modal {
-  width: min(900px, 100%);
-  background: #ffffff;
-  border-radius: 8px;
-  border-top: 4px solid #FFD700; /* Yellow accent at top */
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  animation: modalIn 0.2s ease-out;
-}
-
-@keyframes modalIn {
-  from { transform: translateY(10px); opacity: 0; }
-  to   { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header {
+  background: rgba(17, 17, 17, 0.45);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  background: #111827; /* Black header */
-  border-bottom: 1px solid #e6eaf1;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #ffffff; /* White text on black */
-}
-
-.modal-header .close {
-  border: none;
-  background: transparent;
-  font-size: 1.6rem;
-  line-height: 1;
-  padding: 4px 8px;
-  cursor: pointer;
-  color: #ffffff;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.modal-header .close:hover { 
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.modal-body {
-  padding: 24px;
-  background: #ffffff;
-  color: #111827;
-}
-
-.row-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.row-grid .col-2 { 
-  grid-column: span 2; 
-}
-
-@media (max-width: 820px) {
-  .row-grid { 
-    grid-template-columns: 1fr; 
-  }
-  .row-grid .col-2 { 
-    grid-column: auto; 
-  }
-}
-
-.field label {
-  display: block;
-  font-size: 0.9rem;
-  color: #111827;
-  margin-bottom: 6px;
-  font-weight: 600;
-}
-
-.field input,
-.field select,
-.field textarea {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #ffffff;
-  font-size: 0.95rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.field input:focus,
-.field select:focus,
-.field textarea:focus {
-  border-color: #FFD700;
-  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
-}
-
-.docs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #f3f4f6;
-}
-
-@media (max-width: 820px) {
-  .docs { 
-    grid-template-columns: 1fr; 
-  }
-}
-
-.modal-footer {
-  padding: 16px 24px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  border-top: 1px solid #f3f4f6;
-  background: #f9fafb;
-}
-
-.modal-footer .secondary {
-  padding: 12px 20px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #111827;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.modal-footer .secondary:hover { 
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-/* Section dividers for better organization */
-.section-divider {
-  margin: 24px 0 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f3f4f6;
-  font-weight: 700;
-  color: #111827;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-}
-
-.section-divider::before {
-  content: '';
-  display: inline-block;
-  width: 4px;
-  height: 16px;
-  background-color: #FFD700;
-  margin-right: 8px;
-  border-radius: 2px;
-}
-
-/* Required field indicator */
-.field label::after {
-  content: attr(data-required);
-  color: #111827;
-  margin-left: 4px;
-}
-
-/* Document upload styling */
-.docs .field {
-  position: relative;
-}
-
-.docs .field input[type="file"] {
-  position: absolute;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-}
-
-.docs .field label {
-  display: block;
-  padding: 12px;
-  border: 1px dashed #d1d5db;
-  border-radius: 6px;
-  background: #f9fafb;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 0;
-}
-
-.docs .field label:hover {
-  border-color: #FFD700;
-  background: #fffef0;
-}
-
-/* Form validation styling */
-.field input:invalid,
-.field select:invalid {
-  border-color: #111827;
-}
-
-.field .error-message {
-  color: #ef4444;
-  font-size: 0.85rem;
-  margin-top: 4px;
-}
-
-/* Document upload styling */
-.docs .field {
-  position: relative;
-}
-
-.docs .field input[type="file"] {
-  position: absolute;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-}
-
-.docs .field label {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 20px 12px;
-  border: 1px dashed #d1d5db;
-  border-radius: 6px;
-  background: #f9fafb;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 0;
-  min-height: 100px;
+  padding: 20px;
+  z-index: 1000;
 }
 
-.docs .field label:hover {
-  border-color: #FFD700;
-  background: #fffef0;
-}
-
-/* Upload icon styling */
-.upload-icon {
-  width: 32px;
-  height: 32px;
-  margin-bottom: 8px;
-  opacity: 0.6;
-}
-
-.docs .field label:hover .upload-icon {
-  opacity: 1;
-}
-
-/* Compact Cadaver Modal UI */
 .modal.compact {
-  width: min(900px, 92vw);
-  max-height: 88vh;
-  overflow: auto;
+  width: min(960px, 94vw);
+  height: 80vh;              /* fit viewport height as requested */
+  overflow: hidden;          /* header/footer fixed; body scrolls */
   border-radius: 16px;
-  padding: 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
 }
 
 .modal-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -570,10 +31,14 @@
 }
 
 .modal-body {
-  padding: 14px 16px 4px;
+  flex: 1 1 auto;
+  overflow-y: auto;          /* only the body scrolls */
+  padding: 14px 16px 6px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-footer {
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -581,25 +46,24 @@
   border-top: 1px solid #eee;
 }
 
+/* Section labels */
 .section-divider {
-  margin: 14px 0 10px;
+  margin: 12px 0 10px;
   font-weight: 600;
   font-size: 14px;
   color: #222;
-  border-left: 3px solid #caa66b; /* gold accent */
+  border-left: 3px solid #caa66b;
   padding-left: 8px;
 }
 
+/* Compact grids */
 .row-grid.two {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px 12px;
 }
-
 @media (max-width: 720px) {
-  .row-grid.two {
-    grid-template-columns: 1fr;
-  }
+  .row-grid.two { grid-template-columns: 1fr; }
 }
 
 .mini-grid {
@@ -607,23 +71,19 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px 12px;
 }
-@media (max-width: 920px) {
-  .mini-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+@media (max-width: 1024px) {
+  .mini-grid { grid-template-columns: 1fr 1fr; }
 }
-@media (max-width: 520px) {
-  .mini-grid {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 560px) {
+  .mini-grid { grid-template-columns: 1fr; }
 }
 
+/* Fields */
 .field {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-
 .field input,
 .field select,
 .field textarea {
@@ -632,6 +92,7 @@
   padding: 10px 12px;
   font-size: 14px;
   outline: none;
+  min-height: 38px;
 }
 .field input:focus,
 .field select:focus,
@@ -646,25 +107,19 @@
   font-weight: 600;
 }
 
+/* Docs grid */
 .docs.three {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 10px 12px;
 }
 @media (max-width: 720px) {
-  .docs.three {
-    grid-template-columns: 1fr;
-  }
+  .docs.three { grid-template-columns: 1fr; }
 }
+.file-note { font-size: 12px; color: #666; }
 
-.file-note {
-  font-size: 12px;
-  color: #666;
-}
-
-.cadaver-btn.inline {
-  margin-top: 6px;
-}
+/* Buttons + statuses */
+.cadaver-btn.inline { margin-top: 6px; }
 .cadaver-btn.inline.success {
   border: 1px solid #2e7d32;
   color: #2e7d32;
@@ -673,3 +128,5 @@
 .ok { color: #2e7d32; }
 .info { color: #2b6cb0; }
 .error { color: #b00020; }
+
+/* Optional: prevent page jump when modal open (if you add body.lock later) */
