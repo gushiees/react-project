@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "server": "https://deno.land/std@0.224.0/http/server.ts",
+    "supabase": "jsr:@supabase/supabase-js@2",
+    "crypto": "https://deno.land/std@0.224.0/crypto/mod.ts"
+  }
+}

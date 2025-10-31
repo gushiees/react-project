@@ -573,25 +573,28 @@ export default function Checkout() {
         // cadaver: {...} // optional legacy support: backend can ignore this now
       };
 
-      const res = await fetch(`${API_BASE}/api/xendit/create-invoice`, {
+            // --- Call Supabase Edge Function to create invoice ---
+      const res = await fetch(`${API_BASE}/create-invoice`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          "Authorization": `Bearer ${session?.access_token ?? ""}`, // pass the user's JWT
         },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Invoice API error: ${res.status} ${txt}`);
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Invoice API error: ${res.status} ${txt || res.statusText}`);
       }
+
       const data = await res.json();
-      if (!data || !data.invoice_url) throw new Error("Invalid response from invoice API.");
+      if (!data?.invoice_url) throw new Error("Invalid response from invoice API.");
 
       clearCart();
       sessionStorage.removeItem("checkout.items");
       window.location.href = data.invoice_url;
+
     } catch (err) {
       console.error("Order placement failed:", err);
       toast.error(err.message || "Checkout failed.");

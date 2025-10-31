@@ -1,0 +1,12 @@
+# supabase/config.toml
+
+# Per-function configuration only (no global import_map)
+
+[functions.create-invoice]
+verify_jwt = true
+# path is relative to THIS file (supabase/config.toml)
+import_map = "./functions/import_map.json"
+
+[functions.xendit-webhook]
+verify_jwt = false
+import_map = "./functions/import_map.json"
