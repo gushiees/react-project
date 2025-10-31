@@ -1019,7 +1019,7 @@ export default function Checkout() {
                   {claimantIdFile && <small className="file-note">{claimantIdFile.name}</small>}
                 </div>
                 <div className="field">
-                  <label>Transfer / Burial Permit</label>
+                  <label>Transfer / Burial Permits</label>
                   <input type="file" accept="image/*,.pdf" onChange={onFileChange(setPermitFile)} />
                   {permitFile && <small className="file-note">{permitFile.name}</small>}
                 </div>
@@ -1036,3 +1036,4 @@ export default function Checkout() {
     </>
   );
 }
+//test launch 
