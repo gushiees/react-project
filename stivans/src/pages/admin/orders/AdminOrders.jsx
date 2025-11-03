@@ -1,7 +1,6 @@
-// src/pages/admin/orders/AdminOrders.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { FaSearch, FaSync, FaTruck, FaCheck, FaSave, FaChevronDown, FaChevronRight } from "react-icons/fa";
+import { FaSearch, FaSync, FaTruck, FaCheck, FaSave, FaHashtag, FaFileMedical } from "react-icons/fa";
 import { supabase } from "../../../supabaseClient";
 import "./AdminOrders.css";
 
@@ -23,15 +22,15 @@ export default function AdminOrders() {
   const [tab, setTab] = useState("unshipped");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("created_at");
-  const [sortDir, setSortDir] = useState("asc"); // FCFS default
+  const [sortDir, setSortDir] = useState("asc"); // FCFS
   const [page, setPage] = useState(0);
 
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // per-order expanded details cache: { [orderId]: { items:[], cadavers:[], loading:false, open:true } }
-  const [expanded, setExpanded] = useState({});
+  // cadaver modal
+  const [cadaverOpenId, setCadaverOpenId] = useState(null);
 
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -46,15 +45,29 @@ export default function AdminOrders() {
   async function fetchOrders() {
     try {
       setLoading(true);
+
+      // IMPORTANT:
+      //  - We embed order_items (with product) so items show under each order.
+      //  - We embed cadaver_details using the specific FK name to avoid ambiguity:
+      //    'cadaver_details!cadaver_details_order_id_fkey'
       let q = supabase
         .from("orders")
-        .select("id, created_at, user_id, external_id, total, status, tracking_number, shipping_carrier, xendit_invoice_url", { count: "exact" });
+        .select(`
+          id, created_at, user_id, external_id, total, status, tracking_number, shipping_carrier, xendit_invoice_url,
+          order_items:order_items (
+            id, quantity, unit_price,
+            product:products ( id, name, image_url, price )
+          ),
+          cadavers:cadaver_details!cadaver_details_order_id_fkey (
+            id, full_name, dob, relation, religion, pickup_at, death_certificate_url
+          )
+        `, { count: "exact" });
 
       if (statusFilter) q = q.eq("status", statusFilter.status);
 
       if (search?.trim()) {
-        const s = search.trim();
-        q = q.or(`external_id.ilike.%${s}%,tracking_number.ilike.%${s}%`);
+        const qstr = search.trim();
+        q = q.or(`external_id.ilike.%${qstr}%,tracking_number.ilike.%${qstr}%`);
       }
 
       q = q.order(sortField, { ascending: sortDir === "asc", nullsFirst: true });
@@ -117,7 +130,7 @@ export default function AdminOrders() {
       });
       if (error) throw error;
       setRows(prev => prev.map(r => (r.id === row.id ? { ...r, tracking_number: data } : r)));
-      toast.success(`Tracking: ${data}`);
+      toast.success(`Tracking assigned: ${data}`);
     } catch (err) {
       console.error(err);
       toast.error(err.message || "Failed to generate tracking");
@@ -133,48 +146,6 @@ export default function AdminOrders() {
     const d = new Date(iso);
     return d.toLocaleString("en-PH", { timeZone: "Asia/Manila" });
   }
-
-  function setRowLocal(orderId, patch) {
-    setRows(prev =>
-      prev.map(r => (r.id === orderId ? { ...r, ...patch } : r))
-    );
-  }
-
-  async function toggleExpand(orderId) {
-    const ex = expanded[orderId];
-    // close
-    if (ex?.open) {
-      setExpanded(prev => ({ ...prev, [orderId]: { ...ex, open: false } }));
-      return;
-    }
-    // open — lazy fetch if not loaded
-    setExpanded(prev => ({ ...prev, [orderId]: { ...(ex || {}), open: true, loading: true } }));
-    try {
-      // items
-      const [{ data: items, error: itemsErr }, { data: cadavers, error: cadErr }] = await Promise.all([
-        supabase.from("order_items").select("id, product_id, name, price, quantity, image_url").eq("order_id", orderId).order("id", { ascending: true }),
-        // NOTE: select('*') so we don't break on column-name mismatches (you asked to rely on *actual* columns)
-        supabase.from("cadaver_details").select("*").eq("order_id", orderId).order("created_at", { ascending: true }),
-      ]);
-      if (itemsErr) throw itemsErr;
-      if (cadErr) throw cadErr;
-
-      setExpanded(prev => ({
-        ...prev,
-        [orderId]: { open: true, loading: false, items: items || [], cadavers: cadavers || [] },
-      }));
-    } catch (err) {
-      console.error(err);
-      toast.error(err.message || "Failed to load order details");
-      setExpanded(prev => ({ ...prev, [orderId]: { ...(prev[orderId] || {}), open: true, loading: false } }));
-    }
-  }
-
-  // helpers to read unknown cadaver columns safely
-  const getFirst = (obj, keys, fallback = "-") => {
-    for (const k of keys) if (obj && obj[k] != null && String(obj[k]).trim() !== "") return obj[k];
-    return fallback;
-  };
 
   return (
     <div className="admin-orders">
@@ -224,7 +195,6 @@ export default function AdminOrders() {
         <table className="ao-table">
           <thead>
             <tr>
-              <th></th>
               <th>Date</th>
               <th>Order</th>
               <th>Total</th>
@@ -236,162 +206,165 @@ export default function AdminOrders() {
           </thead>
           <tbody>
             {rows.length === 0 && !loading && (
-              <tr><td colSpan={8} style={{ textAlign: "center", padding: 24 }}>No orders</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: "center", padding: 24 }}>No orders</td></tr>
             )}
 
-            {rows.map(row => {
-              const ex = expanded[row.id];
-              return (
-                <React.Fragment key={row.id}>
-                  <tr>
-                    <td className="ao-expander-td">
-                      <button className="ao-expander" onClick={() => toggleExpand(row.id)} title="Expand">
-                        {ex?.open ? <FaChevronDown /> : <FaChevronRight />}
-                      </button>
-                    </td>
-                    <td>{fmtDate(row.created_at)}</td>
-                    <td>
-                      <div className="ao-orderid">
-                        <div>Ext: <code>{row.external_id}</code></div>
-                        {row.xendit_invoice_url && (
-                          <a href={row.xendit_invoice_url} target="_blank" rel="noreferrer">Invoice</a>
-                        )}
-                      </div>
-                    </td>
-                    <td>{fmtPhp(Number(row.total || 0))}</td>
-                    <td>
-                      <select
-                        value={row.status || ""}
-                        onChange={(e) => handleStatusChange(row, e.target.value)}
-                      >
-                        <option value="pending">pending</option>
-                        <option value="paid">paid</option>
-                        <option value="in_transit">in_transit</option>
-                        <option value="shipped">shipped</option>
-                        <option value="canceled">canceled</option>
-                      </select>
-                    </td>
-                    <td>
-                      <input
-                        value={row.shipping_carrier || ""}
-                        onChange={(e) => setRowLocal(row.id, { shipping_carrier: e.target.value })}
-                        placeholder="LBC / J&T / Ninja"
-                      />
-                    </td>
-                    <td>
-                      <div className="ao-track">
-                        <input
-                          value={row.tracking_number || ""}
-                          onChange={(e) => setRowLocal(row.id, { tracking_number: e.target.value })}
-                          placeholder="YYMMDD00001"
-                        />
-                        <button className="ao-gen" title="Generate tracking"
-                          onClick={() => handleGenerateTracking(row)}>
-                          <FaTruck />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="ao-actions-td">
-                      <button className="ao-save" onClick={() => handleSaveShipping(row)}>
-                        <FaSave /> Save
-                      </button>
-                      {row.status !== "shipped" && (
-                        <button className="ao-markshipped" onClick={() => handleStatusChange(row, "shipped")}>
-                          <FaCheck /> Mark Shipped
-                        </button>
+            {rows.map(row => (
+              <React.Fragment key={row.id}>
+                <tr>
+                  <td>{fmtDate(row.created_at)}</td>
+                  <td>
+                    <div className="ao-orderid">
+                      <div>Ext: <code>{row.external_id}</code></div>
+                      {row.xendit_invoice_url && (
+                        <a href={row.xendit_invoice_url} target="_blank" rel="noreferrer">Invoice</a>
                       )}
-                    </td>
-                  </tr>
+                    </div>
+                  </td>
+                  <td>{fmtPhp(Number(row.total || 0))}</td>
+                  <td>
+                    <select
+                      value={row.status || ""}
+                      onChange={(e) => handleStatusChange(row, e.target.value)}
+                    >
+                      {/* Payment status is separate; this is shipment status */}
+                      <option value="pending">pending</option>
+                      <option value="paid">paid</option>
+                      <option value="in_transit">in_transit</option>
+                      <option value="shipped">shipped</option>
+                      <option value="canceled">canceled</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      value={row.shipping_carrier || ""}
+                      onChange={(e) =>
+                        setRows(prev => prev.map(p =>
+                          p.id === row.id ? { ...p, shipping_carrier: e.target.value } : p
+                        ))
+                      }
+                      placeholder="LBC / J&T / Ninja"
+                    />
+                  </td>
+                  <td>
+                    <div className="ao-track">
+                      <FaHashtag style={{ opacity: 0.7 }} />
+                      <input
+                        value={row.tracking_number || ""}
+                        onChange={(e) =>
+                          setRows(prev => prev.map(p =>
+                            p.id === row.id ? { ...p, tracking_number: e.target.value } : p
+                          ))
+                        }
+                        placeholder="YYMMDD00001"
+                      />
+                      <button className="ao-gen" title="Generate tracking"
+                        onClick={() => handleGenerateTracking(row)}>
+                        <FaTruck />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="ao-actions-td">
+                    <button className="ao-save" onClick={() => handleSaveShipping(row)}>
+                      <FaSave /> Save
+                    </button>
+                    {row.status !== "shipped" && (
+                      <button className="ao-markshipped" onClick={() => handleStatusChange(row, "shipped")}>
+                        <FaCheck /> Mark Shipped
+                      </button>
+                    )}
+                    {/* Cadaver details modal trigger */}
+                    <button className="ao-cadaver-btn" onClick={() => setCadaverOpenId(row.id)}>
+                      <FaFileMedical /> Cadaver Details
+                    </button>
+                  </td>
+                </tr>
 
-                  {/* Expanded details row */}
-                  {ex?.open && (
-                    <tr className="ao-expand-row">
-                      <td></td>
-                      <td colSpan={7}>
-                        {ex.loading ? (
-                          <div className="ao-expand-loading">Loading details…</div>
-                        ) : (
-                          <div className="ao-expand-panels">
-                            {/* Items panel */}
-                            <div className="ao-panel">
-                              <div className="ao-panel-title">Items</div>
-                              {ex.items?.length ? (
-                                <table className="ao-subtable">
-                                  <thead>
-                                    <tr>
-                                      <th>#</th>
-                                      <th>Name</th>
-                                      <th>Qty</th>
-                                      <th>Price</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {ex.items.map((it, i) => (
-                                      <tr key={it.id || i}>
-                                        <td>{i + 1}</td>
-                                        <td>{it.name || it.product_id || "-"}</td>
-                                        <td>{it.quantity ?? "-"}</td>
-                                        <td>{typeof it.price === "number" ? fmtPhp(it.price) : "-"}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              ) : (
-                                <div className="ao-empty">No items</div>
-                              )}
-                            </div>
-
-                            {/* Cadavers panel */}
-                            <div className="ao-panel">
-                              <div className="ao-panel-title">Cadaver Details</div>
-                              {ex.cadavers?.length ? (
-                                <div className="ao-cadavers">
-                                  {ex.cadavers.map((c, idx) => {
-                                    const fullName = getFirst(c, ["deceased_name","full_name","name"]);
-                                    const dob      = getFirst(c, ["date_of_birth","dob","birth_date"]);
-                                    const dod      = getFirst(c, ["date_of_death","death_date","dod"]);
-                                    const pickup   = getFirst(c, ["pickup_datetime","pickup_time","pickup_date"]);
-                                    const relation = getFirst(c, ["kin_relation","claimant_relation","relation"]);
-                                    const religion = getFirst(c, ["religion"]);
-                                    // show any *_url links
-                                    const fileKeys = Object.keys(c || {}).filter(k => k.endsWith("_url") && c[k]);
-
-                                    return (
-                                      <div className="ao-cadaver-card" key={c.id || idx}>
-                                        <div className="ao-cadaver-grid">
-                                          <div><span className="ao-k">Name</span><span className="ao-v">{String(fullName)}</span></div>
-                                          <div><span className="ao-k">DOB</span><span className="ao-v">{String(dob)}</span></div>
-                                          <div><span className="ao-k">DOD</span><span className="ao-v">{String(dod)}</span></div>
-                                          <div><span className="ao-k">Pickup</span><span className="ao-v">{String(pickup)}</span></div>
-                                          <div><span className="ao-k">Relation</span><span className="ao-v">{String(relation)}</span></div>
-                                          <div><span className="ao-k">Religion</span><span className="ao-v">{String(religion)}</span></div>
-                                        </div>
-
-                                        {fileKeys.length > 0 && (
-                                          <div className="ao-files">
-                                            {fileKeys.map(k => (
-                                              <a key={k} href={c[k]} target="_blank" rel="noreferrer" className="ao-filelink">
-                                                {k.replace(/_/g, " ")}
-                                              </a>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                {/* Expanded Row: ITEMS (grouped per order) */}
+                <tr>
+                  <td colSpan={7}>
+                    <div className="ao-subpanel">
+                      <div className="ao-subcol">
+                        <h4>Items</h4>
+                        <div className="ao-items">
+                          {(row.order_items?.length ?? 0) === 0 && (
+                            <div className="ao-noitems">No items</div>
+                          )}
+                          {(row.order_items ?? []).map(oi => {
+                            const p = oi.product || {};
+                            const qty = Number(oi.quantity || 0);
+                            const unit = Number(oi.unit_price ?? p.price ?? 0);
+                            const line = qty * unit;
+                            return (
+                              <div key={oi.id} className="ao-item">
+                                {p.image_url && (
+                                  <img src={p.image_url} alt={p.name || "Product"} />
+                                )}
+                                <div className="ao-item-meta">
+                                  <div className="ao-item-name">{p.name || "Product"}</div>
+                                  <div className="ao-item-sub">
+                                    {qty} × {fmtPhp(unit)} = <strong>{fmtPhp(line)}</strong>
+                                  </div>
                                 </div>
-                              ) : (
-                                <div className="ao-empty">No cadaver details</div>
-                              )}
-                            </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* quick glance cadaver summary (first record) */}
+                      <div className="ao-subcol">
+                        <h4>Cadaver Details</h4>
+                        {(row.cadavers?.length ?? 0) === 0 ? (
+                          <div className="ao-nocadaver">No cadaver details</div>
+                        ) : (
+                          <div className="ao-cadaver-one">
+                            <div><strong>Name</strong> {row.cadavers[0].full_name}</div>
+                            <div><strong>DOB</strong> {row.cadavers[0].dob || "-"}</div>
+                            <div><strong>Relation</strong> {row.cadavers[0].relation || "-"}</div>
+                            <div><strong>Religion</strong> {row.cadavers[0].religion || "-"}</div>
+                            {row.cadavers[0].pickup_at && <div><strong>Pickup</strong> {fmtDate(row.cadavers[0].pickup_at)}</div>}
+                            {row.cadavers[0].death_certificate_url && (
+                              <div><a href={row.cadavers[0].death_certificate_url} target="_blank" rel="noreferrer">death certificate url</a></div>
+                            )}
                           </div>
                         )}
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Cadaver Details Modal */}
+                {cadaverOpenId === row.id && (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className="ao-modal-backdrop" onClick={() => setCadaverOpenId(null)} />
+                      <div className="ao-modal">
+                        <div className="ao-modal-head">
+                          <h3>Cadaver Details ({row.cadavers?.length || 0})</h3>
+                          <button onClick={() => setCadaverOpenId(null)}>Close</button>
+                        </div>
+                        <div className="ao-modal-body">
+                          {(row.cadavers ?? []).map(cd => (
+                            <div key={cd.id} className="ao-cadaver-card">
+                              <div><strong>Name:</strong> {cd.full_name || "-"}</div>
+                              <div><strong>DOB:</strong> {cd.dob || "-"}</div>
+                              <div><strong>Relation:</strong> {cd.relation || "-"}</div>
+                              <div><strong>Religion:</strong> {cd.religion || "-"}</div>
+                              {cd.pickup_at && <div><strong>Pickup:</strong> {fmtDate(cd.pickup_at)}</div>}
+                              {cd.death_certificate_url && (
+                                <div><a href={cd.death_certificate_url} target="_blank" rel="noreferrer">death certificate</a></div>
+                              )}
+                            </div>
+                          ))}
+                          {(row.cadavers?.length ?? 0) === 0 && <div>No cadaver details linked.</div>}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
       </div>
