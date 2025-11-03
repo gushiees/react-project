@@ -50,10 +50,15 @@ export default function AdminOrders() {
       let q = supabase
         .from("orders")
         .select(`
-          id, created_at, user_id, external_id, total, status, tracking_number, shipping_carrier, xendit_invoice_url,
-          order_items ( id, product_id, name, price, quantity, image_url ),
-          cadaver_details ( id, full_name, birthday, date_of_death, pickup_date, religion, cause_of_death, special_handling_reason, death_certificate_url, claimant_id_url, permit_url, order_tag )
+            id, created_at, user_id, external_id, total, status, tracking_number, shipping_carrier, xendit_invoice_url,
+            order_items ( id, product_id, name, price, quantity, image_url ),
+            cadaver_details!cadaver_details_order_id_fkey (
+            id, full_name, birthday, date_of_death, pickup_date,
+            religion, cause_of_death, special_handling_reason,
+            death_certificate_url, claimant_id_url, permit_url, order_tag
+            )
         `, { count: "exact" });
+
 
       if (statusFilter) q = q.eq("status", statusFilter.status);
 
