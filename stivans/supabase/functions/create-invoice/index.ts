@@ -1,5 +1,7 @@
 // Supabase Edge Function (Deno) – Create Xendit invoice
-// NOW inserts order_items for the newly-created order.
+// - Idempotency via order_tag / idempotency_key
+// - Inserts order_items so Admin shows products
+// - Works with plain React + Supabase (no Next.js assumptions)
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -24,7 +26,7 @@ serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: cors() });
 
   try {
-    // 1) Auth (use user's JWT from Authorization header)
+    // ----- Auth (get current user from Bearer token)
     const auth = req.headers.get("authorization") || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
     if (!token) {
@@ -42,14 +44,19 @@ serve(async (req) => {
     }
     const user = userData.user;
 
-    // 2) Read payload
-    const body = await req.json();
+    // ----- Body
+    const body = await req.json().catch(() => ({}));
     const {
-      items,             // ← array of cart items (see frontend mapping below)
-      subtotal, tax, shipping, total,
-      purchase_type,     // optional
-      order_tag,         // optional
-      cadaver_details_id // optional (legacy; ok to keep)
+      items,
+      subtotal,
+      tax,
+      shipping,
+      total,
+      purchase_type,
+      cadaver_details_id,
+      // use any of these as the idempotency key (stable for this click)
+      idempotency_key,
+      order_tag,
     } = body || {};
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -63,50 +70,104 @@ serve(async (req) => {
       });
     }
 
-    // 3) Create provisional order
+    // Stable key for this order; used to avoid duplicates
+    const idemKey: string =
+      (idempotency_key && String(idempotency_key)) ||
+      (order_tag && String(order_tag)) ||
+      `ui_${user.id}_${Date.now()}`;
+
+    // ----- IDEMPOTENCY: if an order with same order_tag exists, reuse it
+    {
+      const { data: existing, error } = await admin
+        .from("orders")
+        .select("id,xendit_invoice_url,xendit_invoice_id")
+        .eq("user_id", user.id)
+        .eq("order_tag", idemKey)
+        .maybeSingle();
+
+      if (!error && existing?.id) {
+        // already created previously; return same invoice url
+        return new Response(JSON.stringify({ invoice_url: existing.xendit_invoice_url }), {
+          status: 200, headers: cors({ "Content-Type": "application/json" }),
+        });
+      }
+    }
+
+    // ----- Create provisional order
     const external_id = `INV_${Date.now()}_${user.id.slice(0, 8)}`;
     const { data: orderRow, error: orderErr } = await admin
       .from("orders")
       .insert({
         user_id: user.id,
-        // legacy + new fields (safe with your RLS)
+        // legacy
         status: "pending",
+        // separate statuses
         payment_status: "pending",
         fulfillment_status: "unfulfilled",
-        order_tag: order_tag || null,
+        order_tag: idemKey, // idempotency anchor
         cadaver_details_id: cadaver_details_id || null,
-        subtotal, tax, shipping, total, external_id,
+        subtotal,
+        tax,
+        shipping,
+        total,
+        external_id,
       })
       .select("id")
       .single();
 
-    if (orderErr || !orderRow?.id) {
-      return new Response(JSON.stringify({
-        error: "Failed to create order",
-        detail: orderErr?.message
-      }), { status: 500, headers: cors({ "Content-Type": "application/json" }) });
+    if (orderErr) {
+      // If a unique index enforces order_tag uniqueness, we might hit 23505.
+      // In that case, fetch and return the existing.
+      if ((orderErr as any).code === "23505") {
+        const { data: existing } = await admin
+          .from("orders")
+          .select("id,xendit_invoice_url")
+          .eq("user_id", user.id)
+          .eq("order_tag", idemKey)
+          .maybeSingle();
+        if (existing?.xendit_invoice_url) {
+          return new Response(JSON.stringify({ invoice_url: existing.xendit_invoice_url }), {
+            status: 200, headers: cors({ "Content-Type": "application/json" }),
+          });
+        }
+      }
+      return new Response(JSON.stringify({ error: "Failed to create order", detail: orderErr.message }), {
+        status: 500, headers: cors({ "Content-Type": "application/json" }),
+      });
     }
 
-    // 4) INSERT ORDER ITEMS (this is the missing piece)
-    //    Handles different shapes safely (id/product_id & price/unit_price).
-    if (Array.isArray(items) && items.length) {
-      const rows = items.map((it: any) => ({
-        order_id:   orderRow.id,
-        product_id: it.product_id ?? it.id ?? it.product?.id,
-        quantity:   Number(it.quantity ?? it.qty ?? it.count ?? 1),
-        unit_price: Number(it.unit_price ?? it.price ?? it.product?.price ?? it.product_price ?? 0),
-      }));
+    // ----- Insert order_items (so Admin shows purchased products)
+    {
+      const rows = (items as any[]).map((it) => {
+        const product_id =
+          it.product_id ?? it.id ?? it.product?.id;
+        const quantity = Number(it.quantity ?? it.qty ?? 1);
+        const unit_price = Number(it.unit_price ?? it.price ?? it.product?.price ?? 0);
+        const total_price = Number((quantity || 0) * (unit_price || 0));
+
+        return {
+          order_id: orderRow.id,
+          product_id,
+          quantity,
+          unit_price,
+          total_price,
+          // optional: image_url if you store it on order_items
+          image_url: it.image_url ?? it.product?.image_url ?? null,
+        };
+      });
+
       const { error: oiErr } = await admin.from("order_items").insert(rows);
       if (oiErr) {
-        // Not fatal for payment; you'll just see "No items" if this fails.
+        // Not fatal for payment, but Admin "Items" will be empty if this fails
         console.error("order_items insert failed:", oiErr.message);
       }
     }
 
-    // 5) Build invoice (keep redirects if you like the auto-return)
+    // (Optional) success/failure redirect pages
     const successUrl = `${FRONTEND_URL}/checkout?paid=1&ref=${encodeURIComponent(external_id)}`;
     const failureUrl = `${FRONTEND_URL}/checkout?paid=0&ref=${encodeURIComponent(external_id)}`;
 
+    // ----- Create Xendit invoice
     const xiRes = await fetch("https://api.xendit.co/v2/invoices", {
       method: "POST",
       headers: {
@@ -122,7 +183,7 @@ serve(async (req) => {
         failure_redirect_url: failureUrl,
         metadata: {
           user_id: user.id,
-          order_tag: order_tag || null,
+          order_tag: idemKey,
           cadaver_details_id: cadaver_details_id || null,
         },
       }),
@@ -135,7 +196,7 @@ serve(async (req) => {
       });
     }
 
-    // 6) Save invoice fields on the order
+    // Persist invoice fields
     await admin
       .from("orders")
       .update({ xendit_invoice_id: xiJson.id, xendit_invoice_url: xiJson.invoice_url })
@@ -144,7 +205,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ invoice_url: xiJson.invoice_url }), {
       status: 200, headers: cors({ "Content-Type": "application/json" }),
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error(e);
     return new Response(JSON.stringify({ error: e?.message || "Server error" }), {
       status: 500, headers: cors({ "Content-Type": "application/json" }),
