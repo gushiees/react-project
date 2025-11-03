@@ -1,3 +1,4 @@
+// src/pages/admin/orders/AdminOrders.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { FaSearch, FaSync, FaTruck, FaCheck, FaSave, FaHashtag, FaFileMedical } from "react-icons/fa";
@@ -22,7 +23,7 @@ export default function AdminOrders() {
   const [tab, setTab] = useState("unshipped");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("created_at");
-  const [sortDir, setSortDir] = useState("asc"); // FCFS
+  const [sortDir, setSortDir] = useState("asc"); // FCFS by default
   const [page, setPage] = useState(0);
 
   const [rows, setRows] = useState([]);
@@ -39,33 +40,25 @@ export default function AdminOrders() {
     if (tab === "unshipped") return { status: "paid" };
     if (tab === "in_transit") return { status: "in_transit" };
     if (tab === "shipped") return { status: "shipped" };
-    return null; // all
+    return null;
   }, [tab]);
 
   async function fetchOrders() {
     try {
       setLoading(true);
 
-      // IMPORTANT:
-      //  - We embed order_items (with product) so items show under each order.
-      //  - We embed cadaver_details using the specific FK name to avoid ambiguity:
-      //    'cadaver_details!cadaver_details_order_id_fkey'
+      // IMPORTANT: no comments inside select(); use explicit FK alias for cadavers (1-to-many)
       let q = supabase
         .from("orders")
-        .select(`
-        id, created_at, user_id, external_id, total, status,
-        tracking_number, shipping_carrier, xendit_invoice_url,
-
-        order_items:order_items(
-          *,
-          product:products(name, image_url)
-        ),
-
-        -- embed cadaver via the FK on orders.cadaver_details_id
-        cadaver:cadaver_details!orders_cadaver_details_id_fkey(*)
-      `, { count: "exact" })
-
-
+        .select(
+          `
+          id, created_at, user_id, external_id, total, status,
+          tracking_number, shipping_carrier, xendit_invoice_url,
+          order_items:order_items(*, product:products(name,image_url)),
+          cadavers:cadaver_details!cadaver_details_order_id_fkey(*)
+        `,
+          { count: "exact" }
+        );
 
       if (statusFilter) q = q.eq("status", statusFilter.status);
 
@@ -105,7 +98,7 @@ export default function AdminOrders() {
   async function handleStatusChange(row, nextStatus) {
     try {
       await updateRow(row.id, { status: nextStatus });
-      setRows(prev => prev.map(r => (r.id === row.id ? { ...r, status: nextStatus } : r)));
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, status: nextStatus } : r)));
       toast.success(`Status → ${nextStatus}`);
     } catch (err) {
       console.error(err);
@@ -133,7 +126,7 @@ export default function AdminOrders() {
         p_carrier: row.shipping_carrier || null,
       });
       if (error) throw error;
-      setRows(prev => prev.map(r => (r.id === row.id ? { ...r, tracking_number: data } : r)));
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, tracking_number: data } : r)));
       toast.success(`Tracking assigned: ${data}`);
     } catch (err) {
       console.error(err);
@@ -151,16 +144,37 @@ export default function AdminOrders() {
     return d.toLocaleString("en-PH", { timeZone: "Asia/Manila" });
   }
 
+  // generic renderer for cadaver objects (no hard-coded field names)
+  function renderCadaverKV(obj) {
+    return (
+      <div className="cadaver-grid">
+        {Object.entries(obj).map(([k, v]) => (
+          <div key={k} className="cadaver-field">
+            <strong>{k}</strong>: <span>{v === null || v === undefined ? "—" : String(v)}</span>
+          </div>
+        ))}
+        {obj.death_certificate_url && (
+          <a href={obj.death_certificate_url} target="_blank" rel="noreferrer">
+            death certificate url
+          </a>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="admin-orders">
       {/* Toolbar */}
       <div className="ao-toolbar">
         <div className="ao-tabs">
-          {TABS.map(t => (
+          {TABS.map((t) => (
             <button
               key={t.key}
               className={`ao-tab ${t.key === tab ? "active" : ""}`}
-              onClick={() => { setTab(t.key); setPage(0); }}
+              onClick={() => {
+                setTab(t.key);
+                setPage(0);
+              }}
             >
               {t.label}
             </button>
@@ -172,17 +186,24 @@ export default function AdminOrders() {
             <FaSearch />
             <input
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
               placeholder="Search external id / tracking…"
             />
           </div>
 
           <div className="ao-sort">
             <label>Sort:</label>
-            <select value={sortField} onChange={e => setSortField(e.target.value)}>
-              {SORT_FIELDS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+            <select value={sortField} onChange={(e) => setSortField(e.target.value)}>
+              {SORT_FIELDS.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
             </select>
-            <select value={sortDir} onChange={e => setSortDir(e.target.value)}>
+            <select value={sortDir} onChange={(e) => setSortDir(e.target.value)}>
               <option value="asc">Asc</option>
               <option value="desc">Desc</option>
             </select>
@@ -210,28 +231,33 @@ export default function AdminOrders() {
           </thead>
           <tbody>
             {rows.length === 0 && !loading && (
-              <tr><td colSpan={7} style={{ textAlign: "center", padding: 24 }}>No orders</td></tr>
+              <tr>
+                <td colSpan={7} style={{ textAlign: "center", padding: 24 }}>
+                  No orders
+                </td>
+              </tr>
             )}
 
-            {rows.map(row => (
+            {rows.map((row) => (
               <React.Fragment key={row.id}>
                 <tr>
                   <td>{fmtDate(row.created_at)}</td>
                   <td>
                     <div className="ao-orderid">
-                      <div>Ext: <code>{row.external_id}</code></div>
+                      <div>
+                        Ext: <code>{row.external_id}</code>
+                      </div>
                       {row.xendit_invoice_url && (
-                        <a href={row.xendit_invoice_url} target="_blank" rel="noreferrer">Invoice</a>
+                        <a href={row.xendit_invoice_url} target="_blank" rel="noreferrer">
+                          Invoice
+                        </a>
                       )}
                     </div>
                   </td>
                   <td>{fmtPhp(Number(row.total || 0))}</td>
                   <td>
-                    <select
-                      value={row.status || ""}
-                      onChange={(e) => handleStatusChange(row, e.target.value)}
-                    >
-                      {/* Payment status is separate; this is shipment status */}
+                    <select value={row.status || ""} onChange={(e) => handleStatusChange(row, e.target.value)}>
+                      {/* Shipment/fulfillment status. Payment status is separate. */}
                       <option value="pending">pending</option>
                       <option value="paid">paid</option>
                       <option value="in_transit">in_transit</option>
@@ -243,9 +269,9 @@ export default function AdminOrders() {
                     <input
                       value={row.shipping_carrier || ""}
                       onChange={(e) =>
-                        setRows(prev => prev.map(p =>
-                          p.id === row.id ? { ...p, shipping_carrier: e.target.value } : p
-                        ))
+                        setRows((prev) =>
+                          prev.map((p) => (p.id === row.id ? { ...p, shipping_carrier: e.target.value } : p))
+                        )
                       }
                       placeholder="LBC / J&T / Ninja"
                     />
@@ -256,14 +282,13 @@ export default function AdminOrders() {
                       <input
                         value={row.tracking_number || ""}
                         onChange={(e) =>
-                          setRows(prev => prev.map(p =>
-                            p.id === row.id ? { ...p, tracking_number: e.target.value } : p
-                          ))
+                          setRows((prev) =>
+                            prev.map((p) => (p.id === row.id ? { ...p, tracking_number: e.target.value } : p))
+                          )
                         }
                         placeholder="YYMMDD00001"
                       />
-                      <button className="ao-gen" title="Generate tracking"
-                        onClick={() => handleGenerateTracking(row)}>
+                      <button className="ao-gen" title="Generate tracking" onClick={() => handleGenerateTracking(row)}>
                         <FaTruck />
                       </button>
                     </div>
@@ -277,7 +302,6 @@ export default function AdminOrders() {
                         <FaCheck /> Mark Shipped
                       </button>
                     )}
-                    {/* Cadaver details modal trigger */}
                     <button className="ao-cadaver-btn" onClick={() => setCadaverOpenId(row.id)}>
                       <FaFileMedical /> Cadaver Details
                     </button>
@@ -291,19 +315,15 @@ export default function AdminOrders() {
                       <div className="ao-subcol">
                         <h4>Items</h4>
                         <div className="ao-items">
-                          {(row.order_items?.length ?? 0) === 0 && (
-                            <div className="ao-noitems">No items</div>
-                          )}
-                          {(row.order_items ?? []).map(oi => {
+                          {(row.order_items?.length ?? 0) === 0 && <div className="ao-noitems">No items</div>}
+                          {(row.order_items ?? []).map((oi) => {
                             const p = oi.product || {};
                             const qty = Number(oi.quantity || 0);
                             const unit = Number(oi.unit_price ?? p.price ?? 0);
                             const line = qty * unit;
                             return (
                               <div key={oi.id} className="ao-item">
-                                {p.image_url && (
-                                  <img src={p.image_url} alt={p.name || "Product"} />
-                                )}
+                                {p.image_url && <img src={p.image_url} alt={p.name || "Product"} />}
                                 <div className="ao-item-meta">
                                   <div className="ao-item-name">{p.name || "Product"}</div>
                                   <div className="ao-item-sub">
@@ -316,26 +336,18 @@ export default function AdminOrders() {
                         </div>
                       </div>
 
-                      {/* quick glance cadaver summary (first record) */}
+                      {/* quick glance cadaver summary */}
                       <div className="ao-subcol">
                         <h4>Cadaver Details</h4>
-                                                {row.cadaver ? (
-                          <div className="cadaver-grid">
-                            {Object.entries(row.cadaver).map(([k, v]) => (
-                              <div key={k} className="cadaver-field">
-                                <strong>{k}</strong>: <span>{v === null || v === undefined ? "—" : String(v)}</span>
-                              </div>
-                            ))}
-                            {row.cadaver.death_certificate_url && (
-                              <a href={row.cadaver.death_certificate_url} target="_blank" rel="noreferrer">
-                                death certificate url
-                              </a>
-                            )}
+                        {(row.cadavers?.length ?? 0) === 0 && <div>No cadaver details</div>}
+                        {(row.cadavers ?? []).slice(0, 1).map((cd) => (
+                          <div key={cd.id}>{renderCadaverKV(cd)}</div>
+                        ))}
+                        {(row.cadavers?.length ?? 0) > 1 && (
+                          <div style={{ marginTop: 6, fontSize: 12 }}>
+                            +{row.cadavers.length - 1} more (open modal)
                           </div>
-                        ) : (
-                          <div>No cadaver details</div>
                         )}
-
                       </div>
                     </div>
                   </td>
@@ -352,16 +364,9 @@ export default function AdminOrders() {
                           <button onClick={() => setCadaverOpenId(null)}>Close</button>
                         </div>
                         <div className="ao-modal-body">
-                          {(row.cadavers ?? []).map(cd => (
+                          {(row.cadavers ?? []).map((cd) => (
                             <div key={cd.id} className="ao-cadaver-card">
-                              <div><strong>Name:</strong> {cd.full_name || "-"}</div>
-                              <div><strong>DOB:</strong> {cd.dob || "-"}</div>
-                              <div><strong>Relation:</strong> {cd.relation || "-"}</div>
-                              <div><strong>Religion:</strong> {cd.religion || "-"}</div>
-                              {cd.pickup_at && <div><strong>Pickup:</strong> {fmtDate(cd.pickup_at)}</div>}
-                              {cd.death_certificate_url && (
-                                <div><a href={cd.death_certificate_url} target="_blank" rel="noreferrer">death certificate</a></div>
-                              )}
+                              {renderCadaverKV(cd)}
                             </div>
                           ))}
                           {(row.cadavers?.length ?? 0) === 0 && <div>No cadaver details linked.</div>}
@@ -378,11 +383,19 @@ export default function AdminOrders() {
 
       {/* Pager */}
       <div className="ao-pager">
-        <span>{count} result{count === 1 ? "" : "s"}</span>
+        <span>
+          {count} result{count === 1 ? "" : "s"}
+        </span>
         <div className="ao-pagebtns">
-          <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</button>
-          <span>Page {page + 1} / {totalPages}</span>
-          <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
+          <button disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+            Prev
+          </button>
+          <span>
+            Page {page + 1} / {totalPages}
+          </span>
+          <button disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            Next
+          </button>
         </div>
       </div>
     </div>
