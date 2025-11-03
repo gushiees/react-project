@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { FaBoxOpen, FaUsers, FaSignOutAlt, FaHome, FaChartBar } from "react-icons/fa"; // Import FaChartBar
+import { FaBoxOpen, FaUsers, FaSignOutAlt, FaHome, FaChartBar, FaListAlt } from "react-icons/fa"; // + FaListAlt
 import { useAuth } from "../../AuthContext.jsx";
 import AdminProducts from "./AdminProducts.jsx";
 import AdminUsers from "./AdminUsers.jsx";
-import AdminAnalytics from "./AdminAnalytics.jsx"; // Import the new component
+import AdminAnalytics from "./AdminAnalytics.jsx";
+import AdminOrders from "./orders/AdminOrders.jsx"; // + NEW
 import adminLogo from "../../assets/stivanlogolight.png";
 import "./admin.css";
 
@@ -18,7 +19,7 @@ export default function Admin() {
   useEffect(() => {
     if (!loadingAuth) {
       if (!user || user.role !== "admin") {
-        toast.error("Admin access required. Please log in.", { id: 'admin-auth-redirect' });
+        toast.error("Admin access required. Please log in.", { id: "admin-auth-redirect" });
         navigate("/admin/login", { replace: true });
       }
     }
@@ -36,7 +37,7 @@ export default function Admin() {
   };
 
   if (loadingAuth) {
-    return null; 
+    return null;
   }
 
   if (!user || user.role !== "admin") {
@@ -52,9 +53,37 @@ export default function Admin() {
         </div>
         <nav className="admin-sidebar-nav" aria-label="Admin Sections">
           {/* Analytics Button */}
-          <button onClick={() => setActiveSection("analytics")} className={activeSection === "analytics" ? "active" : ""} aria-current={activeSection === 'analytics' ? 'page' : undefined} > <FaChartBar aria-hidden="true" /> Analytics </button>
-          <button onClick={() => setActiveSection("products")} className={activeSection === "products" ? "active" : ""} aria-current={activeSection === 'products' ? 'page' : undefined} > <FaBoxOpen aria-hidden="true" /> Products </button>
-          <button onClick={() => setActiveSection("users")} className={activeSection === "users" ? "active" : ""} aria-current={activeSection === 'users' ? 'page' : undefined} > <FaUsers aria-hidden="true" /> Users </button>
+          <button
+            onClick={() => setActiveSection("analytics")}
+            className={activeSection === "analytics" ? "active" : ""}
+            aria-current={activeSection === "analytics" ? "page" : undefined}
+          >
+            <FaChartBar aria-hidden="true" /> Analytics
+          </button>
+
+          {/* + Orders Button */}
+          <button
+            onClick={() => setActiveSection("orders")}
+            className={activeSection === "orders" ? "active" : ""}
+            aria-current={activeSection === "orders" ? "page" : undefined}
+          >
+            <FaListAlt aria-hidden="true" /> Orders
+          </button>
+
+          <button
+            onClick={() => setActiveSection("products")}
+            className={activeSection === "products" ? "active" : ""}
+            aria-current={activeSection === "products" ? "page" : undefined}
+          >
+            <FaBoxOpen aria-hidden="true" /> Products
+          </button>
+          <button
+            onClick={() => setActiveSection("users")}
+            className={activeSection === "users" ? "active" : ""}
+            aria-current={activeSection === "users" ? "page" : undefined}
+          >
+            <FaUsers aria-hidden="true" /> Users
+          </button>
         </nav>
         <div className="admin-sidebar-footer">
           {user && (
@@ -73,12 +102,14 @@ export default function Admin() {
       </aside>
 
       <main className="admin-main-content">
-        <div className="admin-content-header"> <h1>Admin Dashboard</h1> </div>
+        <div className="admin-content-header">
+          <h1>Admin Dashboard</h1>
+        </div>
         {activeSection === "analytics" && <AdminAnalytics />}
+        {activeSection === "orders" && <AdminOrders />}{/* + NEW */}
         {activeSection === "products" && <AdminProducts />}
         {activeSection === "users" && <AdminUsers />}
       </main>
     </div>
   );
 }
-
