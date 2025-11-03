@@ -1,6 +1,6 @@
 // Supabase Edge Function (Deno) – Xendit webhook
 // Separates payment_status from fulfillment_status; keeps legacy 'status' in sync.
-// Also clears the user's cart once payment is PAID.
+// Clears the user's cart once payment is PAID.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -23,8 +23,7 @@ function cors(extra: HeadersInit = {}) {
 }
 
 function normalize(body: any) {
-  if (!body) return {};
-  return body.data ? body.data : body;
+  return body && body.data ? body.data : (body || {});
 }
 
 serve(async (req) => {
@@ -32,7 +31,7 @@ serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: cors() });
 
   try {
-    // Verify shared secret from Xendit
+    // Verify Xendit shared secret
     const token = req.headers.get("x-callback-token") ?? "";
     if (token !== XENDIT_CALLBACK_TOKEN) {
       return new Response(JSON.stringify({ error: "Bad callback token" }), {
@@ -40,7 +39,7 @@ serve(async (req) => {
       });
     }
 
-    // Parse JSON safely
+    // Parse body
     const raw = await req.text();
     let body: any = {};
     try { body = raw ? JSON.parse(raw) : {}; }
@@ -50,7 +49,7 @@ serve(async (req) => {
       });
     }
 
-    // Normalise: support legacy (flat) and newer {event,data} payloads
+    // Support {event,data} and flat payloads
     const data = normalize(body);
     const invoiceId  = data?.id || null;
     const externalId = data?.external_id || null;
@@ -73,36 +72,24 @@ serve(async (req) => {
       legacy_status  = "canceled";
     }
 
-    // Find order by external_id first, then by invoice id
-    // (select user_id so we can clear the user's cart on PAID)
+    // Find order by external_id then by invoice_id; select user_id for cart clear
     let order: { id: string; user_id: string } | null = null;
 
-    {
-      const a = await db
-        .from("orders")
-        .select("id, user_id")
-        .eq("external_id", externalId)
-        .maybeSingle();
+    const byExt = await db.from("orders").select("id,user_id").eq("external_id", externalId).maybeSingle();
+    if (byExt.data?.id) order = byExt.data as any;
 
-      if (a.data?.id) order = a.data as any;
-
-      if (!order && invoiceId) {
-        const b = await db
-          .from("orders")
-          .select("id, user_id")
-          .eq("xendit_invoice_id", invoiceId)
-          .maybeSingle();
-        if (b.data?.id) order = b.data as any;
-      }
-
-      if (!order) {
-        return new Response(JSON.stringify({ error: "Order not found" }), {
-          status: 404, headers: cors({ "Content-Type": "application/json" }),
-        });
-      }
+    if (!order && invoiceId) {
+      const byInv = await db.from("orders").select("id,user_id").eq("xendit_invoice_id", invoiceId).maybeSingle();
+      if (byInv.data?.id) order = byInv.data as any;
     }
 
-    // Update order payment fields (+ keep legacy 'status' in sync)
+    if (!order) {
+      return new Response(JSON.stringify({ error: "Order not found" }), {
+        status: 404, headers: cors({ "Content-Type": "application/json" }),
+      });
+    }
+
+    // Update payment fields (+ keep legacy 'status' in sync)
     const patch: Record<string, unknown> = {
       payment_status,
       status: legacy_status,
@@ -110,22 +97,15 @@ serve(async (req) => {
     };
     if (payment_status === "paid") patch.paid_at = new Date().toISOString();
 
-    const upd = await db
-      .from("orders")
-      .update(patch)
-      .eq("id", order.id)
-      .select("id")
-      .single();
-
+    const upd = await db.from("orders").update(patch).eq("id", order.id).select("id").single();
     if (upd.error) {
       return new Response(JSON.stringify({ error: upd.error.message }), {
         status: 500, headers: cors({ "Content-Type": "application/json" }),
       });
     }
 
-    // NEW: server-side guarantee — clear the user's cart after successful payment
+    // Clear the user's cart after successful payment
     if (payment_status === "paid" && order.user_id) {
-      // find all carts for this user (in case multiple)
       const { data: carts, error: cartsErr } = await db
         .from("carts")
         .select("id")
@@ -133,11 +113,11 @@ serve(async (req) => {
 
       if (!cartsErr && Array.isArray(carts) && carts.length > 0) {
         const cartIds = carts.map((c) => c.id);
-        // delete all cart_items pointing at those carts
         await db.from("cart_items").delete().in("cart_id", cartIds);
-        // (optional) you could also delete the cart rows themselves if you want them recreated fresh
+        // If you also want to delete cart rows themselves, uncomment:
         // await db.from("carts").delete().in("id", cartIds);
       }
+      // If your cart_items also has user_id, you could add a fallback delete here.
     }
 
     return new Response(JSON.stringify({ ok: true }), {
