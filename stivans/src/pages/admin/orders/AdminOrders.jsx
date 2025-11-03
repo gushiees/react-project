@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { FaSearch, FaSync, FaTruck, FaCheck, FaSave, FaHashtag } from "react-icons/fa";
-import { supabase } from "../../../supabaseClient"; // keep this path if supabaseClient is in /src
+import { FaSearch, FaSync, FaTruck, FaCheck, FaSave, FaHashtag, FaEye, FaTimes } from "react-icons/fa";
+import { supabase } from "../../../supabaseClient";
 import "./AdminOrders.css";
 
 const PAGE_SIZE = 20;
@@ -22,12 +22,15 @@ export default function AdminOrders() {
   const [tab, setTab] = useState("unshipped");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("created_at");
-  const [sortDir, setSortDir] = useState("asc"); // FCFS (oldest first)
+  const [sortDir, setSortDir] = useState("asc"); // FCFS default
   const [page, setPage] = useState(0);
 
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // drawer
+  const [openOrder, setOpenOrder] = useState(null);
 
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -36,18 +39,21 @@ export default function AdminOrders() {
     if (tab === "unshipped") return { status: "paid" };
     if (tab === "in_transit") return { status: "in_transit" };
     if (tab === "shipped") return { status: "shipped" };
-    return null; // all
+    return null;
   }, [tab]);
 
   async function fetchOrders() {
     try {
       setLoading(true);
+
+      // Embed line items and cadaver_details (requires FK cadaver_details.order_id → orders.id)
       let q = supabase
         .from("orders")
-        .select(
-          "id, created_at, user_id, external_id, total, status, tracking_number, shipping_carrier, xendit_invoice_url",
-          { count: "exact" }
-        );
+        .select(`
+          id, created_at, user_id, external_id, total, status, tracking_number, shipping_carrier, xendit_invoice_url,
+          order_items ( id, product_id, name, price, quantity, image_url ),
+          cadaver_details ( id, full_name, birthday, date_of_death, pickup_date, religion, cause_of_death, special_handling_reason, death_certificate_url, claimant_id_url, permit_url, order_tag )
+        `, { count: "exact" });
 
       if (statusFilter) q = q.eq("status", statusFilter.status);
 
@@ -72,10 +78,7 @@ export default function AdminOrders() {
     }
   }
 
-  useEffect(() => {
-    fetchOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, search, sortField, sortDir, page]);
+  useEffect(() => { fetchOrders(); /* eslint-disable-next-line */ }, [tab, search, sortField, sortDir, page]);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
@@ -177,13 +180,14 @@ export default function AdminOrders() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table: one row per order, items grouped in a compact preview */}
       <div className="ao-table-wrap">
         <table className="ao-table">
           <thead>
             <tr>
               <th>Date</th>
               <th>Order</th>
+              <th>Items</th>
               <th>Total</th>
               <th>Status</th>
               <th>Carrier</th>
@@ -193,7 +197,7 @@ export default function AdminOrders() {
           </thead>
           <tbody>
             {rows.length === 0 && !loading && (
-              <tr><td colSpan={7} style={{ textAlign: "center", padding: 24 }}>No orders</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: "center", padding: 24 }}>No orders</td></tr>
             )}
 
             {rows.map(row => (
@@ -206,6 +210,17 @@ export default function AdminOrders() {
                       <a href={row.xendit_invoice_url} target="_blank" rel="noreferrer">Invoice</a>
                     )}
                   </div>
+                </td>
+                <td>
+                  {(row.order_items || []).slice(0,3).map(oi => (
+                    <div key={oi.id} className="ao-itemchip">
+                      <span title={oi.name}>{oi.name}</span>
+                      <span className="ao-x">×{oi.quantity}</span>
+                    </div>
+                  ))}
+                  {(row.order_items?.length || 0) > 3 && (
+                    <span className="ao-more">+{row.order_items.length - 3} more</span>
+                  )}
                 </td>
                 <td>{fmtPhp(Number(row.total || 0))}</td>
                 <td>
@@ -241,7 +256,7 @@ export default function AdminOrders() {
                           p.id === row.id ? { ...p, tracking_number: e.target.value } : p
                         ))
                       }
-                      placeholder="YYMMDD000001"
+                      placeholder="YYMMDD00001"
                     />
                     <button className="ao-gen" title="Generate tracking"
                       onClick={() => handleGenerateTracking(row)}>
@@ -252,6 +267,9 @@ export default function AdminOrders() {
                 <td className="ao-actions-td">
                   <button className="ao-save" onClick={() => handleSaveShipping(row)}>
                     <FaSave /> Save
+                  </button>
+                  <button className="ao-view" onClick={() => setOpenOrder(row)}>
+                    <FaEye /> View
                   </button>
                   {row.status !== "shipped" && (
                     <button className="ao-markshipped" onClick={() => handleStatusChange(row, "shipped")}>
@@ -274,6 +292,67 @@ export default function AdminOrders() {
           <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
         </div>
       </div>
+
+      {/* Drawer for order + cadaver details */}
+      {openOrder && (
+        <div className="ao-drawer">
+          <div className="ao-drawer-head">
+            <h3>Order {openOrder.external_id}</h3>
+            <button className="ao-close" onClick={() => setOpenOrder(null)}><FaTimes /></button>
+          </div>
+
+          <div className="ao-drawer-body">
+            <section className="ao-sec">
+              <h4>Line Items</h4>
+              <div className="ao-items">
+                {(openOrder.order_items || []).map(oi => (
+                  <div key={oi.id} className="ao-itemrow">
+                    <div className="ao-itemname">{oi.name}</div>
+                    <div className="ao-itemqty">×{oi.quantity}</div>
+                    <div className="ao-itemprice">₱{Number(oi.price || 0).toLocaleString()}</div>
+                  </div>
+                ))}
+                {(!openOrder.order_items || openOrder.order_items.length === 0) && (
+                  <div className="ao-empty">No items</div>
+                )}
+              </div>
+            </section>
+
+            <section className="ao-sec">
+              <h4>Cadaver Details</h4>
+              {(openOrder.cadaver_details || []).map(cd => (
+                <div key={cd.id} className="ao-cadaver">
+                  <div className="ao-cdl">
+                    <div><strong>Name:</strong> {cd.full_name || "-"}</div>
+                    <div><strong>Birth:</strong> {cd.birthday || "-"}</div>
+                    <div><strong>Death:</strong> {cd.date_of_death || "-"}</div>
+                    <div><strong>Pickup:</strong> {cd.pickup_date || "-"}</div>
+                    <div><strong>Religion:</strong> {cd.religion || "-"}</div>
+                    <div><strong>Cause:</strong> {cd.cause_of_death || "-"}</div>
+                    {cd.special_handling_reason && (
+                      <div><strong>Special handling:</strong> {cd.special_handling_reason}</div>
+                    )}
+                    {cd.order_tag && (
+                      <div><strong>Order tag:</strong> {cd.order_tag}</div>
+                    )}
+                  </div>
+                  <div className="ao-cdfiles">
+                    {cd.death_certificate_url && <a href={cd.death_certificate_url} target="_blank" rel="noreferrer">Death Certificate</a>}
+                    {cd.claimant_id_url && <a href={cd.claimant_id_url} target="_blank" rel="noreferrer">Claimant ID</a>}
+                    {cd.permit_url && <a href={cd.permit_url} target="_blank" rel="noreferrer">Permit</a>}
+                    {!cd.death_certificate_url && !cd.claimant_id_url && !cd.permit_url && (
+                      <span className="ao-empty">No files</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(!openOrder.cadaver_details || openOrder.cadaver_details.length === 0) && (
+                <div className="ao-empty">No cadaver details on this order</div>
+              )}
+            </section>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
