@@ -53,17 +53,18 @@ export default function AdminOrders() {
       let q = supabase
         .from("orders")
         .select(`
-        id, created_at, user_id, external_id, total, status, tracking_number, shipping_carrier, xendit_invoice_url,
+        id, created_at, user_id, external_id, total, status,
+        tracking_number, shipping_carrier, xendit_invoice_url,
 
-        order_items(
-          id, product_id, quantity, unit_price,
+        order_items:order_items(
+          *,
           product:products(name, image_url)
         ),
 
-        cadaver:cadaver_details!cadaver_details_order_id_fkey(
-          id, name, relationship, religion, dob, dod, pickup, death_certificate_url
-        )
+        -- embed cadaver via the FK on orders.cadaver_details_id
+        cadaver:cadaver_details!orders_cadaver_details_id_fkey(*)
       `, { count: "exact" })
+
 
 
       if (statusFilter) q = q.eq("status", statusFilter.status);
