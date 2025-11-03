@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { FaSearch, FaSync, FaTruck, FaCheck, FaSave, FaHashtag } from "react-icons/fa";
-import { supabase } from "../../../supabaseClient"; // <-- adjust path if needed
-import './AdminOrders.css';
+import { supabase } from "../../../supabaseClient"; // keep this path if supabaseClient is in /src
+import "./AdminOrders.css";
 
 const PAGE_SIZE = 20;
 
@@ -22,7 +22,7 @@ export default function AdminOrders() {
   const [tab, setTab] = useState("unshipped");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("created_at");
-  const [sortDir, setSortDir] = useState("asc"); // FCFS by default
+  const [sortDir, setSortDir] = useState("asc"); // FCFS (oldest first)
   const [page, setPage] = useState(0);
 
   const [rows, setRows] = useState([]);
@@ -49,19 +49,14 @@ export default function AdminOrders() {
           { count: "exact" }
         );
 
-      // tab filter
       if (statusFilter) q = q.eq("status", statusFilter.status);
 
-      // search filter (external_id or tracking_number)
       if (search?.trim()) {
         const qstr = search.trim();
         q = q.or(`external_id.ilike.%${qstr}%,tracking_number.ilike.%${qstr}%`);
       }
 
-      // sort
       q = q.order(sortField, { ascending: sortDir === "asc", nullsFirst: true });
-
-      // paginate
       q = q.range(from, to);
 
       const { data, error, count: totalCount } = await q;
@@ -115,7 +110,6 @@ export default function AdminOrders() {
 
   async function handleGenerateTracking(row) {
     try {
-      // server-side function must exist: assign_tracking_number(p_order_id uuid, p_carrier text)
       const { data, error } = await supabase.rpc("assign_tracking_number", {
         p_order_id: row.id,
         p_carrier: row.shipping_carrier || null,
@@ -219,7 +213,6 @@ export default function AdminOrders() {
                     value={row.status || ""}
                     onChange={(e) => handleStatusChange(row, e.target.value)}
                   >
-                    {/* Keep these in sync with your schema */}
                     <option value="pending">pending</option>
                     <option value="paid">paid</option>
                     <option value="in_transit">in_transit</option>
@@ -248,7 +241,7 @@ export default function AdminOrders() {
                           p.id === row.id ? { ...p, tracking_number: e.target.value } : p
                         ))
                       }
-                      placeholder="YYMMDD00001"
+                      placeholder="YYMMDD000001"
                     />
                     <button className="ao-gen" title="Generate tracking"
                       onClick={() => handleGenerateTracking(row)}>

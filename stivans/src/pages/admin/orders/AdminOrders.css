@@ -1,5 +1,9 @@
 .admin-orders .ao-toolbar {
-  display: flex; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 16px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 .ao-tabs { display: flex; gap: 8px; }
