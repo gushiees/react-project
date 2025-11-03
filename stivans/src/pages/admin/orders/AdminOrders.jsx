@@ -319,20 +319,23 @@ export default function AdminOrders() {
                       {/* quick glance cadaver summary (first record) */}
                       <div className="ao-subcol">
                         <h4>Cadaver Details</h4>
-                        {(row.cadavers?.length ?? 0) === 0 ? (
-                          <div className="ao-nocadaver">No cadaver details</div>
-                        ) : (
-                          <div className="ao-cadaver-one">
-                            <div><strong>Name</strong> {row.cadavers[0].full_name}</div>
-                            <div><strong>DOB</strong> {row.cadavers[0].dob || "-"}</div>
-                            <div><strong>Relation</strong> {row.cadavers[0].relation || "-"}</div>
-                            <div><strong>Religion</strong> {row.cadavers[0].religion || "-"}</div>
-                            {row.cadavers[0].pickup_at && <div><strong>Pickup</strong> {fmtDate(row.cadavers[0].pickup_at)}</div>}
-                            {row.cadavers[0].death_certificate_url && (
-                              <div><a href={row.cadavers[0].death_certificate_url} target="_blank" rel="noreferrer">death certificate url</a></div>
+                                                {row.cadaver ? (
+                          <div className="cadaver-grid">
+                            {Object.entries(row.cadaver).map(([k, v]) => (
+                              <div key={k} className="cadaver-field">
+                                <strong>{k}</strong>: <span>{v === null || v === undefined ? "—" : String(v)}</span>
+                              </div>
+                            ))}
+                            {row.cadaver.death_certificate_url && (
+                              <a href={row.cadaver.death_certificate_url} target="_blank" rel="noreferrer">
+                                death certificate url
+                              </a>
                             )}
                           </div>
+                        ) : (
+                          <div>No cadaver details</div>
                         )}
+
                       </div>
                     </div>
                   </td>
