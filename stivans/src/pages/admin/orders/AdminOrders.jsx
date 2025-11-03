@@ -11,6 +11,7 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaExternalLinkAlt,
+  FaTrash,               // ← NEW
 } from "react-icons/fa";
 import { supabase } from "../../../supabaseClient";
 import "./AdminOrders.css";
@@ -18,9 +19,9 @@ import "./AdminOrders.css";
 const PAGE_SIZE = 20;
 
 const TABS = [
-  { key: "unshipped", label: "Unshipped" },   // fulfillment_status in ('unfulfilled','processing')
-  { key: "in_transit", label: "In Transit" }, // fulfillment_status = 'in_transit'
-  { key: "shipped", label: "Shipped" },       // fulfillment_status in ('shipped','delivered')
+  { key: "unshipped", label: "Unshipped" },
+  { key: "in_transit", label: "In Transit" },
+  { key: "shipped", label: "Shipped" },
   { key: "all", label: "All" },
 ];
 
@@ -73,7 +74,6 @@ export default function AdminOrders() {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // UI state
   const [expandedId, setExpandedId] = useState(null);
   const [cadaverOpenId, setCadaverOpenId] = useState(null);
 
@@ -136,8 +136,7 @@ export default function AdminOrders() {
 
   useEffect(() => {
     fetchOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, search, sortField, sortDir, page]);
+  }, [tab, search, sortField, sortDir, page]); // eslint-disable-line
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
@@ -183,6 +182,27 @@ export default function AdminOrders() {
       console.error(err);
       toast.error(err.message || "Failed to generate tracking");
     }
+  }
+
+  // NEW: Delete an order (with confirm)
+  async function handleDelete(row) {
+    const ok = window.confirm(
+      `Delete order ${row.external_id}?\n\nThis will also remove its items and cadaver details.`
+    );
+    if (!ok) return;
+
+    const { error } = await supabase.from("orders").delete().eq("id", row.id);
+    if (error) {
+      console.error(error);
+      toast.error(error.message || "Delete failed");
+      return;
+    }
+
+    setRows(prev => prev.filter(r => r.id !== row.id));
+    setCount(c => Math.max(0, c - 1));
+    if (expandedId === row.id) setExpandedId(null);
+    if (cadaverOpenId === row.id) setCadaverOpenId(null);
+    toast.success("Order deleted");
   }
 
   function fmtPhp(n) {
@@ -307,10 +327,8 @@ export default function AdminOrders() {
 
                     <td>{fmtPhp(Number(row.total || 0))}</td>
 
-                    {/* Payment (read-only) */}
                     <td><Pill value={row.payment_status} /></td>
 
-                    {/* Fulfillment (editable) */}
                     <td>
                       <select
                         value={row.fulfillment_status || "unfulfilled"}
@@ -325,7 +343,6 @@ export default function AdminOrders() {
                       </select>
                     </td>
 
-                    {/* Shipping compact */}
                     <td>
                       <div className="ao-shipcompact">
                         <input
@@ -373,15 +390,17 @@ export default function AdminOrders() {
                       <button className="ao-cadaver-btn" onClick={() => setCadaverOpenId(row.id)}>
                         <FaFileMedical /> Cadaver Details ({cadCount})
                       </button>
+                      {/* NEW: Delete button */}
+                      <button className="ao-delete" onClick={() => handleDelete(row)} title="Delete order">
+                        <FaTrash /> Delete
+                      </button>
                     </td>
                   </tr>
 
-                  {/* Expanded row */}
                   {isOpen && (
                     <tr className="ao-expand-row">
                       <td colSpan={8}>
                         <div className="ao-expand-panels">
-                          {/* Items */}
                           <div className="ao-panel">
                             <div className="ao-panel-title">Items</div>
                             {itemCount === 0 ? (
@@ -423,14 +442,12 @@ export default function AdminOrders() {
                             )}
                           </div>
 
-                          {/* Cadaver quick glance */}
                           <div className="ao-panel">
                             <div className="ao-panel-title">Cadaver (preview)</div>
                             {(row.cadavers?.length ?? 0) === 0 ? (
                               <div className="ao-empty">No cadaver details</div>
                             ) : (
                               <div className="ao-cadavers">
-                                {/* Show first cadaver compact */}
                                 <div className="ao-cadaver-one">
                                   {[
                                     ["full_name", "Name"],
@@ -444,9 +461,7 @@ export default function AdminOrders() {
                                     return (
                                       <div className="ao-line" key={k}>
                                         <span className="ao-k">{label}</span>
-                                        <span className="ao-v">
-                                          {v === null || v === undefined || v === "" ? "—" : String(v)}
-                                        </span>
+                                        <span className="ao-v">{v === null || v === undefined || v === "" ? "—" : String(v)}</span>
                                       </div>
                                     );
                                   })}
@@ -475,7 +490,6 @@ export default function AdminOrders() {
                     </tr>
                   )}
 
-                  {/* Cadaver modal */}
                   {cadaverOpenId === row.id && (
                     <tr>
                       <td colSpan={8}>
@@ -490,7 +504,6 @@ export default function AdminOrders() {
                               <div key={cd.id} className="ao-cadaver-card">
                                 <div className="ao-cadaver-grid">
                                   {Object.entries(cd).map(([k, v]) => {
-                                    // Hide ids/noise in modal unless useful
                                     if (["id", "user_id", "order_id"].includes(k)) return null;
                                     const nice = CADAVER_LABELS[k] || k;
                                     const val = v === null || v === undefined || v === "" ? "—" : String(v);
@@ -540,7 +553,7 @@ export default function AdminOrders() {
         <span>{count} result{count === 1 ? "" : "s"}</span>
         <div className="ao-pagebtns">
           <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>Prev</button>
-          <span>Page {page + 1} / {totalPages}</span>
+        <span>Page {page + 1} / {totalPages}</span>
           <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)}>Next</button>
         </div>
       </div>

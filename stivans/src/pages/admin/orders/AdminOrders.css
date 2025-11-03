@@ -116,3 +116,13 @@
   .ao-table tr { display:grid; grid-template-columns: 1fr; gap:8px; border-bottom:1px solid #f2f2f2; }
   .ao-actions-td { flex-wrap:wrap; }
 }
+
+
+/* Danger delete button */
+.ao-delete {
+  border-color:#ffd6d6;
+  color:#b42323;
+}
+.ao-delete:hover {
+  background:#fff5f5;
+}
