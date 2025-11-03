@@ -1,101 +1,100 @@
-// Supabase Edge Function (Deno) – Xendit invoice webhook
-// Accepts both legacy flat payloads and newer { event, data } payloads.
+// Supabase Edge Function (Deno) – Xendit webhook
+// Separates payment_status from fulfillment_status; keeps legacy 'status' in sync.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "https://stivans.vercel.app";
-const CALLBACK_TOKEN = Deno.env.get("XENDIT_CALLBACK_TOKEN")!;
-
+const XENDIT_CALLBACK_TOKEN = Deno.env.get("XENDIT_CALLBACK_TOKEN")!;
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL")!;
 const ORIGIN = new URL(FRONTEND_URL).origin;
 
-const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 function cors(extra: HeadersInit = {}) {
   return {
     ...extra,
     "Access-Control-Allow-Origin": ORIGIN,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers":
-      "x-callback-token, content-type, x-client-info, apikey",
+    "Access-Control-Allow-Headers": "x-callback-token, content-type",
   };
+}
+
+function normalize(body: any) {
+  if (!body) return {};
+  return body.data ? body.data : body;
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors() });
+  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: cors() });
 
   try {
-    if (req.method !== "POST") {
-      return new Response("Method Not Allowed", { status: 405, headers: cors() });
-    }
-
-    // Verify shared secret from Xendit
     const token = req.headers.get("x-callback-token") ?? "";
-    if (!CALLBACK_TOKEN || token !== CALLBACK_TOKEN) {
+    if (token !== XENDIT_CALLBACK_TOKEN) {
       return new Response(JSON.stringify({ error: "Bad callback token" }), {
-        status: 401,
-        headers: cors({ "Content-Type": "application/json" }),
+        status: 401, headers: cors({ "Content-Type": "application/json" }),
       });
     }
 
-    // Parse JSON safely
     const raw = await req.text();
     let body: any = {};
-    try {
-      body = raw ? JSON.parse(raw) : {};
-    } catch {
-      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-        status: 400,
-        headers: cors({ "Content-Type": "application/json" }),
-      });
-    }
+    try { body = raw ? JSON.parse(raw) : {}; }
+    catch { return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: cors({ "Content-Type": "application/json" }) }); }
 
-    // Normalise: support legacy (flat) and newer {event,data} payloads
-    const data = body?.data ?? body;
-    const invoiceId = data?.id ?? null;
-    const externalId = data?.external_id ?? null;
-    const statusStr = (data?.status ?? "").toString().toUpperCase();
-
-    if ((!invoiceId && !externalId) || !statusStr) {
+    const data = normalize(body);
+    const invoiceId = data?.id || null;
+    const externalId = data?.external_id || null;
+    const statusStr = String(data?.status || "").toUpperCase();
+    if (!invoiceId && !externalId) {
       return new Response(JSON.stringify({ error: "Bad payload" }), {
-        status: 400,
-        headers: cors({ "Content-Type": "application/json" }),
+        status: 400, headers: cors({ "Content-Type": "application/json" }),
       });
     }
 
-    let newStatus: "paid" | "expired" | "canceled" | "pending" = "pending";
-    if (statusStr === "PAID" || statusStr === "SETTLED") newStatus = "paid";
-    else if (statusStr === "EXPIRED") newStatus = "expired";
-    else if (statusStr === "CANCELED" || statusStr === "CANCELLED") newStatus = "canceled";
+    // Map Xendit status -> our payment_status + legacy status
+    let payment_status: "pending"|"paid"|"failed"|"refunded"|"partial" = "pending";
+    let legacy_status = "pending";
+    if (statusStr === "PAID" || statusStr === "SETTLED") { payment_status = "paid"; legacy_status = "paid"; }
+    else if (statusStr === "EXPIRED" || statusStr === "CANCELED" || statusStr === "CANCELLED") { payment_status = "failed"; legacy_status = "canceled"; }
 
-    const updateDoc: Record<string, unknown> = { status: newStatus };
-    if (invoiceId) updateDoc.xendit_invoice_id = invoiceId;
+    // Find order by external_id first, then invoice id
+    let orderId: string | null = null;
+    {
+      const a = await db.from("orders").select("id").eq("external_id", externalId).maybeSingle();
+      if (a.data?.id) orderId = a.data.id;
+      if (!orderId && invoiceId) {
+        const b = await db.from("orders").select("id").eq("xendit_invoice_id", invoiceId).maybeSingle();
+        if (b.data?.id) orderId = b.data.id;
+      }
+      if (!orderId) {
+        return new Response(JSON.stringify({ error: "Order not found" }), {
+          status: 404, headers: cors({ "Content-Type": "application/json" }),
+        });
+      }
+    }
 
-    // Update the matching order by invoice id OR by external id
-    let q = db.from("orders").update(updateDoc);
-    if (invoiceId) q = q.eq("xendit_invoice_id", invoiceId);
-    else q = q.eq("external_id", externalId);
+    const patch: Record<string, unknown> = {
+      payment_status,
+      status: legacy_status,
+      xendit_invoice_id: invoiceId || null,
+    };
+    if (payment_status === "paid") patch.paid_at = new Date().toISOString();
 
-    const { error } = await q.select("id").limit(1);
-    if (error) {
-      return new Response(JSON.stringify({ error: "DB update failed", detail: error.message }), {
-        status: 500,
-        headers: cors({ "Content-Type": "application/json" }),
+    const upd = await db.from("orders").update(patch).eq("id", orderId).select("id").single();
+    if (upd.error) {
+      return new Response(JSON.stringify({ error: upd.error.message }), {
+        status: 500, headers: cors({ "Content-Type": "application/json" }),
       });
     }
 
     return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: cors({ "Content-Type": "application/json" }),
+      status: 200, headers: cors({ "Content-Type": "application/json" }),
     });
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e?.message || "Server error" }), {
-      status: 500,
-      headers: cors({ "Content-Type": "application/json" }),
+      status: 500, headers: cors({ "Content-Type": "application/json" }),
     });
   }
 });
