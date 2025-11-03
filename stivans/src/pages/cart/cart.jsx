@@ -3,6 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import Header from "../../components/header/header";
 import Footer from "../../components/footer/footer";
 import { useCart } from "../../contexts/cartContext";
+import { supabase } from "../../supabaseClient";            // ⬅️ NEW
+import toast from "react-hot-toast";                        // ⬅️ NEW
 import "./cart.css";
 
 function php(amount) {
@@ -54,15 +56,61 @@ export default function Cart() {
       quantity,
     }));
 
-  const handleCheckoutSelected = () => {
-    if (selectedCartItems.length === 0) return;
-    const payload = serializeForCheckout(selectedCartItems);
+  // ⬇️ UPDATED: Instead of navigating to /checkout, create the invoice directly
+  const handleCheckoutSelected = async () => {
+    try {
+      if (selectedCartItems.length === 0) {
+        toast.error("Select at least one item.");
+        return;
+      }
 
-    // Fallback for page refresh on /checkout
-    sessionStorage.setItem("checkout.items", JSON.stringify(payload));
+      // 1) Build robust items payload (matches Edge Function expectations)
+      const itemsPayload = selectedCartItems.map((it) => ({
+        product_id: it.product.id,                              // product_id
+        quantity: Number(it.quantity ?? 1),                     // quantity
+        unit_price: Number(it.product.price ?? 0),              // unit_price
+      }));
 
-    // Pass via router state for normal navigation
-    navigate("/checkout", { state: { items: payload } });
+      // 2) Build totals payload
+      const body = {
+        items: itemsPayload,
+        subtotal: Number(subtotal),
+        tax: Number(tax),
+        shipping: Number(shipping),
+        total: Number(total),
+        order_tag: `order_pending_${Date.now()}`,               // optional tag
+        cadaver_details_id: null,                               // set to your ID if you capture it earlier
+      };
+
+      // 3) Call the Supabase Edge Function (auto-sends the user JWT)
+      const { data, error } = await supabase.functions.invoke("create-invoice", { body });
+      if (error) {
+        // Fallback to old flow so you’re never blocked
+        console.error("create-invoice error:", error);
+        toast.error("Invoice error, redirecting to checkout…");
+        const payload = serializeForCheckout(selectedCartItems);
+        sessionStorage.setItem("checkout.items", JSON.stringify(payload));
+        navigate("/checkout", { state: { items: payload } });
+        return;
+      }
+
+      // 4) Go to Xendit hosted invoice
+      if (data?.invoice_url) {
+        window.location.href = data.invoice_url;
+      } else {
+        // Safety fallback
+        const payload = serializeForCheckout(selectedCartItems);
+        sessionStorage.setItem("checkout.items", JSON.stringify(payload));
+        navigate("/checkout", { state: { items: payload } });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Failed to create invoice");
+      // Safety fallback to old flow
+      const payload = serializeForCheckout(selectedCartItems);
+      sessionStorage.setItem("checkout.items", JSON.stringify(payload));
+      navigate("/checkout", { state: { items: payload } });
+    }
   };
 
   if (isLoading) {
@@ -199,7 +247,7 @@ export default function Cart() {
 
                 <button
                   className="checkout-btn"
-                  onClick={handleCheckoutSelected}
+                  onClick={handleCheckoutSelected}        // ⬅️ calls the function above
                   disabled={selectedItems.length === 0}
                 >
                   Proceed to Checkout

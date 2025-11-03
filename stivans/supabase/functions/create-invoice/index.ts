@@ -1,5 +1,5 @@
 // Supabase Edge Function (Deno) – Create Xendit invoice
-// Adds payment_status + fulfillment_status and now persists order_items.
+// NOW inserts order_items for the newly-created order.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -24,6 +24,7 @@ serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: cors() });
 
   try {
+    // 1) Auth (use user's JWT from Authorization header)
     const auth = req.headers.get("authorization") || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
     if (!token) {
@@ -32,7 +33,6 @@ serve(async (req) => {
       });
     }
 
-    // Admin client to validate the JWT and write to DB
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: userData, error: userErr } = await admin.auth.getUser(token);
     if (userErr || !userData?.user) {
@@ -42,10 +42,14 @@ serve(async (req) => {
     }
     const user = userData.user;
 
+    // 2) Read payload
     const body = await req.json();
     const {
-      items, subtotal, tax, shipping, total,
-      purchase_type, order_tag, cadaver_details_id,
+      items,             // ← array of cart items (see frontend mapping below)
+      subtotal, tax, shipping, total,
+      purchase_type,     // optional
+      order_tag,         // optional
+      cadaver_details_id // optional (legacy; ok to keep)
     } = body || {};
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -59,15 +63,14 @@ serve(async (req) => {
       });
     }
 
-    // 1) Create provisional order
+    // 3) Create provisional order
     const external_id = `INV_${Date.now()}_${user.id.slice(0, 8)}`;
     const { data: orderRow, error: orderErr } = await admin
       .from("orders")
       .insert({
         user_id: user.id,
-        // legacy status (kept in sync by webhook)
+        // legacy + new fields (safe with your RLS)
         status: "pending",
-        // new separated statuses
         payment_status: "pending",
         fulfillment_status: "unfulfilled",
         order_tag: order_tag || null,
@@ -77,32 +80,33 @@ serve(async (req) => {
       .select("id")
       .single();
 
-    if (orderErr) {
-      return new Response(JSON.stringify({ error: "Failed to create order", detail: orderErr.message }), {
-        status: 500, headers: cors({ "Content-Type": "application/json" }),
-      });
+    if (orderErr || !orderRow?.id) {
+      return new Response(JSON.stringify({
+        error: "Failed to create order",
+        detail: orderErr?.message
+      }), { status: 500, headers: cors({ "Content-Type": "application/json" }) });
     }
 
-    // 2) NEW: persist order_items immediately so Admin → Orders shows items
-    if (orderRow?.id && Array.isArray(items) && items.length) {
+    // 4) INSERT ORDER ITEMS (this is the missing piece)
+    //    Handles different shapes safely (id/product_id & price/unit_price).
+    if (Array.isArray(items) && items.length) {
       const rows = items.map((it: any) => ({
-        order_id: orderRow.id,
-        product_id: it.id ?? it.product_id,          // match your payload
-        quantity: it.quantity ?? 1,
-        unit_price: Number(it.price ?? it.unit_price ?? 0),
+        order_id:   orderRow.id,
+        product_id: it.product_id ?? it.id ?? it.product?.id,
+        quantity:   Number(it.quantity ?? it.qty ?? it.count ?? 1),
+        unit_price: Number(it.unit_price ?? it.price ?? it.product?.price ?? it.product_price ?? 0),
       }));
       const { error: oiErr } = await admin.from("order_items").insert(rows);
       if (oiErr) {
-        // not fatal for payment flow; UI will just show no items for this order
+        // Not fatal for payment; you'll just see "No items" if this fails.
         console.error("order_items insert failed:", oiErr.message);
       }
     }
 
-    // 3) Build redirect URLs (remove both lines below if you do NOT want auto-redirect)
+    // 5) Build invoice (keep redirects if you like the auto-return)
     const successUrl = `${FRONTEND_URL}/checkout?paid=1&ref=${encodeURIComponent(external_id)}`;
     const failureUrl = `${FRONTEND_URL}/checkout?paid=0&ref=${encodeURIComponent(external_id)}`;
 
-    // 4) Create Xendit invoice
     const xiRes = await fetch("https://api.xendit.co/v2/invoices", {
       method: "POST",
       headers: {
@@ -114,8 +118,8 @@ serve(async (req) => {
         amount: Math.round(Number(total) * 100) / 100,
         currency: "PHP",
         description: "Memorial service order",
-        success_redirect_url: successUrl,    // ← delete this line to keep invoice open
-        failure_redirect_url: failureUrl,    // ← delete this line to keep invoice open
+        success_redirect_url: successUrl,
+        failure_redirect_url: failureUrl,
         metadata: {
           user_id: user.id,
           order_tag: order_tag || null,
@@ -131,17 +135,16 @@ serve(async (req) => {
       });
     }
 
-    // 5) Persist invoice fields on the order
+    // 6) Save invoice fields on the order
     await admin
       .from("orders")
       .update({ xendit_invoice_id: xiJson.id, xendit_invoice_url: xiJson.invoice_url })
       .eq("id", orderRow.id);
 
-    // 6) Return hosted invoice URL
     return new Response(JSON.stringify({ invoice_url: xiJson.invoice_url }), {
       status: 200, headers: cors({ "Content-Type": "application/json" }),
     });
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
     return new Response(JSON.stringify({ error: e?.message || "Server error" }), {
       status: 500, headers: cors({ "Content-Type": "application/json" }),

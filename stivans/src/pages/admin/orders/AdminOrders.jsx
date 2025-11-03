@@ -1,4 +1,3 @@
-// src/pages/admin/orders/AdminOrders.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { FaSearch, FaSync, FaTruck, FaCheck, FaSave, FaHashtag, FaFileMedical } from "react-icons/fa";
@@ -8,9 +7,9 @@ import "./AdminOrders.css";
 const PAGE_SIZE = 20;
 
 const TABS = [
-  { key: "unshipped", label: "Unshipped" },   // status = 'paid'
-  { key: "in_transit", label: "In Transit" }, // status = 'in_transit'
-  { key: "shipped", label: "Shipped" },       // status = 'shipped'
+  { key: "unshipped", label: "Unshipped" },   // fulfillment_status in ('unfulfilled','processing')
+  { key: "in_transit", label: "In Transit" }, // fulfillment_status = 'in_transit'
+  { key: "shipped", label: "Shipped" },       // fulfillment_status in ('shipped','delivered')
   { key: "all", label: "All" },
 ];
 
@@ -23,55 +22,61 @@ export default function AdminOrders() {
   const [tab, setTab] = useState("unshipped");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("created_at");
-  const [sortDir, setSortDir] = useState("asc"); // FCFS
+  const [sortDir, setSortDir] = useState("asc");
   const [page, setPage] = useState(0);
 
   const [rows, setRows] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // cadaver modal
   const [cadaverOpenId, setCadaverOpenId] = useState(null);
 
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
   const statusFilter = useMemo(() => {
-    if (tab === "unshipped") return { status: "paid" };
-    if (tab === "in_transit") return { status: "in_transit" };
-    if (tab === "shipped") return { status: "shipped" };
-    return null; // all
+    if (tab === "unshipped") return { kind: "in", values: ["unfulfilled", "processing"] };
+    if (tab === "in_transit") return { kind: "eq", value: "in_transit" };
+    if (tab === "shipped") return { kind: "in", values: ["shipped", "delivered"] };
+    return null;
   }, [tab]);
 
   async function fetchOrders() {
     try {
       setLoading(true);
 
-      // IMPORTANT: use the MANY->ONE FK (cadaver_details.order_id)
-      // Embed items (with product) and cadavers (*ALL* fields) per order.
       let q = supabase
         .from("orders")
-        .select(`
-          id, created_at, user_id, external_id, total, status,
+        .select(
+          `
+          id, created_at, user_id, external_id, total,
+          payment_status, fulfillment_status,
           tracking_number, shipping_carrier, xendit_invoice_url,
 
           order_items:order_items(
-            id, quantity, unit_price, product_id,
-            product:products(name, image_url, price)
+            id, quantity, unit_price,
+            product:products(id, name, image_url, price)
           ),
 
           cadavers:cadaver_details!cadaver_details_order_id_fkey(*)
-        `, { count: "exact" });
+        `,
+          { count: "exact" }
+        );
 
-      if (statusFilter) q = q.eq("status", statusFilter.status);
+      // tab filter on fulfillment_status
+      if (statusFilter) {
+        if (statusFilter.kind === "eq") q = q.eq("fulfillment_status", statusFilter.value);
+        if (statusFilter.kind === "in") q = q.in("fulfillment_status", statusFilter.values);
+      }
 
+      // search filter (external_id or tracking_number)
       if (search?.trim()) {
         const qstr = search.trim();
         q = q.or(`external_id.ilike.%${qstr}%,tracking_number.ilike.%${qstr}%`);
       }
 
-      q = q.order(sortField, { ascending: sortDir === "asc", nullsFirst: true });
-      q = q.range(from, to);
+      // sort + paginate
+      q = q.order(sortField, { ascending: sortDir === "asc", nullsFirst: true }).range(from, to);
 
       const { data, error, count: totalCount } = await q;
       if (error) throw error;
@@ -98,14 +103,14 @@ export default function AdminOrders() {
     if (error) throw error;
   }
 
-  async function handleStatusChange(row, nextStatus) {
+  async function handleFulfillmentChange(row, nextStatus) {
     try {
-      await updateRow(row.id, { status: nextStatus });
-      setRows(prev => prev.map(r => (r.id === row.id ? { ...r, status: nextStatus } : r)));
-      toast.success(`Status → ${nextStatus}`);
+      await updateRow(row.id, { fulfillment_status: nextStatus });
+      setRows(prev => prev.map(r => (r.id === row.id ? { ...r, fulfillment_status: nextStatus } : r)));
+      toast.success(`Fulfillment → ${nextStatus}`);
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Failed to update status");
+      toast.error(err.message || "Failed to update fulfillment");
     }
   }
 
@@ -198,7 +203,8 @@ export default function AdminOrders() {
               <th>Date</th>
               <th>Order</th>
               <th>Total</th>
-              <th>Status</th>
+              <th>Payment</th>
+              <th>Fulfillment</th>
               <th>Carrier</th>
               <th>Tracking</th>
               <th>Actions</th>
@@ -206,148 +212,173 @@ export default function AdminOrders() {
           </thead>
           <tbody>
             {rows.length === 0 && !loading && (
-              <tr><td colSpan={7} style={{ textAlign: "center", padding: 24 }}>No orders</td></tr>
+              <tr><td colSpan={8} style={{ textAlign: "center", padding: 24 }}>No orders</td></tr>
             )}
 
-            {rows.map(row => {
-              const cadCount = row.cadavers?.length ?? 0;
-              return (
-                <React.Fragment key={row.id}>
-                  <tr>
-                    <td>{fmtDate(row.created_at)}</td>
-                    <td>
-                      <div className="ao-orderid">
-                        <div>Ext: <code>{row.external_id}</code></div>
-                        {row.xendit_invoice_url && (
-                          <a href={row.xendit_invoice_url} target="_blank" rel="noreferrer">Invoice</a>
-                        )}
-                      </div>
-                    </td>
-                    <td>{fmtPhp(Number(row.total || 0))}</td>
-                    <td>
-                      <select
-                        value={row.status || ""}
-                        onChange={(e) => handleStatusChange(row, e.target.value)}
-                      >
-                        {/* Shipment/fulfillment status (payment_status is separate) */}
-                        <option value="pending">pending</option>
-                        <option value="paid">paid</option>
-                        <option value="in_transit">in_transit</option>
-                        <option value="shipped">shipped</option>
-                        <option value="canceled">canceled</option>
-                      </select>
-                    </td>
-                    <td>
+            {rows.map(row => (
+              <React.Fragment key={row.id}>
+                <tr>
+                  <td>{fmtDate(row.created_at)}</td>
+                  <td>
+                    <div className="ao-orderid">
+                      <div>Ext: <code>{row.external_id}</code></div>
+                      {row.xendit_invoice_url && (
+                        <a href={row.xendit_invoice_url} target="_blank" rel="noreferrer">Invoice</a>
+                      )}
+                    </div>
+                  </td>
+                  <td>{fmtPhp(Number(row.total || 0))}</td>
+
+                  {/* Payment (read-only) */}
+                  <td>
+                    <span className={`pill pill-${row.payment_status || "pending"}`}>
+                      {row.payment_status || "pending"}
+                    </span>
+                  </td>
+
+                  {/* Fulfillment (editable) */}
+                  <td>
+                    <select
+                      value={row.fulfillment_status || "unfulfilled"}
+                      onChange={(e) => handleFulfillmentChange(row, e.target.value)}
+                    >
+                      <option value="unfulfilled">unfulfilled</option>
+                      <option value="processing">processing</option>
+                      <option value="in_transit">in_transit</option>
+                      <option value="shipped">shipped</option>
+                      <option value="delivered">delivered</option>
+                      <option value="canceled">canceled</option>
+                    </select>
+                  </td>
+
+                  <td>
+                    <input
+                      value={row.shipping_carrier || ""}
+                      onChange={(e) =>
+                        setRows(prev => prev.map(p =>
+                          p.id === row.id ? { ...p, shipping_carrier: e.target.value } : p
+                        ))
+                      }
+                      placeholder="LBC / J&T / Ninja"
+                    />
+                  </td>
+
+                  <td>
+                    <div className="ao-track">
+                      <FaHashtag style={{ opacity: 0.7 }} />
                       <input
-                        value={row.shipping_carrier || ""}
+                        value={row.tracking_number || ""}
                         onChange={(e) =>
                           setRows(prev => prev.map(p =>
-                            p.id === row.id ? { ...p, shipping_carrier: e.target.value } : p
+                            p.id === row.id ? { ...p, tracking_number: e.target.value } : p
                           ))
                         }
-                        placeholder="LBC / J&T / Ninja"
+                        placeholder="YYMMDD00001"
                       />
-                    </td>
-                    <td>
-                      <div className="ao-track">
-                        <FaHashtag style={{ opacity: 0.7 }} />
-                        <input
-                          value={row.tracking_number || ""}
-                          onChange={(e) =>
-                            setRows(prev => prev.map(p =>
-                              p.id === row.id ? { ...p, tracking_number: e.target.value } : p
-                            ))
-                          }
-                          placeholder="YYMMDD00001"
-                        />
-                        <button className="ao-gen" title="Generate tracking"
-                          onClick={() => handleGenerateTracking(row)}>
-                          <FaTruck />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="ao-actions-td">
-                      <button className="ao-save" onClick={() => handleSaveShipping(row)}>
-                        <FaSave /> Save
+                      <button className="ao-gen" title="Generate tracking"
+                        onClick={() => handleGenerateTracking(row)}>
+                        <FaTruck />
                       </button>
-                      {row.status !== "shipped" && (
-                        <button className="ao-markshipped" onClick={() => handleStatusChange(row, "shipped")}>
-                          <FaCheck /> Mark Shipped
-                        </button>
-                      )}
-                      <button className="ao-cadaver-btn" onClick={() => setCadaverOpenId(row.id)}>
-                        <FaFileMedical /> Cadaver Details {cadCount ? `(${cadCount})` : ""}
-                      </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </td>
 
-                  {/* Expanded Panel: ITEMS only (cadavers moved to modal) */}
-                  <tr>
-                    <td colSpan={7}>
-                      <div className="ao-subpanel">
-                        <div className="ao-subcol">
-                          <h4>Items</h4>
-                          <div className="ao-items">
-                            {(row.order_items?.length ?? 0) === 0 && (
-                              <div className="ao-noitems">No items</div>
-                            )}
-                            {(row.order_items ?? []).map(oi => {
-                              const p = oi.product || {};
-                              const qty = Number(oi.quantity || 0);
-                              const unit = Number(oi.unit_price ?? p.price ?? 0);
-                              const line = qty * unit;
-                              return (
-                                <div key={oi.id} className="ao-item">
-                                  {p.image_url && (
-                                    <img src={p.image_url} alt={p.name || "Product"} />
-                                  )}
-                                  <div className="ao-item-meta">
-                                    <div className="ao-item-name">{p.name || "Product"}</div>
-                                    <div className="ao-item-sub">
-                                      {qty} × {fmtPhp(unit)} = <strong>{fmtPhp(line)}</strong>
-                                    </div>
+                  <td className="ao-actions-td">
+                    <button className="ao-save" onClick={() => handleSaveShipping(row)}>
+                      <FaSave /> Save
+                    </button>
+                    {row.fulfillment_status !== "shipped" && (
+                      <button className="ao-markshipped" onClick={() => handleFulfillmentChange(row, "shipped")}>
+                        <FaCheck /> Mark Shipped
+                      </button>
+                    )}
+                    <button className="ao-cadaver-btn" onClick={() => setCadaverOpenId(row.id)}>
+                      <FaFileMedical /> Cadaver Details ({row.cadavers?.length || 0})
+                    </button>
+                  </td>
+                </tr>
+
+                {/* Items + quick cadaver glance */}
+                <tr>
+                  <td colSpan={8}>
+                    <div className="ao-subpanel">
+                      <div className="ao-subcol">
+                        <h4>Items</h4>
+                        <div className="ao-items">
+                          {(row.order_items?.length ?? 0) === 0 && (
+                            <div className="ao-noitems">No items</div>
+                          )}
+                          {(row.order_items ?? []).map(oi => {
+                            const p = oi.product || {};
+                            const qty = Number(oi.quantity || 0);
+                            const unit = Number(oi.unit_price ?? p.price ?? 0);
+                            const line = qty * unit;
+                            return (
+                              <div key={oi.id} className="ao-item">
+                                {p.image_url && <img src={p.image_url} alt={p.name || "Product"} />}
+                                <div className="ao-item-meta">
+                                  <div className="ao-item-name">{p.name || "Product"}</div>
+                                  <div className="ao-item-sub">
+                                    {qty} × {fmtPhp(unit)} = <strong>{fmtPhp(line)}</strong>
                                   </div>
                                 </div>
-                              );
-                            })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="ao-subcol">
+                        <h4>Cadaver Details</h4>
+                        {(row.cadavers?.length ?? 0) === 0 ? (
+                          <div>No cadaver details</div>
+                        ) : (
+                          <div className="cadaver-grid">
+                            {Object.entries(row.cadavers[0]).map(([k, v]) => (
+                              <div key={k} className="cadaver-field">
+                                <strong>{k}</strong>: <span>{v === null || v === undefined ? "—" : String(v)}</span>
+                              </div>
+                            ))}
+                            {row.cadavers[0].death_certificate_url && (
+                              <a href={row.cadavers[0].death_certificate_url} target="_blank" rel="noreferrer">
+                                death certificate url
+                              </a>
+                            )}
                           </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Cadaver modal */}
+                {cadaverOpenId === row.id && (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="ao-modal-backdrop" onClick={() => setCadaverOpenId(null)} />
+                      <div className="ao-modal">
+                        <div className="ao-modal-head">
+                          <h3>Cadaver Details ({row.cadavers?.length || 0})</h3>
+                          <button onClick={() => setCadaverOpenId(null)}>Close</button>
+                        </div>
+                        <div className="ao-modal-body">
+                          {(row.cadavers ?? []).map(cd => (
+                            <div key={cd.id} className="ao-cadaver-card">
+                              {Object.entries(cd).map(([k, v]) => (
+                                <div key={k}><strong>{k}:</strong> {v === null || v === undefined ? "—" : String(v)}</div>
+                              ))}
+                              {cd.death_certificate_url && (
+                                <div><a href={cd.death_certificate_url} target="_blank" rel="noreferrer">death certificate</a></div>
+                              )}
+                            </div>
+                          ))}
+                          {(row.cadavers?.length ?? 0) === 0 && <div>No cadaver details linked.</div>}
                         </div>
                       </div>
                     </td>
                   </tr>
-
-                  {/* Modal for Cadavers */}
-                  {cadaverOpenId === row.id && (
-                    <tr>
-                      <td colSpan={7}>
-                        <div className="ao-modal-backdrop" onClick={() => setCadaverOpenId(null)} />
-                        <div className="ao-modal">
-                          <div className="ao-modal-head">
-                            <h3>Cadaver Details ({row.cadavers?.length || 0})</h3>
-                            <button onClick={() => setCadaverOpenId(null)}>Close</button>
-                          </div>
-                          <div className="ao-modal-body">
-                            {(row.cadavers ?? []).map(cd => (
-                              <div key={cd.id} className="ao-cadaver-card">
-                                {Object.entries(cd).map(([k, v]) => (
-                                  <div key={k}><strong>{k}</strong>: {v === null || v === undefined ? "—" : String(v)}</div>
-                                ))}
-                                {cd.death_certificate_url && (
-                                  <div style={{ marginTop: 6 }}>
-                                    <a href={cd.death_certificate_url} target="_blank" rel="noreferrer">death certificate</a>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                            {(row.cadavers?.length ?? 0) === 0 && <div>No cadaver details linked.</div>}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
+                )}
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
       </div>
