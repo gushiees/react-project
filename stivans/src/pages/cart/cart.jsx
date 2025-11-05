@@ -12,6 +12,9 @@ function php(amount) {
   return "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Toggle this to switch between direct-checkout page vs. calling the Edge Function here
+const USE_DIRECT_CHECKOUT_PAGE = true;
+
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart, clearCart, isLoading } = useCart();
   const navigate = useNavigate();
@@ -58,7 +61,6 @@ export default function Cart() {
     return key;
   }
 
-  // >>> ONLY CHANGED THIS FUNCTION <<<
   const handleCheckoutSelected = async () => {
     if (isSubmitting) return;
     try {
@@ -68,25 +70,71 @@ export default function Cart() {
       }
       setIsSubmitting(true);
 
-      // Build exactly what /checkout expects
+      // Build the payload the /checkout page expects
       const payload = serializeForCheckout(selectedCartItems);
 
-      // Persist so refresh/back still works
-      sessionStorage.setItem("checkout.items", JSON.stringify(payload));
+      if (USE_DIRECT_CHECKOUT_PAGE) {
+        // ✅ New flow: go to /checkout with only the selected items
+        sessionStorage.setItem("checkout.items", JSON.stringify(payload)); // survive refresh
+        sessionStorage.removeItem("pending.idem"); // clear any stale idem key
+        navigate("/checkout", { state: { items: payload } });
+        return;
+      }
 
-      // Clear any previous temp key (optional safety)
-      sessionStorage.removeItem("pending.idem");
+      // ---- Old flow kept intact below (not used when USE_DIRECT_CHECKOUT_PAGE = true) ----
+      // robust items payload expected by the Edge Function
+      const itemsPayload = selectedCartItems.map((it) => ({
+        product_id: it.product.id,
+        quantity: Number(it.quantity ?? 1),
+        unit_price: Number(it.product.price ?? 0),
+        image_url: it.product.image_url ?? null,
+      }));
 
-      // Redirect to the dedicated checkout page with only the selected items
-      navigate("/checkout", { state: { items: payload } });
+      const idemKey = getIdempotencyKey();
+
+      const body = {
+        items: itemsPayload,
+        subtotal: Number(subtotal),
+        tax: Number(tax),
+        shipping: Number(shipping),
+        total: Number(total),
+        idempotency_key: idemKey,          // server will reuse existing order for same key
+        order_tag: idemKey,                // also stored on orders.order_tag
+        cadaver_details_id: null,          // pass a real id if you capture it earlier
+      };
+
+      // call your Supabase Edge Function (works with React Router)
+      const { data, error } = await supabase.functions.invoke("create-invoice", { body });
+
+      if (error) {
+        console.error("create-invoice error:", error);
+        toast.error("Invoice error, redirecting to checkout…");
+        sessionStorage.setItem("checkout.items", JSON.stringify(payload));
+        navigate("/checkout", { state: { items: payload } });
+        return;
+      }
+
+      if (data?.invoice_url) {
+        // success → clear the key so a future checkout gets a new one
+        sessionStorage.removeItem("pending.idem");
+        window.location.href = data.invoice_url;
+      } else {
+        // safety fallback to old flow
+        sessionStorage.setItem("checkout.items", JSON.stringify(payload));
+        navigate("/checkout", { state: { items: payload } });
+      }
+      // ---- End old flow ----
+
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Failed to go to checkout");
+      toast.error(err.message || "Failed to create invoice");
+      const payload = serializeForCheckout(selectedCartItems);
+      sessionStorage.setItem("checkout.items", JSON.stringify(payload));
+      navigate("/checkout", { state: { items: payload } });
     } finally {
-      setTimeout(() => setIsSubmitting(false), 400);
+      setTimeout(() => setIsSubmitting(false), 1200);
     }
   };
-  // >>> END OF CHANGE <<<
 
   if (isLoading) {
     return (
