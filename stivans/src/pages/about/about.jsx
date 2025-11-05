@@ -7,47 +7,105 @@ import logoImage from "../../assets/stivanlogolight.png";
 import "./about.css";
 import { supabase } from "../../supabaseClient";
 
+// ---- DEFAULTS (kept if CMS empty) ----
+const DEFAULTS = {
+  mission:
+    "To provide compassionate, dignified, and affordable funeral services that honor the life of every individual.",
+  vision:
+    "To be the most trusted funeral service provider in the country, embracing innovation while preserving tradition.",
+  values: [
+    {
+      title: "Compassion and Respect",
+      desc: "We treat every family with empathy and honor the dignity of every life.",
+    },
+    {
+      title: "Professionalism and Integrity",
+      desc: "We maintain the highest standards of service, guided by honesty and transparency.",
+    },
+    {
+      title: "Affordability and Accessibility",
+      desc: "We ensure that meaningful services are within reach for all families.",
+    },
+    {
+      title: "Innovation with Tradition",
+      desc: "We embrace technology to improve our services while respecting cultural practices.",
+    },
+  ],
+  timeline: [
+    {
+      year: "2020",
+      event:
+        "ST. IVANS Funeral Services was founded to provide dignified and accessible services.",
+    },
+    {
+      year: "2022",
+      event:
+        "Expanded nationwide with partnerships across multiple regions.",
+    },
+    { year: "2023", event: "Launched digital platform for memorial planning." },
+    {
+      year: "2025",
+      event: "Introduced mobile app for real-time updates and planning.",
+    },
+  ],
+  team: [
+    "John Doe – Founder & CEO",
+    "Jane Smith – Operations Manager",
+    "Michael Lee – Head of Client Services",
+    "Sarah Johnson – Digital Platform Manager",
+  ],
+  faq: [
+    {
+      q: "What services do you offer?",
+      a: "We offer funeral arrangements, cremation, memorial planning, and online tribute options.",
+    },
+    {
+      q: "How do I plan a funeral with ST. IVANS?",
+      a: "You can visit our office, call our hotline, or use our digital platform to plan a service.",
+    },
+    {
+      q: "Do you offer online memorial options?",
+      a: "Yes, we provide digital memorial pages and live-streaming services for loved ones afar.",
+    },
+    {
+      q: "Are your services available nationwide?",
+      a: "Yes, we have expanded our reach across multiple regions in the country.",
+    },
+  ],
+  slogan: "Your Comfort To Heaven",
+};
+
 export default function About() {
   const [openIndex, setOpenIndex] = useState(null);
-  const toggleSection = (index) => setOpenIndex(openIndex === index ? null : index);
 
-  // CMS state with safe defaults (your current hard-coded content)
+  // CMS state
   const [media, setMedia] = useState({
     image_url: "",
     logo_url: "",
-    slogan: "Your Comfort To Heaven",
+    slogan: DEFAULTS.slogan,
   });
 
   const [sections, setSections] = useState({
-    mission:
-      "To provide compassionate, dignified, and affordable funeral services that honor the life of every individual.",
-    vision:
-      "To be the most trusted funeral service provider in the country, embracing innovation while preserving tradition.",
-    values: [
-      { title: "Compassion and Respect", desc: "We treat every family with empathy and honor the dignity of every life." },
-      { title: "Professionalism and Integrity", desc: "We maintain the highest standards of service, guided by honesty and transparency." },
-      { title: "Affordability and Accessibility", desc: "We ensure that meaningful services are within reach for all families." },
-      { title: "Innovation with Tradition", desc: "We embrace technology to improve our services while respecting cultural practices." },
-    ],
-    timeline: [
-      { year: "2020", event: "ST. IVANS Funeral Services was founded to provide dignified and accessible services." },
-      { year: "2022", event: "Expanded nationwide with partnerships across multiple regions." },
-      { year: "2023", event: "Launched digital platform for memorial planning." },
-      { year: "2025", event: "Introduced mobile app for real-time updates and planning." },
-    ],
-    team: [
-      "John Doe – Founder & CEO",
-      "Jane Smith – Operations Manager",
-      "Michael Lee – Head of Client Services",
-      "Sarah Johnson – Digital Platform Manager",
-    ],
-    faq: [
-      { q: "What services do you offer?", a: "We offer funeral arrangements, cremation, memorial planning, and online tribute options." },
-      { q: "How do I plan a funeral with ST. IVANS?", a: "You can visit our office, call our hotline, or use our digital platform to plan a service." },
-      { q: "Do you offer online memorial options?", a: "Yes, we provide digital memorial pages and live-streaming services for loved ones afar." },
-      { q: "Are your services available nationwide?", a: "Yes, we have expanded our reach across multiple regions in the country." },
-    ],
+    mission: DEFAULTS.mission,
+    vision: DEFAULTS.vision,
+    values: DEFAULTS.values,
+    timeline: DEFAULTS.timeline,
+    team: DEFAULTS.team,
+    faq: DEFAULTS.faq,
   });
+
+  // Helpers
+  const nonEmpty = (v) => (typeof v === "string" ? v.trim().length > 0 : !!v);
+  const cleanValues = (arr) =>
+    (arr || []).filter(
+      (v) => nonEmpty(v?.title) || nonEmpty(v?.desc)
+    );
+  const cleanTimeline = (arr) =>
+    (arr || []).filter((t) => nonEmpty(t?.year) || nonEmpty(t?.event));
+  const cleanTeam = (arr) =>
+    (arr || []).map((s) => String(s || "").trim()).filter((s) => s.length);
+  const cleanFaq = (arr) =>
+    (arr || []).filter((f) => nonEmpty(f?.q) || nonEmpty(f?.a));
 
   // Fetch CMS (slug: 'about') → blocks: 'about_media' and 'about_sections'
   useEffect(() => {
@@ -63,34 +121,59 @@ export default function About() {
         if (pageErr || !page?.id) return;
 
         const [{ data: mediaBlock }, { data: sectionsBlock }] = await Promise.all([
-          supabase.from("cms_blocks").select("data").eq("page_id", page.id).eq("key", "about_media").maybeSingle(),
-          supabase.from("cms_blocks").select("data").eq("page_id", page.id).eq("key", "about_sections").maybeSingle(),
+          supabase
+            .from("cms_blocks")
+            .select("data")
+            .eq("page_id", page.id)
+            .eq("key", "about_media")
+            .maybeSingle(),
+          supabase
+            .from("cms_blocks")
+            .select("data")
+            .eq("page_id", page.id)
+            .eq("key", "about_sections")
+            .maybeSingle(),
         ]);
 
         if (cancelled) return;
 
+        // MEDIA: fall back to defaults if empty
         if (mediaBlock?.data) {
           setMedia((m) => ({
-            image_url: mediaBlock.data.image_url || "",
-            logo_url: mediaBlock.data.logo_url || "",
-            slogan: mediaBlock.data.slogan || m.slogan,
+            image_url: (mediaBlock.data.image_url || "").trim(),
+            logo_url: (mediaBlock.data.logo_url || "").trim(),
+            slogan:
+              (mediaBlock.data.slogan || "").trim() || m.slogan || DEFAULTS.slogan,
           }));
         }
 
+        // SECTIONS: use CMS when present; otherwise keep defaults
         if (sectionsBlock?.data) {
           const d = sectionsBlock.data || {};
-          setSections((s) => ({
-            mission: d.mission ?? s.mission,
-            vision: d.vision ?? s.vision,
-            values: Array.isArray(d.values) && d.values.length ? d.values : s.values,
-            timeline: Array.isArray(d.timeline) && d.timeline.length ? d.timeline : s.timeline,
-            team: Array.isArray(d.team) && d.team.length ? d.team : s.team,
-            faq: Array.isArray(d.faq) && d.faq.length ? d.faq : s.faq,
-          }));
+
+          const cmsValues = cleanValues(d.values);
+          const cmsTimeline = cleanTimeline(d.timeline);
+          const cmsTeam = cleanTeam(d.team);
+          const cmsFaq = cleanFaq(d.faq);
+
+          setSections({
+            mission: nonEmpty(d.mission) ? d.mission : DEFAULTS.mission,
+            vision: nonEmpty(d.vision) ? d.vision : DEFAULTS.vision,
+            // Values: replace only if CMS has at least one non-empty row; else defaults
+            values: cmsValues.length ? cmsValues : DEFAULTS.values,
+            // Timeline: APPEND CMS rows after defaults (do not remove defaults)
+            timeline:
+              cmsTimeline.length
+                ? [...DEFAULTS.timeline, ...cmsTimeline]
+                : DEFAULTS.timeline,
+            // Team & FAQ: replace if provided; else defaults
+            team: cmsTeam.length ? cmsTeam : DEFAULTS.team,
+            faq: cmsFaq.length ? cmsFaq : DEFAULTS.faq,
+          });
         }
       } catch (e) {
-        // keep defaults on any error
         console.warn("About CMS load failed:", e?.message || e);
+        // keep defaults on error
       }
     }
 
@@ -100,7 +183,6 @@ export default function About() {
     };
   }, []);
 
-  // Build UI sections the same way your current component expects
   const uiSections = [
     { heading: "Our Mission", content: sections.mission },
     { heading: "Our Vision", content: sections.vision },
@@ -110,9 +192,9 @@ export default function About() {
     { heading: "Frequently Asked Questions", content: sections.faq, type: "faq" },
   ];
 
-  const mainImageSrc = media.image_url || bannerImage;
-  const logoSrc = media.logo_url || logoImage;
-  const sloganText = media.slogan || "Your Comfort To Heaven";
+  const mainImageSrc = nonEmpty(media.image_url) ? media.image_url : bannerImage;
+  const logoSrc = nonEmpty(media.logo_url) ? media.logo_url : logoImage;
+  const sloganText = nonEmpty(media.slogan) ? media.slogan : DEFAULTS.slogan;
 
   return (
     <section className="about">
@@ -134,9 +216,16 @@ export default function About() {
         <div className="about-right">
           {uiSections.map((section, index) => (
             <div className="about-block" key={index}>
-              <button className="accordion-toggle" onClick={() => setOpenIndex(openIndex === index ? null : index)}>
+              <button
+                className="accordion-toggle"
+                onClick={() =>
+                  setOpenIndex(openIndex === index ? null : index)
+                }
+              >
                 {section.heading}
-                <span className={`arrow ${openIndex === index ? "open" : ""}`}>&#9660;</span>
+                <span className={`arrow ${openIndex === index ? "open" : ""}`}>
+                  &#9660;
+                </span>
               </button>
 
               {openIndex === index && (
@@ -145,7 +234,7 @@ export default function About() {
                     <div className="timeline">
                       <div className="timeline-container">
                         {(section.content || []).map((item, i) => (
-                          <div className="timeline-item" key={i}>
+                          <div className="timeline-item" key={`${item.year}-${i}`}>
                             <div className="timeline-dot"></div>
                             <div className="timeline-content">
                               <div className="timeline-year">{item.year}</div>
@@ -158,7 +247,7 @@ export default function About() {
                   ) : section.type === "values" ? (
                     <ul className="values-list">
                       {(section.content || []).map((val, i) => (
-                        <li key={i}>
+                        <li key={`${val.title}-${i}`}>
                           <strong>{val.title}:</strong> {val.desc}
                         </li>
                       ))}
@@ -166,7 +255,7 @@ export default function About() {
                   ) : section.type === "faq" ? (
                     <div className="faq-section">
                       {(section.content || []).map((faq, i) => (
-                        <div className="faq-item" key={i}>
+                        <div className="faq-item" key={`${faq.q}-${i}`}>
                           <div className="faq-question">{faq.q}</div>
                           <div className="faq-answer">{faq.a}</div>
                         </div>
@@ -174,7 +263,9 @@ export default function About() {
                     </div>
                   ) : Array.isArray(section.content) ? (
                     <ul>
-                      {(section.content || []).map((item, i) => <li key={i}>{item}</li>)}
+                      {(section.content || []).map((item, i) => (
+                        <li key={`${item}-${i}`}>{item}</li>
+                      ))}
                     </ul>
                   ) : (
                     <p>{section.content}</p>
