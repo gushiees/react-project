@@ -1,420 +1,468 @@
+// src/pages/admin/cms/AdminCMS.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../../../supabaseClient";
 import toast from "react-hot-toast";
-import "./AdminCMS.css";
+import { supabase } from "../../../supabaseClient";
 
-/**
- * AdminCMS
- * - Lists pages from cms_pages (home/about/contact…)
- * - Lets you edit page meta (title, published)
- * - Lets you edit the "hero" block for the selected page:
- *      headline, subheadline, cta_label, cta_href, background_image_url
- * - Upload hero image to storage bucket 'cms' and auto-fill URL
- *
- * RLS: write requires admin (profiles.role='admin'); reads work for admins
- */
+// Internal route choices for the dropdown
+const ROUTE_OPTIONS = [
+  { label: "— choose a route —", value: "" },
+  { label: "Home", value: "/" },
+  { label: "Catalog", value: "/catalog" },
+  { label: "Chapels", value: "/chapels" },
+  { label: "About", value: "/about" },
+  { label: "Contact", value: "/contact" },
+  { label: "Login", value: "/login" },
+  { label: "Signup", value: "/signup" },
+  { label: "Cart", value: "/cart" },
+  { label: "Checkout", value: "/checkout" },
+  { label: "Profile", value: "/profile" },
+  // add more if you expose new pages
+];
 
-const KNOWN_PAGES = ["home", "about", "contact"];
+const PAGE_SLUGS = ["home", "about", "contact"];
 
 export default function AdminCMS() {
-  const [loading, setLoading] = useState(false);
-  const [pages, setPages] = useState([]);
-  const [selectedSlug, setSelectedSlug] = useState("home");
-  const [pageRow, setPageRow] = useState(null);
+  const [slug, setSlug] = useState("home");
 
-  // hero block state (null until loaded)
-  const [heroBlock, setHeroBlock] = useState(null); // full block row: { id, key, type, data, ... }
-  const [heroData, setHeroData] = useState({
+  // page
+  const [pageId, setPageId] = useState(null);
+  const [pageTitle, setPageTitle] = useState("");
+  const [published, setPublished] = useState(true);
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDesc, setSeoDesc] = useState("");
+
+  // hero
+  const [hero, setHero] = useState({
     headline: "",
     subheadline: "",
-    cta_label: "",
-    cta_href: "",
+    cta_label: "Get Started",
+    cta_href: "/catalog",
     background_image_url: "",
   });
+  const [heroFile, setHeroFile] = useState(null);
 
-  const currentPageId = pageRow?.id || null;
+  // services
+  const [services, setServices] = useState({
+    cards: [],
+  });
 
-  const canEditHero = useMemo(() => {
-    // We allow hero on any page if you want, but you asked for homepage first
-    return Boolean(currentPageId);
-  }, [currentPageId]);
+  // ---------- helpers ----------
+  const pageIsHome = useMemo(() => slug === "home", [slug]);
 
-  // Load pages
-  async function loadPages() {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("cms_pages")
-        .select("id, slug, title, published, seo_title, seo_description")
-        .order("slug", { ascending: true });
-      if (error) throw error;
-
-      setPages(data || []);
-
-      // Ensure selected slug exists — if not, pick first available or "home"
-      const chosen =
-        data?.find((p) => p.slug === selectedSlug)?.slug ||
-        data?.[0]?.slug ||
-        "home";
-      setSelectedSlug(chosen);
-    } catch (err) {
-      console.error(err);
-      toast.error(err.message || "Failed to load pages");
-    } finally {
-      setLoading(false);
-    }
+  function onHeroChange(k, v) {
+    setHero((s) => ({ ...s, [k]: v }));
   }
 
-  // Ensure a page row exists (create if missing)
-  async function ensurePage(slug) {
-    // if exists in state, use it
-    const found = pages.find((p) => p.slug === slug);
-    if (found) return found;
+  function onCardChange(i, k, v) {
+    setServices((s) => {
+      const cards = [...(s.cards || [])];
+      cards[i] = { ...(cards[i] || {}), [k]: v };
+      return { ...s, cards };
+    });
+  }
 
-    // create it
-    const { data, error } = await supabase
+  function addCard() {
+    setServices((s) => ({
+      ...s,
+      cards: [
+        ...(s.cards || []),
+        { title: "", text: "", href: "", image_url: "" },
+      ],
+    }));
+  }
+
+  function removeCard(i) {
+    setServices((s) => {
+      const cards = [...(s.cards || [])];
+      cards.splice(i, 1);
+      return { ...s, cards };
+    });
+  }
+
+  async function uploadToCms(file, prefix = "services") {
+    if (!file) return null;
+    const ext = file.name.split(".").pop();
+    const path = `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("cms").upload(path, file, { upsert: false });
+    if (error) throw error;
+    const publicUrl = supabase.storage.from("cms").getPublicUrl(path).data.publicUrl;
+    return publicUrl;
+  }
+
+  async function ensurePage() {
+    // get existing page (or create)
+    const { data } = await supabase.from("cms_pages").select("*").eq("slug", slug).maybeSingle();
+    if (data?.id) return data;
+
+    const ins = await supabase
       .from("cms_pages")
       .insert({ slug, title: slug[0].toUpperCase() + slug.slice(1), published: false })
-      .select("id, slug, title, published, seo_title, seo_description")
+      .select()
       .single();
-    if (error) throw error;
-
-    // refresh list & return newly created page
-    await loadPages();
-    return data;
+    if (ins.error) throw ins.error;
+    return ins.data;
   }
 
-  // Load selected page meta + hero
-  async function loadPageAndHero(slug) {
+  async function fetchAll() {
     try {
-      setLoading(true);
+      const pg = await ensurePage();
+      setPageId(pg.id);
+      setPageTitle(pg.title || "");
+      setPublished(!!pg.published);
+      setSeoTitle(pg.seo_title || "");
+      setSeoDesc(pg.seo_description || "");
 
-      let page = pages.find((p) => p.slug === slug);
-      if (!page) {
-        page = await ensurePage(slug);
-      }
-
-      setPageRow(page || null);
-
-      if (!page?.id) {
-        setHeroBlock(null);
-        setHeroData({
-          headline: "",
-          subheadline: "",
-          cta_label: "",
-          cta_href: "",
-          background_image_url: "",
-        });
-        return;
-      }
-
-      // fetch hero block for this page
-      const { data: blocks, error: bErr } = await supabase
+      // hero block
+      const heroRes = await supabase
         .from("cms_blocks")
-        .select("id, key, type, data, sort_order, page_id")
-        .eq("page_id", page.id)
-        .order("sort_order", { ascending: true });
+        .select("*")
+        .eq("page_id", pg.id)
+        .eq("key", "hero")
+        .maybeSingle();
 
-      if (bErr) throw bErr;
+      if (heroRes.data?.data) {
+        setHero({
+          headline: heroRes.data.data.headline || "",
+          subheadline: heroRes.data.data.subheadline || "",
+          cta_label: heroRes.data.data.cta_label || "Get Started",
+          cta_href: heroRes.data.data.cta_href || "/catalog",
+          background_image_url: heroRes.data.data.background_image_url || "",
+        });
+      } else {
+        setHero((s) => ({ ...s })); // leave defaults
+      }
 
-      const hero = (blocks || []).find((b) => b.key === "hero");
-      setHeroBlock(hero || null);
+      // services block
+      const svcRes = await supabase
+        .from("cms_blocks")
+        .select("*")
+        .eq("page_id", pg.id)
+        .eq("key", "services")
+        .maybeSingle();
 
-      const d = hero?.data || {};
-      setHeroData({
-        headline: d.headline || "",
-        subheadline: d.subheadline || "",
-        cta_label: d.cta_label || "",
-        cta_href: d.cta_href || "",
-        background_image_url: d.background_image_url || "",
-      });
+      if (svcRes.data?.data?.cards) {
+        setServices({ cards: svcRes.data.data.cards });
+      } else {
+        setServices({ cards: [] });
+      }
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Failed to load page content");
-    } finally {
-      setLoading(false);
+      toast.error(err.message || "Failed to load CMS");
     }
   }
 
   useEffect(() => {
-    loadPages();
+    fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [slug]);
 
-  useEffect(() => {
-    if (pages.length) {
-      loadPageAndHero(selectedSlug);
+  // ---------- saves ----------
+  async function savePage() {
+    if (!pageId) return;
+    const { error } = await supabase
+      .from("cms_pages")
+      .update({
+        title: pageTitle || null,
+        published,
+        seo_title: seoTitle || null,
+        seo_description: seoDesc || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", pageId);
+    if (error) {
+      toast.error(error.message || "Saving page failed");
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSlug, pages.length]);
-
-  function onHeroChange(field, value) {
-    setHeroData((prev) => ({ ...prev, [field]: value }));
+    toast.success("Page settings saved");
   }
 
-  async function handleUploadHeroImage(evt) {
+  async function saveHero() {
+    if (!pageId) return;
+
+    let bgUrl = hero.background_image_url || "";
     try {
-      const file = evt.target.files?.[0];
-      if (!file) return;
-
-      const filename = `${Date.now()}_${file.name}`;
-      const path = `hero/${filename}`;
-
-      const { error: upErr } = await supabase.storage
-        .from("cms")
-        .upload(path, file, { upsert: true });
-      if (upErr) throw upErr;
-
-      const { data: pub } = supabase.storage.from("cms").getPublicUrl(path);
-      const publicUrl = pub?.publicUrl;
-      if (!publicUrl) throw new Error("Failed to resolve public URL for image");
-
-      onHeroChange("background_image_url", publicUrl);
-      toast.success("Hero image uploaded");
-    } catch (err) {
-      console.error(err);
-      toast.error(err.message || "Upload failed");
-    } finally {
-      // clear file input to allow re-uploading same file name
-      evt.target.value = "";
-    }
-  }
-
-  async function savePageMeta() {
-    try {
-      if (!pageRow?.id) return;
-      const patch = {
-        title: pageRow.title || null,
-        published: !!pageRow.published,
-        seo_title: pageRow.seo_title || null,
-        seo_description: pageRow.seo_description || null,
-      };
-      const { error } = await supabase
-        .from("cms_pages")
-        .update(patch)
-        .eq("id", pageRow.id);
-      if (error) throw error;
-      toast.success("Page settings saved");
-    } catch (err) {
-      console.error(err);
-      toast.error(err.message || "Failed to save page");
-    }
-  }
-
-  async function saveHeroBlock() {
-    try {
-      if (!currentPageId) return;
+      if (heroFile) {
+        bgUrl = await uploadToCms(heroFile, "hero");
+      }
 
       const payload = {
-        headline: heroData.headline || "",
-        subheadline: heroData.subheadline || "",
-        cta_label: heroData.cta_label || "",
-        cta_href: heroData.cta_href || "",
-        background_image_url: heroData.background_image_url || "",
+        headline: hero.headline || "",
+        subheadline: hero.subheadline || "",
+        cta_label: hero.cta_label || "",
+        cta_href: hero.cta_href || "",
+        background_image_url: bgUrl || null,
       };
 
-      if (heroBlock?.id) {
-        const { error } = await supabase
-          .from("cms_blocks")
-          .update({ data: payload })
-          .eq("id", heroBlock.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("cms_blocks")
-          .insert({
-            page_id: currentPageId,
+      const { error } = await supabase
+        .from("cms_blocks")
+        .upsert(
+          {
+            page_id: pageId,
             key: "hero",
             type: "hero",
             sort_order: 10,
             data: payload,
-          });
-        if (error) throw error;
-      }
-
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "page_id,key" }
+        );
+      if (error) throw error;
+      setHero((s) => ({ ...s, background_image_url: bgUrl || "" }));
+      setHeroFile(null);
       toast.success("Hero saved");
-      // re-load to refresh IDs/rows
-      await loadPageAndHero(selectedSlug);
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Failed to save hero");
+      toast.error(err.message || "Saving hero failed");
     }
   }
 
+  async function saveServices() {
+    if (!pageId) return;
+
+    try {
+      // Upload any new files first and replace image_url if needed
+      const uploaders = [];
+      const nextCards = (services.cards || []).map((c, i) => {
+        const clone = { ...c };
+        // if we temporarily stashed a File object on `file`
+        if (clone.file instanceof File) {
+          uploaders.push(
+            uploadToCms(clone.file, "services").then((url) => {
+              clone.image_url = url;
+              delete clone.file;
+              return { idx: i, value: clone };
+            })
+          );
+        }
+        return clone;
+      });
+
+      if (uploaders.length) {
+        const uploaded = await Promise.all(uploaders);
+        uploaded.forEach(({ idx, value }) => {
+          nextCards[idx] = value;
+        });
+      }
+
+      const payload = { cards: nextCards };
+
+      const { error } = await supabase
+        .from("cms_blocks")
+        .upsert(
+          {
+            page_id: pageId,
+            key: "services",
+            type: "services",
+            sort_order: 20,
+            data: payload,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "page_id,key" }
+        );
+      if (error) throw error;
+      setServices({ cards: nextCards });
+      toast.success("Services saved");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Saving services failed");
+    }
+  }
+
+  // ---------- UI ----------
   return (
-    <div className="cms-admin">
-      <div className="cms-head">
-        <h1>CMS</h1>
-        <div className="cms-head__right">
-          <label>
-            Page:
-            <select
-              value={selectedSlug}
-              onChange={(e) => setSelectedSlug(e.target.value)}
-            >
-              {KNOWN_PAGES.map((slug) => (
-                <option key={slug} value={slug}>
-                  {slug}
-                </option>
-              ))}
-              {/* also show any custom slugs present in DB */}
-              {pages
-                .map((p) => p.slug)
-                .filter((s) => !KNOWN_PAGES.includes(s))
-                .map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-            </select>
-          </label>
-          {loading && <span className="cms-loading">Loading…</span>}
+    <div className="admin-cms" style={{ padding: 24 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
+        <h1 style={{ margin: 0 }}>CMS</h1>
+        <div style={{ marginLeft: "auto" }}>
+          <label style={{ fontSize: 12, color: "#555", marginRight: 6 }}>Page:</label>
+          <select value={slug} onChange={(e) => setSlug(e.target.value)}>
+            {PAGE_SLUGS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Page meta */}
-      <div className="cms-card">
-        <div className="cms-card__head">Page Settings</div>
-        {!pageRow ? (
-          <div className="cms-empty">No page selected</div>
-        ) : (
-          <div className="cms-form">
-            <div className="row">
-              <label>Title</label>
-              <input
-                value={pageRow.title || ""}
-                onChange={(e) =>
-                  setPageRow((prev) => ({ ...prev, title: e.target.value }))
-                }
-                placeholder="Page title"
-              />
-            </div>
+      {/* PAGE SETTINGS */}
+      <section className="panel" style={{ background: "#fff", border: "1px solid #eee", borderRadius: 8, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontWeight: 600, marginBottom: 12 }}>Page Settings</div>
+        <div className="field">
+          <label>Title</label>
+          <input value={pageTitle} onChange={(e) => setPageTitle(e.target.value)} placeholder="Page title" />
+        </div>
 
-            <div className="row">
-              <label>Published</label>
+        <div className="field">
+          <label>Published</label>
+          <select value={published ? "1" : "0"} onChange={(e) => setPublished(e.target.value === "1")}>
+            <option value="1">Published</option>
+            <option value="0">Unpublished</option>
+          </select>
+        </div>
+
+        <div className="field">
+          <label>SEO Title</label>
+          <input value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} placeholder="Optional" />
+        </div>
+
+        <div className="field">
+          <label>SEO Description</label>
+          <textarea value={seoDesc} onChange={(e) => setSeoDesc(e.target.value)} placeholder="Optional" />
+        </div>
+
+        <button onClick={savePage}>Save Page</button>
+      </section>
+
+      {/* HERO */}
+      {pageIsHome && (
+        <section className="panel" style={{ background: "#fff", border: "1px solid #eee", borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 12 }}>Hero</div>
+          <div className="field">
+            <label>Headline</label>
+            <input
+              value={hero.headline}
+              onChange={(e) => onHeroChange("headline", e.target.value)}
+              placeholder="Use '|' or a newline to split into two lines on the homepage."
+            />
+          </div>
+          <div className="field">
+            <label>Subheadline</label>
+            <input value={hero.subheadline} onChange={(e) => onHeroChange("subheadline", e.target.value)} />
+          </div>
+
+          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
+            <div className="field">
+              <label>CTA Label</label>
+              <input value={hero.cta_label} onChange={(e) => onHeroChange("cta_label", e.target.value)} />
+            </div>
+            <div className="field">
+              <label>CTA Href</label>
               <select
-                value={pageRow.published ? "true" : "false"}
-                onChange={(e) =>
-                  setPageRow((prev) => ({
-                    ...prev,
-                    published: e.target.value === "true",
-                  }))
-                }
+                value={ROUTE_OPTIONS.find((o) => o.value === hero.cta_href) ? hero.cta_href : ""}
+                onChange={(e) => onHeroChange("cta_href", e.target.value || hero.cta_href)}
               >
-                <option value="false">Unpublished</option>
-                <option value="true">Published</option>
+                {ROUTE_OPTIONS.map((o) => (
+                  <option key={o.value || "none"} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
-            </div>
-
-            <div className="row">
-              <label>SEO Title</label>
+              <small style={{ display: "block", marginTop: 6 }}>If you need a custom path, type it directly in the input below.</small>
               <input
-                value={pageRow.seo_title || ""}
-                onChange={(e) =>
-                  setPageRow((prev) => ({ ...prev, seo_title: e.target.value }))
-                }
-                placeholder="Optional"
+                value={hero.cta_href}
+                onChange={(e) => onHeroChange("cta_href", e.target.value)}
+                placeholder="/custom-path"
+                style={{ marginTop: 6 }}
               />
-            </div>
-
-            <div className="row">
-              <label>SEO Description</label>
-              <textarea
-                value={pageRow.seo_description || ""}
-                onChange={(e) =>
-                  setPageRow((prev) => ({
-                    ...prev,
-                    seo_description: e.target.value,
-                  }))
-                }
-                placeholder="Optional"
-                rows={3}
-              />
-            </div>
-
-            <div className="actions">
-              <button className="btn" onClick={savePageMeta}>
-                Save Page
-              </button>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Hero block */}
-      <div className="cms-card">
-        <div className="cms-card__head">Hero</div>
-        {!canEditHero ? (
-          <div className="cms-empty">Select a page to edit hero</div>
-        ) : (
-          <div className="cms-form">
-            <div className="row">
-              <label>Headline</label>
-              <input
-                value={heroData.headline}
-                onChange={(e) => onHeroChange("headline", e.target.value)}
-                placeholder="Your Shepherd | to the Light"
-              />
-              <small className="hint">
-                Use "|" or a newline to split into two lines on the homepage.
-              </small>
-            </div>
+          <div className="field">
+            <label>Background Image URL</label>
+            <input
+              value={hero.background_image_url || ""}
+              onChange={(e) => onHeroChange("background_image_url", e.target.value)}
+              placeholder="https://…"
+            />
+            <small>Upload to ‘cms/hero/...’ bucket</small>
+          </div>
+          <div className="field">
+            <input type="file" accept="image/*" onChange={(e) => setHeroFile(e.target.files?.[0] || null)} />
+          </div>
 
-            <div className="row">
-              <label>Subheadline</label>
-              <input
-                value={heroData.subheadline}
-                onChange={(e) => onHeroChange("subheadline", e.target.value)}
-                placeholder="We guide families with care."
-              />
-            </div>
+          <button onClick={saveHero}>Save Hero</button>
+        </section>
+      )}
 
-            <div className="row2">
-              <div>
-                <label>CTA Label</label>
+      {/* SERVICES */}
+      {pageIsHome && (
+        <section className="panel" style={{ background: "#fff", border: "1px solid #eee", borderRadius: 8, padding: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 12 }}>Services (Home cards)</div>
+
+          {(services.cards || []).map((c, i) => (
+            <div key={i} style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+              <div className="field">
+                <label>Title</label>
+                <input value={c.title || ""} onChange={(e) => onCardChange(i, "title", e.target.value)} />
+              </div>
+              <div className="field">
+                <label>Text</label>
+                <textarea value={c.text || ""} onChange={(e) => onCardChange(i, "text", e.target.value)} />
+              </div>
+
+              <div className="field">
+                <label>Link</label>
+                <select
+                  value={ROUTE_OPTIONS.find((o) => o.value === (c.href || "")) ? c.href : ""}
+                  onChange={(e) => onCardChange(i, "href", e.target.value || c.href)}
+                >
+                  {ROUTE_OPTIONS.map((o) => (
+                    <option key={o.value || "none"} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <small style={{ display: "block", marginTop: 6 }}>Or type a custom path:</small>
                 <input
-                  value={heroData.cta_label}
-                  onChange={(e) => onHeroChange("cta_label", e.target.value)}
-                  placeholder="Begin Arrangements"
+                  value={c.href || ""}
+                  onChange={(e) => onCardChange(i, "href", e.target.value)}
+                  placeholder="/custom-path"
+                  style={{ marginTop: 6 }}
                 />
               </div>
-              <div>
-                <label>CTA Href</label>
+
+              <div className="field">
+                <label>Image URL</label>
                 <input
-                  value={heroData.cta_href}
-                  onChange={(e) => onHeroChange("cta_href", e.target.value)}
-                  placeholder="/login"
+                  value={c.image_url || ""}
+                  onChange={(e) => onCardChange(i, "image_url", e.target.value)}
+                  placeholder="https://…"
                 />
               </div>
-            </div>
-
-            <div className="row">
-              <label>Background Image URL</label>
-              <input
-                value={heroData.background_image_url}
-                onChange={(e) =>
-                  onHeroChange("background_image_url", e.target.value)
-                }
-                placeholder="https://…"
-              />
-              <div className="upload">
+              <div className="field">
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleUploadHeroImage}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    onCardChange(i, "file", file || null); // temp store File; uploaded on save
+                  }}
                 />
-                <span className="hint">Upload to ‘cms/hero/…’ bucket</span>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={() => removeCard(i)} style={{ background: "#ffe5e5", borderColor: "#ffcccc" }}>
+                  Remove Card
+                </button>
               </div>
             </div>
+          ))}
 
-            <div className="actions">
-              <button className="btn primary" onClick={saveHeroBlock}>
-                Save Hero
-              </button>
-            </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={addCard}>+ Add Card</button>
+            <button onClick={saveServices} style={{ marginLeft: "auto" }}>
+              Save Services
+            </button>
           </div>
-        )}
-      </div>
+        </section>
+      )}
     </div>
   );
+}
+
+/* minimal styles for fields (scoped) */
+const css = `
+.admin-cms .field { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+.admin-cms .field > label { font-size:12px; color:#555; }
+.admin-cms input, .admin-cms select, .admin-cms textarea { padding:8px; border:1px solid #ddd; border-radius:8px; }
+.admin-cms textarea { min-height:88px; resize:vertical; }
+.admin-cms button { padding:8px 12px; border:1px solid #ddd; border-radius:8px; background:#fff; cursor:pointer; }
+.admin-cms button:hover { background:#f8f8f8; }
+`;
+if (typeof document !== "undefined" && !document.getElementById("admin-cms-css")) {
+  const tag = document.createElement("style");
+  tag.id = "admin-cms-css";
+  tag.textContent = css;
+  document.head.appendChild(tag);
 }
