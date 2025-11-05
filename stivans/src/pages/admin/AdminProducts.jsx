@@ -56,23 +56,45 @@ export default function AdminProducts() {
     navigate('/admin/login', { replace: true });
   }, [logout, navigate]);
 
-  // --- Load Products ---
+    // --- Load Products ---
   const loadProducts = useCallback(async () => {
     try {
-      setLoading(true); setError(null);
-      const data = await fetchProducts(); // Assuming this public fetch is okay
-      setProducts(data || []);
+      setLoading(true);
+      setError(null);
+
+      // Prefer a direct fetch that includes sub-images for the admin UI
+      const { data, error } = await supabase
+        .from("products")
+        .select("*, product_images(*)")
+        .order("name", { ascending: true });
+
+      if (error) {
+        console.warn("Falling back to fetchProducts():", error.message);
+        const fallback = await fetchProducts(); // your existing helper
+        setProducts(fallback || []);
+      } else {
+        setProducts(data || []);
+      }
     } catch (err) {
       console.error("Error loading products:", err);
       const fetchErrorMsg = `Failed to load products: ${err.message}`;
       setError(fetchErrorMsg);
       toast.error(fetchErrorMsg);
+
       // Check for auth errors on initial load too
-      if (err?.status === 401 || err?.status === 403 || err?.message?.includes('JWT') || err?.message?.includes('Unauthorized')) {
+      if (
+        err?.status === 401 ||
+        err?.status === 403 ||
+        err?.message?.includes("JWT") ||
+        err?.message?.includes("Unauthorized")
+      ) {
         handleAuthError();
       }
-    } finally { setLoading(false); }
-  }, [handleAuthError]); // Add dependency
+    } finally {
+      setLoading(false);
+    }
+  }, [handleAuthError]);
+
 
   // --- Effect to Load Products ---
   useEffect(() => {

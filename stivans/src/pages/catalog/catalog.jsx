@@ -146,7 +146,19 @@ export default function Catalog() {
               filtered.map((b) => (
                 <article key={b.id} className="catalog-card" role="article" aria-labelledby={`title-${b.id}`}>
                   <div className="card-media">
-                    <img src={b.image_url} alt={b.name} loading="lazy" />
+                    {/* 👇 minimal change: fallback to first sub-image, plus safe placeholder and onError */}
+                    <img
+                      src={
+                        b.image_url
+                        || (b.product_images?.[0]?.image_url)
+                        || "https://placehold.co/600x400?text=No+Image"
+                      }
+                      alt={b.name}
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.src = "https://placehold.co/600x400?text=Image+not+available";
+                      }}
+                    />
                   </div>
                   <div className="card-body">
                     <div className="pill">Non-Life Insurance Included</div>
