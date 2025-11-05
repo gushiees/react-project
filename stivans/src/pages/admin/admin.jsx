@@ -2,19 +2,28 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { FaBoxOpen, FaUsers, FaSignOutAlt, FaHome, FaChartBar, FaListAlt } from "react-icons/fa"; // + FaListAlt
+import {
+  FaBoxOpen,
+  FaUsers,
+  FaSignOutAlt,
+  FaHome,
+  FaChartBar,
+  FaListAlt,
+  FaEdit,                // ← NEW
+} from "react-icons/fa";
 import { useAuth } from "../../AuthContext.jsx";
 import AdminProducts from "./AdminProducts.jsx";
 import AdminUsers from "./AdminUsers.jsx";
 import AdminAnalytics from "./AdminAnalytics.jsx";
-import AdminOrders from "./orders/AdminOrders.jsx"; // + NEW
+import AdminOrders from "./orders/AdminOrders.jsx";
+import AdminCMS from "./cms/AdminCMS.jsx";     // ← NEW
 import adminLogo from "../../assets/stivanlogolight.png";
 import "./admin.css";
 
 export default function Admin() {
   const { user, loadingAuth, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState("analytics"); // Default to analytics
+  const [activeSection, setActiveSection] = useState("analytics");
 
   useEffect(() => {
     if (!loadingAuth) {
@@ -36,13 +45,8 @@ export default function Admin() {
     }
   };
 
-  if (loadingAuth) {
-    return null;
-  }
-
-  if (!user || user.role !== "admin") {
-    return null;
-  }
+  if (loadingAuth) return null;
+  if (!user || user.role !== "admin") return null;
 
   return (
     <div className="admin-layout">
@@ -51,8 +55,8 @@ export default function Admin() {
           <img src={adminLogo} alt="St. Ivans Admin Logo" className="admin-sidebar-logo" />
           <h2>Admin Menu</h2>
         </div>
+
         <nav className="admin-sidebar-nav" aria-label="Admin Sections">
-          {/* Analytics Button */}
           <button
             onClick={() => setActiveSection("analytics")}
             className={activeSection === "analytics" ? "active" : ""}
@@ -61,7 +65,6 @@ export default function Admin() {
             <FaChartBar aria-hidden="true" /> Analytics
           </button>
 
-          {/* + Orders Button */}
           <button
             onClick={() => setActiveSection("orders")}
             className={activeSection === "orders" ? "active" : ""}
@@ -77,6 +80,7 @@ export default function Admin() {
           >
             <FaBoxOpen aria-hidden="true" /> Products
           </button>
+
           <button
             onClick={() => setActiveSection("users")}
             className={activeSection === "users" ? "active" : ""}
@@ -84,7 +88,17 @@ export default function Admin() {
           >
             <FaUsers aria-hidden="true" /> Users
           </button>
+
+          {/* NEW: CMS */}
+          <button
+            onClick={() => setActiveSection("cms")}
+            className={activeSection === "cms" ? "active" : ""}
+            aria-current={activeSection === "cms" ? "page" : undefined}
+          >
+            <FaEdit aria-hidden="true" /> CMS
+          </button>
         </nav>
+
         <div className="admin-sidebar-footer">
           {user && (
             <div className="admin-user-info">
@@ -105,10 +119,12 @@ export default function Admin() {
         <div className="admin-content-header">
           <h1>Admin Dashboard</h1>
         </div>
+
         {activeSection === "analytics" && <AdminAnalytics />}
-        {activeSection === "orders" && <AdminOrders />}{/* + NEW */}
+        {activeSection === "orders" && <AdminOrders />}
         {activeSection === "products" && <AdminProducts />}
         {activeSection === "users" && <AdminUsers />}
+        {activeSection === "cms" && <AdminCMS />}{/* ← NEW */}
       </main>
     </div>
   );
