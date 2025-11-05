@@ -9,14 +9,16 @@ import {
   FaHome,
   FaChartBar,
   FaListAlt,
-  FaEdit,                // ← NEW
+  FaEdit,
+  FaHistory,              // ← ADDED
 } from "react-icons/fa";
 import { useAuth } from "../../AuthContext.jsx";
 import AdminProducts from "./AdminProducts.jsx";
 import AdminUsers from "./AdminUsers.jsx";
 import AdminAnalytics from "./AdminAnalytics.jsx";
 import AdminOrders from "./orders/AdminOrders.jsx";
-import AdminCMS from "./cms/AdminCMS.jsx";     // ← NEW
+import AdminCMS from "./cms/AdminCMS.jsx";
+import AdminAudit from "./audit/AdminAudit.jsx";  // ← ADDED
 import adminLogo from "../../assets/stivanlogolight.png";
 import "./admin.css";
 
@@ -89,13 +91,21 @@ export default function Admin() {
             <FaUsers aria-hidden="true" /> Users
           </button>
 
-          {/* NEW: CMS */}
           <button
             onClick={() => setActiveSection("cms")}
             className={activeSection === "cms" ? "active" : ""}
             aria-current={activeSection === "cms" ? "page" : undefined}
           >
             <FaEdit aria-hidden="true" /> CMS
+          </button>
+
+          {/* ← ADDED: Audit */}
+          <button
+            onClick={() => setActiveSection("audit")}
+            className={activeSection === "audit" ? "active" : ""}
+            aria-current={activeSection === "audit" ? "page" : undefined}
+          >
+            <FaHistory aria-hidden="true" /> Audit
           </button>
         </nav>
 
@@ -124,7 +134,8 @@ export default function Admin() {
         {activeSection === "orders" && <AdminOrders />}
         {activeSection === "products" && <AdminProducts />}
         {activeSection === "users" && <AdminUsers />}
-        {activeSection === "cms" && <AdminCMS />}{/* ← NEW */}
+        {activeSection === "cms" && <AdminCMS />}
+        {activeSection === "audit" && <AdminAudit />}   {/* ← ADDED */}
       </main>
     </div>
   );
