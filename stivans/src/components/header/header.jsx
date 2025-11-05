@@ -2,6 +2,7 @@
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import { useCart } from "../../contexts/cartContext";
+import NotificationBell from "../notifications/NotificationBell.jsx";
 import logo from "../../assets/stivanlogo.png";
 import "./header.css";
 
@@ -38,6 +39,7 @@ export default function Header() {
           </NavLink>
         </nav>
 
+        <NotificationBell />
         <div className="actions">
           <Link to="/cart" className="icon-btn cart">
             🛒

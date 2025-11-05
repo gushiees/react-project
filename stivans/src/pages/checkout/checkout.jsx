@@ -5,6 +5,7 @@ import Header from "../../components/header/header.jsx";
 import Footer from "../../components/footer/footer.jsx";
 import { useCart } from "../../contexts/cartContext.jsx";
 import { supabase } from "../../supabaseClient.js";
+import { insertNotification } from "../../data/notifications.jsx";
 import "./checkout.css";
 
 // 🔔 Use your existing toast
@@ -180,12 +181,35 @@ export default function Checkout() {
 
   // Payment status
   const [paymentStatus, setPaymentStatus] = useState(null);
-  useEffect(() => {
+    useEffect(() => {
     const paidParam = searchParams.get("paid");
     if (paidParam === "1") setPaymentStatus("success");
     else if (paidParam === "0") setPaymentStatus("failure");
     if (paidParam) sessionStorage.removeItem("checkout.items");
+
+    // 🔔 If payment success, notify once per session
+    (async () => {
+      if (paidParam === "1" && !sessionStorage.getItem("notified.paymentSuccess")) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const uid = session?.user?.id;
+          if (uid) {
+            await insertNotification({
+              user_id: uid,
+              type: "payment",
+              title: "Payment confirmed",
+              body: "Your payment was processed successfully.",
+              // order_id: <if you can derive/return it here>, 
+            });
+          }
+        } catch (e) {
+          console.warn("payment notif failed", e?.message || e);
+        }
+        sessionStorage.setItem("notified.paymentSuccess", "1");
+      }
+    })();
   }, [searchParams]);
+
 
   // Items
   const stateItems = Array.isArray(location.state?.items) ? location.state.items : null;
@@ -591,6 +615,22 @@ export default function Checkout() {
       const data = await res.json();
       if (!data?.invoice_url) throw new Error("Invalid response from invoice API.");
 
+      // 🔔 Notify: order placed (pre-payment)
+      try {
+        await insertNotification({
+          user_id: user.id,
+          type: "order_create",
+          title: "Order placed successfully",
+          body: "Thanks! We’ve generated your invoice. Complete payment to confirm.",
+          // If your Edge function returns these, pass them through:
+          order_id: data.order_id ?? null,
+          meta: { order_tag: orderTag, invoice_id: data.invoice_id ?? null }
+        });
+      } catch (e) {
+        // non-blocking
+        console.warn("order_create notif failed", e?.message || e);
+      }
+
       clearCart();
       sessionStorage.removeItem("checkout.items");
       window.location.href = data.invoice_url;
@@ -613,6 +653,8 @@ export default function Checkout() {
           <Link to="/profile" className="place-order">View Profile & Orders</Link>
           <Link to="/catalog" className="back-cart">Continue Shopping</Link>
         </div>
+
+        
         <Footer />
       </>
     );
