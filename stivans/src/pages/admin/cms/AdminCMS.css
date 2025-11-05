@@ -1,0 +1,107 @@
+.cms-admin {
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.cms-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cms-head h1 {
+  margin: 0;
+}
+.cms-head__right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.cms-loading {
+  font-size: 12px;
+  color: #666;
+}
+
+.cms-card {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.cms-card__head {
+  padding: 10px 12px;
+  font-weight: 600;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+}
+
+.cms-empty {
+  padding: 16px;
+  color: #666;
+}
+
+.cms-form {
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.cms-form .row,
+.cms-form .row2 {
+  display: grid;
+  gap: 8px;
+}
+.cms-form .row2 {
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 900px) {
+  .cms-form .row2 { grid-template-columns: 1fr; }
+}
+
+.cms-form label {
+  font-size: 13px;
+  color: #555;
+}
+.cms-form input,
+.cms-form textarea,
+.cms-form select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+}
+.cms-form textarea { resize: vertical; }
+
+.hint {
+  font-size: 12px;
+  color: #777;
+}
+
+.upload {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+.btn.primary {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}

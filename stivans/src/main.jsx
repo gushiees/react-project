@@ -19,6 +19,8 @@ import Checkout from "./pages/checkout/checkout.jsx";
 import Catalog from "./pages/catalog/catalog.jsx";
 import ProductDetail from "./pages/product/productdetail.jsx";
 import Contact from "./pages/contact/contact.jsx";
+import AdminCMS from "./pages/admin/cms/AdminCMS";
+
 
 // Auth / Context
 import { AuthProvider } from "./AuthContext.jsx";
@@ -52,6 +54,7 @@ const router = createBrowserRouter([
         children: [
           { path: "profile/*", element: <Profile /> },
           { path: "admin", element: <Admin /> },
+          { path: "admin/cms", element: <AdminCMS /> },
         ],
       },
     ],
