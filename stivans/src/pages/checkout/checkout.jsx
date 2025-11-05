@@ -199,12 +199,13 @@ export default function Checkout() {
           if (uid) {
             await insertNotification({
               user_id: uid,
-              type: "order", // ← changed from "order_create"
+              type: "payment",           // make it visible in the bell list
               title: "Order placed successfully",
               body: "Thanks! We’ve generated your invoice. Complete payment to confirm.",
               order_id: payload.order_id ?? null,
               meta: payload,
             });
+
           }
           localStorage.setItem("notify.orderCreate.sent", "1");
           localStorage.removeItem("notify.orderCreate"); // tidy up queue after backfill
@@ -644,12 +645,13 @@ export default function Checkout() {
       // 🔔 Try to record "order placed" *before* redirect
       await insertNotification({
         user_id: user.id,
-        type: "order", // ← changed from "order_create"
+        type: "payment",           // same type as the bell filter
         title: "Order placed successfully",
         body: "Thanks! We’ve generated your invoice. Complete payment to confirm.",
         order_id: data.order_id ?? null,
         meta: { order_tag: orderTag, invoice_id: data.invoice_id ?? null }
       });
+
       localStorage.setItem("notify.orderCreate.sent", "1");
 
       clearCart();
