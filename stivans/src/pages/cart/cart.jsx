@@ -58,6 +58,7 @@ export default function Cart() {
     return key;
   }
 
+  // >>> ONLY CHANGED THIS FUNCTION <<<
   const handleCheckoutSelected = async () => {
     if (isSubmitting) return;
     try {
@@ -67,59 +68,25 @@ export default function Cart() {
       }
       setIsSubmitting(true);
 
-      // robust items payload expected by the Edge Function
-      const itemsPayload = selectedCartItems.map((it) => ({
-        product_id: it.product.id,
-        quantity: Number(it.quantity ?? 1),
-        unit_price: Number(it.product.price ?? 0),
-        image_url: it.product.image_url ?? null,
-      }));
+      // Build exactly what /checkout expects
+      const payload = serializeForCheckout(selectedCartItems);
 
-      const idemKey = getIdempotencyKey();
+      // Persist so refresh/back still works
+      sessionStorage.setItem("checkout.items", JSON.stringify(payload));
 
-      const body = {
-        items: itemsPayload,
-        subtotal: Number(subtotal),
-        tax: Number(tax),
-        shipping: Number(shipping),
-        total: Number(total),
-        idempotency_key: idemKey,          // server will reuse existing order for same key
-        order_tag: idemKey,                // also stored on orders.order_tag
-        cadaver_details_id: null,          // pass a real id if you capture it earlier
-      };
+      // Clear any previous temp key (optional safety)
+      sessionStorage.removeItem("pending.idem");
 
-      // call your Supabase Edge Function (works with React Router)
-      const { data, error } = await supabase.functions.invoke("create-invoice", { body });
-
-      if (error) {
-        console.error("create-invoice error:", error);
-        toast.error("Invoice error, redirecting to checkout…");
-        const payload = serializeForCheckout(selectedCartItems);
-        sessionStorage.setItem("checkout.items", JSON.stringify(payload));
-        navigate("/checkout", { state: { items: payload } });
-        return;
-      }
-
-      if (data?.invoice_url) {
-        // success → clear the key so a future checkout gets a new one
-        sessionStorage.removeItem("pending.idem");
-        window.location.href = data.invoice_url;
-      } else {
-        // safety fallback to old flow
-        const payload = serializeForCheckout(selectedCartItems);
-        sessionStorage.setItem("checkout.items", JSON.stringify(payload));
-        navigate("/checkout", { state: { items: payload } });
-      }
+      // Redirect to the dedicated checkout page with only the selected items
+      navigate("/checkout", { state: { items: payload } });
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Failed to create invoice");
-      const payload = serializeForCheckout(selectedCartItems);
-      sessionStorage.setItem("checkout.items", JSON.stringify(payload));
-      navigate("/checkout", { state: { items: payload } });
+      toast.error(err.message || "Failed to go to checkout");
     } finally {
-      setTimeout(() => setIsSubmitting(false), 1200);
+      setTimeout(() => setIsSubmitting(false), 400);
     }
   };
+  // >>> END OF CHANGE <<<
 
   if (isLoading) {
     return (
