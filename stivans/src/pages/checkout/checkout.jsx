@@ -181,58 +181,55 @@ export default function Checkout() {
 
   // Payment status
   const [paymentStatus, setPaymentStatus] = useState(null);
-    useEffect(() => {
-  const paidParam = searchParams.get("paid");
-  if (paidParam === "1") setPaymentStatus("success");
-  else if (paidParam === "0") setPaymentStatus("failure");
-  if (paidParam) sessionStorage.removeItem("checkout.items");
+  useEffect(() => {
+    const paidParam = searchParams.get("paid");
+    if (paidParam === "1") setPaymentStatus("success");
+    else if (paidParam === "0") setPaymentStatus("failure");
+    if (paidParam) sessionStorage.removeItem("checkout.items");
 
-  (async () => {
-    try {
-      // 🔄 Always try to backfill "order placed" first (works even if we came back in a new tab)
-      const qRaw = localStorage.getItem("notify.orderCreate");
-      const qSent = localStorage.getItem("notify.orderCreate.sent") === "1";
-      if (qRaw && !qSent) {
-        const payload = JSON.parse(qRaw || "{}"); // { order_tag, invoice_id, order_id? }
-        const { data: { session } } = await supabase.auth.getSession();
-        const uid = session?.user?.id;
-        if (uid) {
-          await insertNotification({
-            user_id: uid,
-            type: "order_create",
-            title: "Order placed successfully",
-            body: "Thanks! We’ve generated your invoice. Complete payment to confirm.",
-            order_id: payload.order_id ?? null,
-            meta: payload,
-          });
+    (async () => {
+      try {
+        // 🔄 Always try to backfill "order placed" first (works even if we came back in a new tab)
+        const qRaw = localStorage.getItem("notify.orderCreate");
+        const qSent = localStorage.getItem("notify.orderCreate.sent") === "1";
+        if (qRaw && !qSent) {
+          const payload = JSON.parse(qRaw || "{}"); // { order_tag, invoice_id, order_id? }
+          const { data: { session } } = await supabase.auth.getSession();
+          const uid = session?.user?.id;
+          if (uid) {
+            await insertNotification({
+              user_id: uid,
+              type: "order", // ← changed from "order_create"
+              title: "Order placed successfully",
+              body: "Thanks! We’ve generated your invoice. Complete payment to confirm.",
+              order_id: payload.order_id ?? null,
+              meta: payload,
+            });
+          }
+          localStorage.setItem("notify.orderCreate.sent", "1");
+          localStorage.removeItem("notify.orderCreate"); // tidy up queue after backfill
         }
-        localStorage.setItem("notify.orderCreate.sent", "1");
-      }
 
-      // ✅ Payment success (once per session/tab)
-      if (paidParam === "1" && !sessionStorage.getItem("notified.paymentSuccess")) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const uid = session?.user?.id;
-        if (uid) {
-          await insertNotification({
-            user_id: uid,
-            type: "payment",
-            title: "Payment confirmed",
-            body: "Your payment was processed successfully.",
-            // order_id: payload?.order_id ?? null, // optional if you resolve it
-          });
+        // ✅ Payment success (once per session/tab)
+        if (paidParam === "1" && !sessionStorage.getItem("notified.paymentSuccess")) {
+          const { data: { session } } = await supabase.auth.getSession();
+          const uid = session?.user?.id;
+          if (uid) {
+            await insertNotification({
+              user_id: uid,
+              type: "payment",
+              title: "Payment confirmed",
+              body: "Your payment was processed successfully.",
+              // order_id: payload?.order_id ?? null, // optional if you resolve it
+            });
+          }
+          sessionStorage.setItem("notified.paymentSuccess", "1");
         }
-        sessionStorage.setItem("notified.paymentSuccess", "1");
+      } catch (e) {
+        console.warn("notif effect error", e?.message || e);
       }
-    } catch (e) {
-      console.warn("notif effect error", e?.message || e);
-    }
-  })();
-}, [searchParams]);
-
-
-  
-
+    })();
+  }, [searchParams]);
 
   // Items
   const stateItems = Array.isArray(location.state?.items) ? location.state.items : null;
@@ -620,7 +617,7 @@ export default function Checkout() {
         // cadaver: {...} // optional legacy support: backend can ignore this now
       };
 
-            // --- Call Supabase Edge Function to create invoice ---
+      // --- Call Supabase Edge Function to create invoice ---
       const res = await fetch(`${API_BASE}/create-invoice`, {
         method: "POST",
         headers: {
@@ -644,18 +641,16 @@ export default function Checkout() {
         JSON.stringify({ order_tag: orderTag, invoice_id: data.invoice_id ?? null, order_id: data.order_id ?? null })
       );
 
-
+      // 🔔 Try to record "order placed" *before* redirect
       await insertNotification({
-      user_id: user.id,
-      type: "order_create",
-      title: "Order placed successfully",
-      body: "Thanks! We’ve generated your invoice. Complete payment to confirm.",
-      order_id: data.order_id ?? null,
-      meta: { order_tag: orderTag, invoice_id: data.invoice_id ?? null }
+        user_id: user.id,
+        type: "order", // ← changed from "order_create"
+        title: "Order placed successfully",
+        body: "Thanks! We’ve generated your invoice. Complete payment to confirm.",
+        order_id: data.order_id ?? null,
+        meta: { order_tag: orderTag, invoice_id: data.invoice_id ?? null }
       });
       localStorage.setItem("notify.orderCreate.sent", "1");
-
-
 
       clearCart();
       sessionStorage.removeItem("checkout.items");
@@ -1104,4 +1099,4 @@ export default function Checkout() {
     </>
   );
 }
-//test launch 
+//test launch
